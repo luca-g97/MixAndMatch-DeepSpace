@@ -325,6 +325,7 @@ MonoBehaviour:
   spawner2D: {fileID: 271053320}
   obstacles: []
   areaToColorAroundObstacles: 0.25
+  coloredAreaAroundObstaclesDivider: 0
   obstacleLineColor: {r: 0, g: 1, b: 0, a: 1}
   obstacleLineWidth: 0.05
   lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}

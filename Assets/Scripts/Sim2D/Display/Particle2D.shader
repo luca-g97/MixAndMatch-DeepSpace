@@ -55,7 +55,10 @@ Shader "Instanced/Particle2D" {
 				{
 					if (obstacleIndices[i] != -1)
 					{
-						obstacleColorSum += ObstacleColors[obstacleIndices[i]].rgb;
+						if(obstacleIndices[i] !=  -2)
+						{
+							obstacleColorSum += ObstacleColors[obstacleIndices[i]].rgb;
+						}
 						obstacleCount++;
 					}
 				}

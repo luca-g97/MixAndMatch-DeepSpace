@@ -76,6 +76,7 @@ namespace Seb.Fluid2D.Simulation
         public ComputeBuffer obstacleColorsBuffer;
         private List<Color> obstacleColorsList = new List<Color>();
         [Min(0)] public float areaToColorAroundObstacles = 0.1f;
+        [Min(0)] public float coloredAreaAroundObstaclesDivider = 0.05f;
 
         [StructLayout(LayoutKind.Explicit, Size = 20)]
         public struct ObstacleData
@@ -389,6 +390,7 @@ namespace Seb.Fluid2D.Simulation
             }
 
             compute.SetFloat("areaToColorAroundObstacles", areaToColorAroundObstacles);
+            compute.SetFloat("coloredAreaAroundObstaclesDivider", coloredAreaAroundObstaclesDivider);
 
             compute.SetFloat("mouseGravityStrength", mouseGravityStrength);
             compute.SetFloat("mouseGravityRadius", mouseGravityRadius);

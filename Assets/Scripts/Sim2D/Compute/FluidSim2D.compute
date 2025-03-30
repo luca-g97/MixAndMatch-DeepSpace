@@ -27,6 +27,7 @@ RWStructuredBuffer<int4> CollisionBuffer;
 
 int numObstacles;
 float areaToColorAroundObstacles;
+float coloredAreaAroundObstaclesDivider;
 static const int NumThreads = 64;
 
 RWStructuredBuffer<float2> Positions;
@@ -229,11 +230,17 @@ void HandleCollisions(uint particleIndex)
         
         isInside = ((uint) intersections % (uint) 2) == 1;
         
+        
+        
         if (sqrt(minDistSq) < areaToColorAroundObstacles && consideredObstacles < 4)
         {
             // Store in next available slot
             collisionIndices[consideredObstacles] = obstacleIdx;
             consideredObstacles++;
+        }
+        else if (sqrt(minDistSq) < areaToColorAroundObstacles + coloredAreaAroundObstaclesDivider && consideredObstacles < 4)
+        {
+            collisionIndices[consideredObstacles] = -2;
         }
 
         // 2b. Collision response
