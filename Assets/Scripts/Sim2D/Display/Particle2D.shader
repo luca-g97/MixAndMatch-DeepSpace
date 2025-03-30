@@ -47,7 +47,7 @@ Shader "Instanced/Particle2D" {
 
 				// Get collision indices
 				int4 obstacleIndices = CollisionBuffer[instanceID];
-				float3 obstacleColor = float3(0, 0, 0);
+				float3 obstacleColorSum = float3(0, 0, 0);
 				int obstacleCount = 0;
 
 				// Accumulate obstacle colors
@@ -55,20 +55,14 @@ Shader "Instanced/Particle2D" {
 				{
 					if (obstacleIndices[i] != -1)
 					{
-						obstacleColor += ObstacleColors[obstacleIndices[i]].rgb;
+						obstacleColorSum += ObstacleColors[obstacleIndices[i]].rgb;
 						obstacleCount++;
 					}
 				}
 
-				// Blend colors
-				float3 finalColour = baseColour;
-				if (obstacleCount > 0)
-				{
-					// Average obstacle colors
-					float3 avgObstacleColor = obstacleColor / obstacleCount;
-					// Blend with base color based on obstacle count
-					finalColour = lerp(baseColour, avgObstacleColor, saturate(obstacleCount * 0.8));
-				}
+				// Calculate average color if obstacles found
+				float3 finalColour = (obstacleCount > 0) ? obstacleColorSum / obstacleCount : baseColour;
+				finalColour *= obstacleCount > 0 ? obstacleCount : 1;
 
 				// Calculate world position
 				float3 centreWorld = float3(Positions2D[instanceID], 0);

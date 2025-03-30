@@ -178,13 +178,8 @@ void HandleCollisions(uint particleIndex)
     }
 
     // 2. Obstacle collisions
-    for (int obstacleIdx = 0; obstacleIdx < MAX_OBSTACLES; obstacleIdx++)
-    {
-        if (obstacleIdx >= numObstacles)
-            break;
-        if (consideredObstacles >= 4)
-            break;
-        
+    for (int obstacleIdx = 0; obstacleIdx < min(numObstacles, MAX_OBSTACLES); obstacleIdx++)
+    {        
         Obstacle obstacle = obstaclesBuffer[obstacleIdx];
         int vertexStart = obstacle.vertexStart;
         int vertexCount = obstacle.vertexCount;
@@ -234,7 +229,7 @@ void HandleCollisions(uint particleIndex)
         
         isInside = ((uint) intersections % (uint) 2) == 1;
         
-        if (sqrt(minDistSq) < areaToColorAroundObstacles)
+        if (sqrt(minDistSq) < areaToColorAroundObstacles && consideredObstacles < 4)
         {
             // Store in next available slot
             collisionIndices[consideredObstacles] = obstacleIdx;
@@ -268,8 +263,7 @@ void HandleCollisions(uint particleIndex)
     CollisionBuffer[particleIndex] = int4(collisionIndices[0], collisionIndices[1], collisionIndices[2], collisionIndices[3]);
 
     // Write back results
-    Positions[particleIndex] =
-pos;
+    Positions[particleIndex] = pos;
     Velocities[particleIndex] = vel;
 }
 
