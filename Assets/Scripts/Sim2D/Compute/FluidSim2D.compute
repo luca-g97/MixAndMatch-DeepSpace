@@ -195,7 +195,7 @@ void HandleCollisions(uint particleIndex)
         float minDistSq = FLT_MAX;
         float2 closestNormal = float2(0, 0);
         float2 closestPoint = float2(0, 0);
-        float collisionPadding = 0.02 + lineWidth * 0.5; // Include line width in collision
+        float collisionPadding = 0.2 + lineWidth; // Include line width in collision
 
         for (int j = 0; j < vertexCount; j++)
         {
@@ -228,7 +228,7 @@ void HandleCollisions(uint particleIndex)
             }
         }
         
-        isInside = ((uint) intersections % (uint) 2) == 1;
+        isInside = ((uint) intersections > (uint) 2);
         
         
         

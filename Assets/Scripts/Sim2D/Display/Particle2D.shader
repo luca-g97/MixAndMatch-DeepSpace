@@ -65,7 +65,7 @@ Shader "Instanced/Particle2D" {
 
 				// Calculate average color if obstacles found
 				float3 finalColour = (obstacleCount > 0) ? obstacleColorSum / obstacleCount : baseColour;
-				finalColour *= obstacleCount > 0 ? obstacleCount : 1;
+				//finalColour *= obstacleCount > 0 ? obstacleCount : 1;
 
 				// Calculate world position
 				float3 centreWorld = float3(Positions2D[instanceID], 0);
