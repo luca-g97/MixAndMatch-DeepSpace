@@ -24,6 +24,8 @@ namespace Seb.Fluid2D.Simulation
         public float viscosityStrength;
         public Vector2 boundsSize;
 
+        private Material _sharedUnlitMaterial;
+
         [Header("Interaction Settings")]
         public float interactionRadius;
         public float interactionStrength;
@@ -112,7 +114,8 @@ namespace Seb.Fluid2D.Simulation
 
             CreateBuffers();
             SetInitialBufferData(spawnData);
-            UpdateObstacleBuffer(); // Add this line
+            _sharedUnlitMaterial = new Material(Shader.Find("Unlit/Color"));
+            UpdateObstacleBuffer();
             InitComputeShader();
         }
 
@@ -254,11 +257,18 @@ namespace Seb.Fluid2D.Simulation
             List<ObstacleData> obstacleDataList = new List<ObstacleData>();
             int vertexCounter = 0;
 
-            // Clear existing LineRenderers
             foreach (var obstacle in obstacles.Where(o => o != null).ToList())
             {
                 var lr = obstacle.GetComponent<LineRenderer>();
-                if (lr != null) DestroyImmediate(lr);
+                // Check if it exists before trying to destroy
+                if (lr != null)
+                {
+                    // Use Destroy instead of DestroyImmediate if this runs during Play Mode updates
+                    if (Application.isPlaying)
+                        Destroy(lr);
+                    else
+                        DestroyImmediate(lr); // Keep DestroyImmediate for Editor-time updates if needed
+                }
             }
 
             var players = obstacles.Where(o => o != null && o.activeInHierarchy && o.name.Contains("Player")).ToList();
@@ -309,9 +319,10 @@ namespace Seb.Fluid2D.Simulation
                 lr.positionCount = points.Length;
 
                 // Material setup
-                Material lineMat = lineRendererMaterial ?
-                    new Material(lineRendererMaterial) :
-                    new Material(Shader.Find("Unlit/Color"));
+                Material sharedMat = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
+
+                // Assign the chosen shared material
+                lr.material = sharedMat;
 
                 // Color assignment - optimized for maximum distinction
                 Color obstacleColor;
@@ -332,9 +343,6 @@ namespace Seb.Fluid2D.Simulation
                 // Store color for particle collisions
                 obstacleColorsList.Add(obstacleColor);
 
-                // Apply colors
-                lineMat.color = obstacleColor;
-                lr.material = lineMat;
                 lr.startColor = obstacleColor;
                 lr.endColor = obstacleColor;
 
