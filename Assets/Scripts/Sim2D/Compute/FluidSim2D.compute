@@ -152,124 +152,228 @@ float2 ExternalForces(float2 pos, float2 velocity, float gravityScale)
     return gravityAccel;
 }
 
+// Optimized HandleCollisions - Focused on reducing expensive operations (sqrt, normalization)
+// and minimizing work inside the inner vertex loop after performance degradation was observed.
 void HandleCollisions(uint particleIndex)
 {
     float2 pos = Positions[particleIndex];
     float2 vel = Velocities[particleIndex];
-    
-    // Reset collision state at start of each frame
-    int collisionIndices[4] = { -1, -1, -1, -1 };
-    int consideredObstacles = 0;
-    
 
-    // 1. Boundary collisions
+    // --- Pre-calculations (Avoid redundant calculations later) ---
     const float2 halfSize = boundsSize * 0.5;
-    float2 edgeDst = halfSize - abs(pos);
-    float boundaryDamping = 0.8 * collisionDamping;
+    const float boundaryEpsilon = 0.001f; // Small offset for boundary push-off
 
-    if (edgeDst.x <= 0)
+    // Pre-calculate squared distances for coloring checks to avoid sqrt() later
+    float areaToColorAroundObstaclesSq = areaToColorAroundObstacles * areaToColorAroundObstacles;
+    float secondaryColorDist = areaToColorAroundObstacles + coloredAreaAroundObstaclesDivider;
+    float secondaryColorDistSq = secondaryColorDist * secondaryColorDist;
+
+    // Collision state tracking
+    int collisionIndices[4] = { -1, -1, -1, -1 }; // Store indices for coloring
+    int consideredObstacles = 0; // Counter for coloring indices array
+
+
+    // --- 1. Boundary Collisions ---
+    // Simplified, direct boundary check and response using pre-calculated halfSize.
+    // Using abs() avoids branching on sign().
+    if (abs(pos.x) >= halfSize.x)
     {
-        pos.x = halfSize.x * sign(pos.x);
-        vel.x *= -boundaryDamping;
+        pos.x = (halfSize.x - boundaryEpsilon) * sign(pos.x); // Push slightly off boundary
+        vel.x *= -collisionDamping; // Reflect and dampen normal velocity
     }
-    if (edgeDst.y <= 0)
+    if (abs(pos.y) >= halfSize.y)
     {
-        pos.y = halfSize.y * sign(pos.y);
-        vel.y *= -boundaryDamping;
+        pos.y = (halfSize.y - boundaryEpsilon) * sign(pos.y); // Push slightly off boundary
+        vel.y *= -collisionDamping; // Reflect and dampen normal velocity
     }
 
-    // 2. Obstacle collisions
-    for (int obstacleIdx = 0; obstacleIdx < min(numObstacles, MAX_OBSTACLES); obstacleIdx++)
-    {        
+
+    // --- 2. Obstacle Collisions ---
+    // Loop over relevant obstacles, capped at compile-time MAX_OBSTACLES for safety.
+    // [loop] attribute can sometimes help the compiler optimize, mileage may vary.
+    [loop]
+    for (int obstacleIdx = 0; obstacleIdx < numObstacles && obstacleIdx < MAX_OBSTACLES; obstacleIdx++)
+    {
         Obstacle obstacle = obstaclesBuffer[obstacleIdx];
         int vertexStart = obstacle.vertexStart;
         int vertexCount = obstacle.vertexCount;
-        float lineWidth = obstacle.lineWidth;
 
-        if (vertexCount < 3)
+        // Skip degenerate obstacles early. Need >= 2 vertices for a line/polygon edge.
+        if (vertexCount < 2)
             continue;
 
-        // 2a. Inside/Outside test using raycasting
-        int intersections = 0;
-        bool isInside = false;
-        float minDistSq = FLT_MAX;
-        float2 closestNormal = float2(0, 0);
-        float2 closestPoint = float2(0, 0);
-        float collisionPadding = 0.2 + lineWidth; // Include line width in collision
+        float lineWidth = obstacle.lineWidth;
 
+        // --- Per-Obstacle Pre-calculations ---
+        // Calculate squared collision padding distance once per obstacle.
+        // TODO: Consider making particleRadius a uniform if it's consistent.
+        float particleRadius = 0.1f;
+        float collisionPadding = particleRadius + (lineWidth * 0.5f);
+        float collisionPaddingSq = collisionPadding * collisionPadding; // Key optimization: compare squared distances
+
+        // --- State for finding closest point and raycasting ---
+        int intersections = 0;
+        float minDistSq = FLT_MAX; // Track minimum *squared* distance
+        float2 normalAtClosestPoint = float2(0, 0); // Normal associated with minDistSq
+
+
+        // --- Inner Loop: Iterate through obstacle vertices/edges ---
+        // This is the performance-critical loop. Minimize work inside.
+        [loop]
         for (int j = 0; j < vertexCount; j++)
         {
-            int nextJ = uint((j + 1)) % (uint) vertexCount;
+            // Fetch vertices for the current edge segment (a -> b)
+            int nextJ = (j + 1) % vertexCount; // Modulo for polygon wrapping
             float2 a = verticesBuffer[vertexStart + j];
             float2 b = verticesBuffer[vertexStart + nextJ];
+            float2 edge = b - a;
+            float2 vecToA = pos - a; // Vector from start vertex to particle position
 
-            // Raycasting test
-            if ((a.y > pos.y) != (b.y > pos.y))
+            // --- Closest point on edge segment calculation ---
+            float edgeLengthSq = dot(edge, edge);
+            float2 pointOnEdge;
+            // Use squared length check to handle degenerate edges (a == b)
+            if (edgeLengthSq > 1e-6f)
             {
-                float t = (pos.y - a.y) / (b.y - a.y);
-                float intersectX = a.x + t * (b.x - a.x);
-                if (pos.x < intersectX)
-                    intersections++;
+                // Project vecToA onto edge, clamp projection factor t to [0, 1] for segment
+                float t = clamp(dot(vecToA, edge) / edgeLengthSq, 0.0, 1.0);
+                pointOnEdge = a + t * edge;
+            }
+            else
+            {
+                pointOnEdge = a; // If edge is degenerate, closest point is the vertex itself
             }
 
-            // Find closest edge point
-            float2 edge = b - a;
-            float edgeLengthSq = dot(edge, edge);
-            float t = clamp(dot(pos - a, edge) / edgeLengthSq, 0.0, 1.0);
-            float2 pointOnEdge = a + t * edge;
-            float2 offset = pos - pointOnEdge;
-            float distSq = dot(offset, offset);
-            
+            // --- Distance Check (Squared) ---
+            float2 offsetToEdgePoint = pos - pointOnEdge;
+            float distSq = dot(offsetToEdgePoint, offsetToEdgePoint); // Calculate squared distance
+
+            // Update minimum squared distance and associated normal if this point is closer
             if (distSq < minDistSq)
             {
                 minDistSq = distSq;
-                closestNormal = normalize(offset);
-                closestPoint = pointOnEdge;
+                // Calculate the normal *only* when minDistSq is updated.
+                // Avoid sqrt via normalize() if possible, but needed for direction.
+                // Check for zero distance to avoid normalizing zero vector.
+                if (distSq > 1e-6f)
+                {
+                     // Standard normalize(). rsqrt() could be faster but less precise.
+                    normalAtClosestPoint = normalize(offsetToEdgePoint);
+                    // alternative: normalAtClosestPoint = offsetToEdgePoint * rsqrt(distSq);
+                }
+                else
+                {
+                    // Particle is exactly on the edge/vertex. Need a fallback normal.
+                    // Derive from edge perpendicular if edge exists, otherwise use arbitrary axis.
+                    // This normal might not consistently point "out" if particle is exactly on vertex.
+                    // `isInside` check later helps resolve ambiguity.
+                    if (edgeLengthSq > 1e-6f)
+                    {
+                        float2 edgeDir = normalize(edge); // Need normalize here to get direction
+                        normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x)); // Ensure unit length
+                    }
+                    else
+                    {
+                        normalAtClosestPoint = float2(0, 1); // Arbitrary fallback for point obstacle
+                    }
+                }
+            } // End distance update check
+
+            // --- Raycasting Test (Only for polygons, vertexCount >= 3) ---
+            // Optimized check slightly by calculating intersectX only if y-range matches.
+            if (vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
+            {
+                 // Avoid division by zero for horizontal lines (check y diff)
+                if (abs(b.y - a.y) > 1e-6f)
+                {
+                    // Calculate horizontal intersection point of ray from pos
+                    float intersectX = a.x + (b.x - a.x) * (pos.y - a.y) / (b.y - a.y);
+                    if (pos.x < intersectX)
+                    { // Count intersections to the right
+                        intersections++;
+                    }
+                }
+                 // else: Horizontal line aligned with ray - typically ignored in robust point-in-polygon.
+            } // End raycasting check
+
+        } // --- End Inner Vertex Loop ---
+
+
+        // --- Determine Inside/Outside & Collision Status (using squared distances) ---
+        // Correct odd-even rule check for point-in-polygon (requires vertexCount >= 3).
+        bool isInside = (vertexCount >= 3) && ((intersections % 2) != 0);
+
+        // Collision check: Inside OR outside but closer than squared padding distance.
+        // This comparison avoids sqrt().
+        bool collisionDetected = isInside || (minDistSq < collisionPaddingSq);
+
+
+        // --- Coloring Logic (using squared distances) ---
+        // Updated only if space available in collisionIndices and particle is close enough.
+        // Uses squared distance checks, runs independent of collision response.
+        if (consideredObstacles < 4)
+        {
+             // Use else-if to assign only one category per obstacle
+            if (minDistSq < areaToColorAroundObstaclesSq)
+            {
+                collisionIndices[consideredObstacles++] = obstacleIdx;
+            }
+            else if (minDistSq < secondaryColorDistSq)
+            {
+                collisionIndices[consideredObstacles++] = -2;
             }
         }
-        
-        isInside = ((uint) intersections > (uint) 2);
-        
-        
-        
-        if (sqrt(minDistSq) < areaToColorAroundObstacles && consideredObstacles < 4)
-        {
-            // Store in next available slot
-            collisionIndices[consideredObstacles] = obstacleIdx;
-            consideredObstacles++;
-        }
-        else if (sqrt(minDistSq) < areaToColorAroundObstacles + coloredAreaAroundObstaclesDivider && consideredObstacles < 4)
-        {
-            collisionIndices[consideredObstacles] = -2;
-        }
 
-        // 2b. Collision response
-        if (isInside || sqrt(minDistSq) < collisionPadding)
+
+        // --- Collision Response --- Executes only if collision is detected.
+        if (collisionDetected)
         {
-            // Calculate penetration vector
-            float penetration = collisionPadding - sqrt(minDistSq) + 0.001f;
-            float2 correction = closestNormal * penetration;
-            
-            // Position correction
-            pos += correction;
-            
-            // Velocity response
-            float normalSpeed = dot(vel, closestNormal);
+            // CRITICAL OPTIMIZATION: Calculate sqrt(minDistSq) *only once* here, if needed.
+            float actualDistance = sqrt(minDistSq);
+
+            // Calculate penetration depth based on whether particle is inside or just overlapping padding.
+            float penetrationDepth;
+            if (isInside)
+            {
+                 // If inside, push out by current distance + padding.
+                penetrationDepth = actualDistance + collisionPadding;
+            }
+            else
+            { // Outside but within padding.
+                 // If outside, push out just enough to clear the padding overlap.
+                penetrationDepth = collisionPadding - actualDistance;
+            }
+            penetrationDepth += 0.001f; // Add epsilon to ensure clear separation.
+
+            // Apply positional correction along the calculated normal.
+            pos += normalAtClosestPoint * penetrationDepth;
+
+            // --- Velocity Response ---
+            // Calculate speed along the collision normal.
+            float normalSpeed = dot(vel, normalAtClosestPoint);
+
+            // Respond only if particle is moving *into* the obstacle surface (normalSpeed < 0).
             if (normalSpeed < 0)
             {
-                float2 tangent = float2(closestNormal.y, -closestNormal.x);
-                float tangentSpeed = dot(vel, tangent);
-                
-                // Apply friction and bounce
-                vel = tangent * tangentSpeed * 0.9f;
-                vel -= closestNormal * normalSpeed * (0.3 + 0.7 * collisionDamping);
-            }
-        }
-    }
-    
-    CollisionBuffer[particleIndex] = int4(collisionIndices[0], collisionIndices[1], collisionIndices[2], collisionIndices[3]);
+                // Decompose velocity into normal and tangential components.
+                float2 tangentVel = vel - normalAtClosestPoint * normalSpeed;
+                float2 normalVel = -normalAtClosestPoint * normalSpeed * collisionDamping; // Apply damping factor for bounce restitution.
 
-    // Write back results
+                // Apply friction to the tangential component.
+                // TODO: Make friction factor a uniform parameter.
+                float friction = 0.1f;
+                vel = tangentVel * (1.0f - friction) + normalVel; // Recombine components.
+            }
+            // else: Particle moving away or parallel, no velocity correction needed.
+
+        } // --- End Collision Response ---
+
+    } // --- End Outer Obstacle Loop ---
+
+
+    // --- Write Back Results ---
+    // Update particle state in the buffers.
+    CollisionBuffer[particleIndex] = int4(collisionIndices[0], collisionIndices[1], collisionIndices[2], collisionIndices[3]);
     Positions[particleIndex] = pos;
     Velocities[particleIndex] = vel;
 }

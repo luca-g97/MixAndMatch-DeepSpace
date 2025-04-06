@@ -1,11 +1,9 @@
-using Seb.Fluid2D.Rendering;
 using Seb.Helpers;
-using UnityEngine;
-using Unity.Mathematics;
-using UnityEngine.Serialization;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Linq;
+using System.Runtime.InteropServices;
+using Unity.Mathematics;
+using UnityEngine;
 
 namespace Seb.Fluid2D.Simulation
 {
@@ -263,14 +261,19 @@ namespace Seb.Fluid2D.Simulation
                 if (lr != null) DestroyImmediate(lr);
             }
 
-            // Pre-calculate Player colors using golden ratio for maximum distinction
             var players = obstacles.Where(o => o != null && o.activeInHierarchy && o.name.Contains("Player")).ToList();
             Dictionary<GameObject, Color> playerColors = new Dictionary<GameObject, Color>();
             float goldenRatio = 0.61803398875f;
+
+            float baseSaturation = 1f; // TUNABLE: Lower saturation for base colors (e.g., 0.5-0.7)
+            float baseValue = 1f;      // TUNABLE: Base value/brightness (e.g., 0.7-0.9)
+
             for (int i = 0; i < players.Count; i++)
             {
                 float hue = (i * goldenRatio) % 1f;
-                playerColors[players[i]] = Color.HSVToRGB(hue, 0.9f, 0.9f);
+                Color playerColor = Color.HSVToRGB(hue, baseSaturation, baseValue);
+                playerColor.a = 1.0f; // Ensure alpha is 1.0
+                playerColors[players[i]] = playerColor; // Assign based on current list index 'i'
             }
 
             int obstacleIndex = 0;
@@ -339,7 +342,7 @@ namespace Seb.Fluid2D.Simulation
                 lr.widthCurve = AnimationCurve.Constant(0, 1, obstacleLineWidth);
 
                 // Set positions
-                Vector3[] worldPoints = points.Select(p => (Vector3)obstacle.transform.TransformPoint(p)).ToArray();
+                Vector3[] worldPoints = points.Select(p => obstacle.transform.TransformPoint(p)).ToArray();
                 lr.SetPositions(worldPoints);
 
                 obstacleIndex++;

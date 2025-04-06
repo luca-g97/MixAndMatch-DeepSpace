@@ -1,0 +1,17 @@
+<config>
+	<!-- Observation Space: Type 0 = Rectangular, Type 1 = Circular -->
+	<observationspace id="1" type="0" left="0.700" right="5.450" upper="6.100" lower="2.000"/>
+	<mappingspace left="0.700" right="5.450" upper="5.800" lower="2.000"/>
+	<tuiosender on="1" ip="127.0.0.1" port="3333" transmitechoes="1"/>
+	
+	<tracklink on="1" ip="127.0.0.1" port="44345" multicast="1"/>
+
+	<scanner id="1" spaceid="1" type="4" ip="192.168.2.10" x="-0.23" y="2.770" angle="0.745" flipped="0"/>
+	<scanner id="2" spaceid="1" type="4" ip="192.168.2.11" x="0.920" y="6.190" angle="0.250" flipped="0"/>
+	<scanner id="3" spaceid="1" type="4" ip="192.168.2.12" x="5.250" y="6.190" angle="0.250" flipped="0"/>
+	<scanner id="4" spaceid="1" type="4" ip="192.168.2.13" x="6.440" y="2.780" angle="-0.245" flipped="0"/>
+
+	<tracker confirmedechoes="1" trackconfidence="5" maxassignmentdistance="0.85" agility="0.75" singleechomode="0" heading="0.2"/>
+	<echogenerator waitall="0" minObjectWidth="0.10" innerObjectDistance="0.10" echoComputationMode="1" maxCorrelationDistance="0.36"/>
+	<app trails="1" scanlines="0" echoes="1" fullscreen="0" width="1280" height="800" fov="0.25"/>
+</config>
