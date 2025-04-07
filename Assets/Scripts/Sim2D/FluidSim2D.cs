@@ -24,8 +24,6 @@ namespace Seb.Fluid2D.Simulation
         public float viscosityStrength;
         public Vector2 boundsSize;
 
-        private Material _sharedUnlitMaterial;
-
         [Header("Interaction Settings")]
         public float interactionRadius;
         public float interactionStrength;
@@ -78,6 +76,9 @@ namespace Seb.Fluid2D.Simulation
         [Min(0)] public float areaToColorAroundObstacles = 0.1f;
         [Min(0)] public float coloredAreaAroundObstaclesDivider = 0.05f;
 
+        private MaterialPropertyBlock _propBlock;
+        private Material _sharedUnlitMaterial;
+
         [StructLayout(LayoutKind.Explicit, Size = 20)]
         public struct ObstacleData
         {
@@ -114,7 +115,15 @@ namespace Seb.Fluid2D.Simulation
 
             CreateBuffers();
             SetInitialBufferData(spawnData);
-            _sharedUnlitMaterial = new Material(Shader.Find("Unlit/Color"));
+
+            // Create the property block and shared fallback material once
+            _propBlock = new MaterialPropertyBlock();
+            // Ensure we have a fallback material if lineRendererMaterial is not set
+            if (Shader.Find("Unlit/Color") != null)
+                _sharedUnlitMaterial = new Material(Shader.Find("Unlit/Color"));
+            else // Basic fallback if Unlit/Color isn't found (less likely)
+                _sharedUnlitMaterial = new Material(Shader.Find("Legacy Shaders/Particles/Alpha Blended Premultiply"));
+
             UpdateObstacleBuffer();
             InitComputeShader();
         }
@@ -257,18 +266,11 @@ namespace Seb.Fluid2D.Simulation
             List<ObstacleData> obstacleDataList = new List<ObstacleData>();
             int vertexCounter = 0;
 
+            // Clear existing LineRenderers
             foreach (var obstacle in obstacles.Where(o => o != null).ToList())
             {
                 var lr = obstacle.GetComponent<LineRenderer>();
-                // Check if it exists before trying to destroy
-                if (lr != null)
-                {
-                    // Use Destroy instead of DestroyImmediate if this runs during Play Mode updates
-                    if (Application.isPlaying)
-                        Destroy(lr);
-                    else
-                        DestroyImmediate(lr); // Keep DestroyImmediate for Editor-time updates if needed
-                }
+                if (lr != null) DestroyImmediate(lr);
             }
 
             var players = obstacles.Where(o => o != null && o.activeInHierarchy && o.name.Contains("Player")).ToList();
@@ -318,11 +320,17 @@ namespace Seb.Fluid2D.Simulation
                 lr.loop = true;
                 lr.positionCount = points.Length;
 
-                // Material setup
-                Material sharedMat = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
-
-                // Assign the chosen shared material
-                lr.material = sharedMat;
+                // 1. Assign a SHARED material. Do NOT use .material = new Material(...)
+                Material sharedMatToUse = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
+                if (sharedMatToUse != null) // Ensure we have a material to assign
+                {
+                    lr.sharedMaterial = sharedMatToUse;
+                }
+                else
+                {
+                    Debug.LogError("Cannot assign material to LineRenderer, both lineRendererMaterial and fallback are null!");
+                    continue; // Skip this obstacle if no material available
+                }
 
                 // Color assignment - optimized for maximum distinction
                 Color obstacleColor;
@@ -343,8 +351,13 @@ namespace Seb.Fluid2D.Simulation
                 // Store color for particle collisions
                 obstacleColorsList.Add(obstacleColor);
 
-                lr.startColor = obstacleColor;
-                lr.endColor = obstacleColor;
+                // Get the current block data first (good practice in case other properties are set)
+                lr.GetPropertyBlock(_propBlock);
+                // Set the color property. "_Color" is standard for most shaders.
+                // If your 'lineRendererMaterial' uses a different property name for the main color, change "_Color" here.
+                _propBlock.SetColor("_Color", obstacleColor);
+                // Apply the modified block back to the renderer
+                lr.SetPropertyBlock(_propBlock);
 
                 // Width setting
                 lr.widthCurve = AnimationCurve.Constant(0, 1, obstacleLineWidth);
@@ -513,6 +526,15 @@ namespace Seb.Fluid2D.Simulation
             );
 
             spatialHash?.Release();
+
+            // Clean up the cached shared material
+            if (_sharedUnlitMaterial != null)
+            {
+                if (Application.isEditor && !Application.isPlaying)
+                    DestroyImmediate(_sharedUnlitMaterial);
+                else
+                    Destroy(_sharedUnlitMaterial);
+            }
 
             // Clean up LineRenderers
             foreach (var obstacle in obstacles.Where(o => o != null))
