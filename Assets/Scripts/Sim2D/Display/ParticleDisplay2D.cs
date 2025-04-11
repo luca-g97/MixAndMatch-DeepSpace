@@ -18,7 +18,7 @@ namespace Seb.Fluid2D.Rendering
         ComputeBuffer argsBuffer;
         Bounds bounds;
         Texture2D gradientTexture;
-        bool needsUpdate;
+        bool needsUpdate = true;
 
         void Start()
         {

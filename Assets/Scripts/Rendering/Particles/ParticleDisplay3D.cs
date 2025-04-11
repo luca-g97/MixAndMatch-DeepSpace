@@ -30,7 +30,7 @@ namespace Seb.Fluid.Rendering
 		ComputeBuffer argsBuffer;
 		Texture2D gradientTexture;
 		DisplayMode modeOld;
-		bool needsUpdate;
+		bool needsUpdate = true;
 
 		void LateUpdate()
 		{
