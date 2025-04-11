@@ -117,7 +117,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
                 if (obstacleCount > 0) // If at least one obstacle is influencing the particle
                 {
-                    float additiveStrength = 1; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
+                    float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
                     finalColour = saturate(obstacleColorSum * additiveStrength);
                     // 'finalColour' now holds the additively mixed color.
                     // -----------------------

@@ -72,28 +72,35 @@ namespace Seb.Fluid2D.Simulation
         [Header("Obstacles")]
         public List<GameObject> obstacles;
         public ComputeBuffer obstacleColorsBuffer;
-        private List<Color> obstacleColorsList = new List<Color>();
         [Min(0)] public float areaToColorAroundObstacles = 0.1f;
         [Min(0)] public float coloredAreaAroundObstaclesDivider = 0.05f;
 
         private MaterialPropertyBlock _propBlock;
         private Material _sharedUnlitMaterial;
 
-        [StructLayout(LayoutKind.Explicit, Size = 20)]
+        [StructLayout(LayoutKind.Explicit, Size = 40)]
         public struct ObstacleData
         {
             [FieldOffset(0)] public Vector2 centre;
             [FieldOffset(8)] public int vertexStart;
             [FieldOffset(12)] public int vertexCount;
             [FieldOffset(16)] public float lineWidth;
+            [FieldOffset(20)] public int obstacleType;
+            [FieldOffset(24)] public int4 obstacleColorToMix;
         }
 
         // Add vertex buffer
         ComputeBuffer vertexBuffer;
         List<Vector2> allVertices = new List<Vector2>();
+        List<ObstacleData> obstacleDataList = new List<ObstacleData>();
+        private List<Color> obstacleColorsList = new List<Color>();
+        Dictionary<GameObject, Color> playerColors = new Dictionary<GameObject, Color>();
+        System.Random rand = new System.Random();
+        public int maxPlayerColors = 6;
+        int lastPlayerCount = -1;
 
         [Header("Obstacle Visualization")]
-        public Color obstacleLineColor = Color.green;
+        public Color obstacleLineColor = Color.white;
         public float obstacleLineWidth = 0.1f;
         public Material lineRendererMaterial; // Assign a material in inspector
 
@@ -210,11 +217,31 @@ namespace Seb.Fluid2D.Simulation
             // Find all current Player GameObjects
             var allGameObjects = FindObjectsOfType<GameObject>();
             HashSet<GameObject> currentPlayers = new HashSet<GameObject>();
+            HashSet<GameObject> currentObstacles = new HashSet<GameObject>();
+            HashSet<GameObject> currentVentils = new HashSet<GameObject>();
             foreach (GameObject go in allGameObjects)
             {
-                if (go.name.Contains("Player") && go.activeInHierarchy)
+                if (go.name.Contains("PharusPlayer") && go.activeInHierarchy) { currentPlayers.Add(go); }
+                else if (go.name.Contains("Obstacle") && go.activeInHierarchy) { currentObstacles.Add(go); }
+                else if (go.name.Contains("Ventil") && go.activeInHierarchy) { currentVentils.Add(go); }
+
+            }
+
+            // Add new Obstacles to obstacles if not already present
+            foreach (GameObject obstacle in currentObstacles)
+            {
+                if (!obstacles.Contains(obstacle))
                 {
-                    currentPlayers.Add(go);
+                    obstacles.Add(obstacle);
+                }
+            }
+
+            // Add new Ventils to obstacles if not already present
+            foreach (GameObject ventil in currentVentils)
+            {
+                if (!obstacles.Contains(ventil))
+                {
+                    obstacles.Add(ventil);
                 }
             }
 
@@ -227,11 +254,29 @@ namespace Seb.Fluid2D.Simulation
                 }
             }
 
+            // Define a function to get the sort priority
+            int GetPriority(GameObject go)
+            {
+                if (currentPlayers.Contains(go)) return 0;
+                if (currentObstacles.Contains(go)) return 1;
+                if (currentVentils.Contains(go)) return 2;
+                return 3; // Other
+            }
+
+            // Order the list using LINQ
+            var sortedObstacles = obstacles
+                .OrderBy(go => GetPriority(go))
+                .ThenBy(go => go.GetInstanceID()) // Optional secondary sort key (e.g., instance ID or name)
+                .ToList();
+
+            // Replace the old list with the newly sorted one
+            obstacles = sortedObstacles;
+
             // Collect Players in obstacles that are no longer present
             List<GameObject> toRemove = new List<GameObject>();
             foreach (GameObject obstacle in obstacles)
             {
-                if (obstacle != null && obstacle.name.Contains("Player"))
+                if (obstacle != null && obstacle.name.Contains("PharusPlayer"))
                 {
                     if (!currentPlayers.Contains(obstacle))
                     {
@@ -259,130 +304,289 @@ namespace Seb.Fluid2D.Simulation
             }
         }
 
+        int4 RecolorVentil()
+        {
+            int[] playersToMixArray = new int[4] { -1, -1, -1, -1 }; // Initialize with -1
+
+            // 1. Find the indices of all obstacles that are "PharusPlayer"
+            List<int> availablePlayerIndices = new List<int>();
+            for (int tempObstacle = 0; tempObstacle < obstacles.Count; tempObstacle++)
+            {
+                // Check for null before accessing name
+                if (obstacles[tempObstacle] != null && obstacles[tempObstacle].name.Contains("PharusPlayer"))
+                {
+                    availablePlayerIndices.Add(tempObstacle); // Store the index
+                }
+            }
+
+            // 2. Shuffle the list of available player indices randomly (Fisher-Yates Algorithm)
+            for (int player = availablePlayerIndices.Count - 1; player > 0; player--)
+            {
+                int j = rand.Next(player + 1); // Random index from 0 up to i (inclusive)
+                                               // Swap indices at i and j
+                int tempIndex = availablePlayerIndices[player];
+                availablePlayerIndices[player] = availablePlayerIndices[j];
+                availablePlayerIndices[j] = tempIndex;
+            }
+
+            // 3. Determine how many unique players we can actually select (max 4)
+            int countToSelect = System.Math.Min(3, availablePlayerIndices.Count / 4);
+
+            // 4. Create the result list (or array) and populate it
+            List<int> playersToMixList = new List<int>(4);
+
+            if (availablePlayerIndices.Count > 0)
+            {
+                for (int tempIndex = 0; tempIndex <= countToSelect; tempIndex++)
+                {
+                    int selectedIndex = availablePlayerIndices[tempIndex];
+                    playersToMixList.Add(selectedIndex); // Add to list
+                    playersToMixArray[tempIndex] = selectedIndex; // Assign to array slot
+                }
+
+                playersToMixArray = playersToMixArray
+                    .OrderBy(index => index == -1 ? 1 : 0) // Places -1 after valid indices (0 vs 1)
+                    .ThenBy(index => index)               // Sorts valid indices numerically
+                    .ToArray();                           // Convert back to array
+            }
+            return new int4(playersToMixArray[0], playersToMixArray[1], playersToMixArray[2], playersToMixArray[3]);
+        }
+
         void UpdateObstacleBuffer()
         {
+            var players = obstacles.Where(o => o != null && o.activeInHierarchy && o.name.Contains("PharusPlayer")).ToList();
+            bool playerCountChanged = players.Count != lastPlayerCount;
+
+            if (playerCountChanged)
+            {
+                playerColors.Clear(); // Clear existing player colors
+
+                // Define the R B Y - based palette for the color circle
+                // Note: Defining this list here every time playerCountChanged is true is slightly
+                // less efficient than defining it once as a static or member variable.
+                // However, this strictly adjusts only the provided lines.
+                List<Color> playerColorPalette = new List<Color> {
+                    new Color(0.9f, 0f, 0.4f),     // Red/Magenta-like Primary
+                    Color.yellow,                 // Yellow Primary (1f, 1f, 0f)
+                    new Color(0f, 0.5f, 1f),      // Blue/Azure-like Primary
+
+                    // Secondary Colors (approximated from image)
+                    new Color(1f, 0.5f, 0f),      // Orange
+                    new Color(0.5f, 0.8f, 0f),    // Lime Green
+                    new Color(0.6f, 0f, 0.8f),    // Violet
+
+                    // Tertiary Colors (approximated from image - can be added for more players)
+                    new Color(1f, 0.75f, 0f),     // Yellow-Orange
+                    new Color(1f, 0.3f, 0f),      // Red-Orange
+                    new Color(0.8f, 0f, 0.8f),    // Red-Violet (Purple)
+                    new Color(0.3f, 0.3f, 0.9f),  // Blue-Violet (Indigo-like)
+                    new Color(0f, 0.7f, 0.7f),    // Blue-Green (Teal-like)
+                    new Color(0.7f, 1f, 0f),      // Yellow-Green (Chartreuse-like)
+                };
+
+                int numPaletteColors = playerColorPalette.Count;
+
+                if (numPaletteColors > 0) // Proceed only if the palette has colors
+                {
+                    // Loop through the current list of players
+                    for (int i = 0; i < players.Count; i++)
+                    {
+                        // Assign colors by cycling through the predefined palette using the modulo operator
+                        // This ensures colors repeat if there are more players than palette colors.
+                        Color playerColor = playerColorPalette[i % maxPlayerColors];
+
+                        playerColor.a = 1.0f; // Ensure the color is fully opaque
+
+                        // Assign the selected color to the specific player GameObject in the dictionary
+                        playerColors[players[i]] = playerColor;
+                    }
+                }
+            }
+
             allVertices.Clear();
+            obstacleDataList.Clear();
             obstacleColorsList.Clear();
-            List<ObstacleData> obstacleDataList = new List<ObstacleData>();
+
+            if (_propBlock == null) _propBlock = new MaterialPropertyBlock(); // Ensure block exists
+
             int vertexCounter = 0;
 
-            // Clear existing LineRenderers
-            foreach (var obstacle in obstacles.Where(o => o != null).ToList())
-            {
-                var lr = obstacle.GetComponent<LineRenderer>();
-                if (lr != null) DestroyImmediate(lr);
-            }
-
-            var players = obstacles.Where(o => o != null && o.activeInHierarchy && o.name.Contains("Player")).ToList();
-            Dictionary<GameObject, Color> playerColors = new Dictionary<GameObject, Color>();
-            float goldenRatio = 0.61803398875f;
-
-            float baseSaturation = 1f; // TUNABLE: Lower saturation for base colors (e.g., 0.5-0.7)
-            float baseValue = 1f;      // TUNABLE: Base value/brightness (e.g., 0.7-0.9)
-
-            for (int i = 0; i < players.Count; i++)
-            {
-                float hue = (i * goldenRatio) % 1f;
-                Color playerColor = Color.HSVToRGB(hue, baseSaturation, baseValue);
-                playerColor.a = 1.0f; // Ensure alpha is 1.0
-                playerColors[players[i]] = playerColor; // Assign based on current list index 'i'
-            }
-
-            int obstacleIndex = 0;
             for (int i = 0; i < obstacles.Count; i++)
             {
                 GameObject obstacle = obstacles[i];
                 if (!obstacle || !obstacle.activeInHierarchy) continue;
-
                 PolygonCollider2D polyCol = obstacle.GetComponent<PolygonCollider2D>();
                 if (!polyCol || polyCol.points.Length < 3) continue;
 
-                // Add vertices
-                var points = polyCol.points;
-                foreach (var point in points)
+                // --- Modified LineRenderer Handling: Get or Add, Don't Destroy ---
+                // This preserves the component and its state (like color set via PropertyBlock) across frames.
+                if (!obstacle.TryGetComponent<LineRenderer>(out LineRenderer lr))
                 {
-                    allVertices.Add(obstacle.transform.TransformPoint(point));
+                    lr = obstacle.AddComponent<LineRenderer>();
+                    // Configure properties only needed when adding the component initially
+                    lr.useWorldSpace = true;
+                    lr.loop = true;
+                    // Assign material when adding
+                    Material sharedMatToUseOnAdd = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
+                    if (sharedMatToUseOnAdd != null) { lr.sharedMaterial = sharedMatToUseOnAdd; }
+                    else { Debug.LogError($"No material for new LR on {obstacle.name}", obstacle); }
                 }
 
-                // Create obstacle data
-                obstacleDataList.Add(new ObstacleData
+                // Ensure the correct material is assigned (it might change)
+                Material sharedMatToUse = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
+                if (sharedMatToUse != null)
                 {
-                    centre = polyCol.bounds.center,
-                    vertexStart = vertexCounter,
-                    vertexCount = points.Length,
-                    lineWidth = obstacleLineWidth
-                });
+                    // Assign only if needed to avoid unnecessary changes
+                    if (lr.sharedMaterial != sharedMatToUse) lr.sharedMaterial = sharedMatToUse;
+                }
+                else
+                {
+                    Debug.LogError($"No material available for LR on {obstacle.name}", obstacle);
+                    // Maybe continue here if material is essential?
+                }
+
+                // Update position count in case collider shape changed
+                var points = polyCol.points;
+                lr.positionCount = points.Length;
+                // --- End Modified LineRenderer Handling ---
+
+                // Add vertices
+                int currentVertexStart = vertexCounter;
+                foreach (var point in points) { allVertices.Add(obstacle.transform.TransformPoint(point)); }
                 vertexCounter += points.Length;
 
-                // Create LineRenderer
-                LineRenderer lr = obstacle.AddComponent<LineRenderer>();
-                lr.useWorldSpace = true;
-                lr.loop = true;
-                lr.positionCount = points.Length;
+                // Determine Obstacle Type
+                int obstacleType = -1;
+                if (obstacle.name.Contains("PharusPlayer")) { obstacleType = 0; }
+                else if (obstacle.name.Contains("Obstacle")) { obstacleType = 1; }
+                else if (obstacle.name.Contains("Ventil")) { obstacleType = 2; }
 
-                // 1. Assign a SHARED material. Do NOT use .material = new Material(...)
-                Material sharedMatToUse = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
-                if (sharedMatToUse != null) // Ensure we have a material to assign
+                // Determine potential influencing players for Ventils (needed for ObstacleData)
+                int4 playersToMixIndices = new int4(-1, -1, -1, -1);
+                if (obstacleType == 2) { playersToMixIndices = RecolorVentil(); }
+
+                // Create Obstacle Data
+                ObstacleData currentObstacleData = new ObstacleData
                 {
-                    lr.sharedMaterial = sharedMatToUse;
-                }
-                else
+                    centre = polyCol.bounds.center, // Or calculate centroid if needed
+                    vertexStart = currentVertexStart,
+                    vertexCount = points.Length,
+                    lineWidth = obstacleLineWidth,
+                    obstacleType = obstacleType,
+                    obstacleColorToMix = playersToMixIndices
+                };
+                obstacleDataList.Add(currentObstacleData);
+
+
+                // --- Calculate Final Obstacle Color AND Apply to LineRenderer ---
+                Color colorForBufferList; // Color to store in obstacleColorsList for the compute buffer
+
+                if (obstacleType == 0) // Player
                 {
-                    Debug.LogError("Cannot assign material to LineRenderer, both lineRendererMaterial and fallback are null!");
-                    continue; // Skip this obstacle if no material available
+                    // Get player color
+                    if (!playerColors.TryGetValue(obstacle, out colorForBufferList))
+                    {
+                        colorForBufferList = Color.magenta; // Fallback
+                        Debug.LogWarning($"Player color not found for {obstacle.name}", obstacle);
+                    }
+                    // Apply color to LR using Property Block
+                    _propBlock.SetColor("_Color", colorForBufferList);
+                    lr.SetPropertyBlock(_propBlock);
                 }
-
-                // Color assignment - optimized for maximum distinction
-                Color obstacleColor;
-                if (obstacle.name.Contains("Player") && playerColors.ContainsKey(obstacle))
+                else if (obstacleType == 2) // Ventil
                 {
-                    // Use pre-calculated distinct color
-                    obstacleColor = playerColors[obstacle];
+                    // Only RECALCULATE the color if the player count changed
+                    if (playerCountChanged)
+                    {
+                        // --- Perform color mixing calculation ---
+                        Color colorSumFromPlayers = Color.clear;
+                        int influencingPlayerCount = 0;
+                        int4 currentMixIndices = playersToMixIndices; // Use indices determined above
+                        for (int j = 0; j < 4; j++)
+                        {
+                            int playerListIndex = currentMixIndices[j];
+                            if (playerListIndex >= 0 && playerListIndex < players.Count)
+                            {
+                                GameObject influencingPlayer = players[playerListIndex];
+                                if (playerColors.TryGetValue(influencingPlayer, out Color basePlayerColor))
+                                {
+                                    colorSumFromPlayers += basePlayerColor; influencingPlayerCount++;
+                                }
+                            }
+                        }
+                        Color mixedColor;
+                        if (influencingPlayerCount > 0)
+                        {
+                            float additiveStrength = 1.0f; mixedColor = colorSumFromPlayers * additiveStrength;
+                            mixedColor.r = Mathf.Clamp01(mixedColor.r); mixedColor.g = Mathf.Clamp01(mixedColor.g); mixedColor.b = Mathf.Clamp01(mixedColor.b); mixedColor.a = 1.0f;
+                            if (influencingPlayerCount > 1) { float boostFactor = 1.5f; Color.RGBToHSV(mixedColor, out float H, out float S, out float V); S = Mathf.Clamp01(S * boostFactor); mixedColor = Color.HSVToRGB(H, S, V); mixedColor.a = 1.0f; }
+                        }
+                        else { mixedColor = Color.grey; } // Default color if no influence
+                                                          // --- End recalculation ---
+
+                        colorForBufferList = mixedColor; // Use the newly calculated color for the buffer
+                                                         // Apply the new color to the LR via Property Block
+                        _propBlock.SetColor("_Color", colorForBufferList);
+                        lr.SetPropertyBlock(_propBlock);
+                    }
+                    else
+                    {
+                        // Player count did NOT change.
+                        // *** DO NOT apply color to the Line Renderer here. *** It retains its previous color.
+                        // We still need a color value for the obstacleColorsList buffer.
+                        // Read the *current* color back from the Line Renderer's property block.
+                        lr.GetPropertyBlock(_propBlock); // Populate _propBlock with current LR values
+                                                         // Check if the property exists before getting it
+                        if (_propBlock.HasColor("_Color"))
+                        {
+                            colorForBufferList = _propBlock.GetColor("_Color");
+                        }
+                        else
+                        {
+                            // Fallback if color wasn't set previously or property name mismatch
+                            colorForBufferList = Color.grey; // Default color for buffer if readback fails
+                            Debug.LogWarning($"Could not read _Color property from LR on {obstacle.name}. Buffer may be inaccurate.", obstacle);
+                        }
+                    }
                 }
-                else
+                else // Obstacle (Type 1) or Unknown (Type -1)
                 {
-                    // Original rainbow pattern for obstacles (less saturated)
-                    float hue = obstacles.Count > 1 ?
-                        (float)obstacleIndex / (obstacles.Count - 1) :
-                        0.5f;
-                    obstacleColor = Color.HSVToRGB(hue, 0.7f, 0.8f);
+                    colorForBufferList = Color.white; // Default color
+                                                      // Apply color to LR using Property Block
+                    _propBlock.SetColor("_Color", colorForBufferList);
+                    lr.SetPropertyBlock(_propBlock);
                 }
+                // --- End Color Calculation/Application ---
 
-                // Store color for particle collisions
-                obstacleColorsList.Add(obstacleColor);
+                // Add the determined color (calculated or read back) to the list for the compute buffer
+                obstacleColorsList.Add(colorForBufferList);
 
-                // Get the current block data first (good practice in case other properties are set)
-                lr.GetPropertyBlock(_propBlock);
-                // Set the color property. "_Color" is standard for most shaders.
-                // If your 'lineRendererMaterial' uses a different property name for the main color, change "_Color" here.
-                _propBlock.SetColor("_Color", obstacleColor);
-                // Apply the modified block back to the renderer
-                lr.SetPropertyBlock(_propBlock);
-
-                // Width setting
+                // --- Apply other properties to LineRenderer (like width and positions) ---
                 lr.widthCurve = AnimationCurve.Constant(0, 1, obstacleLineWidth);
-
-                // Set positions
                 Vector3[] worldPoints = points.Select(p => obstacle.transform.TransformPoint(p)).ToArray();
-                lr.SetPositions(worldPoints);
-
-                obstacleIndex++;
+                lr.SetPositions(worldPoints); // Update vertex positions
             }
 
-            // Buffer safeguards with minimum size of 1
+            // Update state for the next frame
+            lastPlayerCount = players.Count;
+
+            // --- Prepare and Update Compute Buffers ---
             Vector2[] verticesArray = allVertices.Count > 0 ? allVertices.ToArray() : new Vector2[] { Vector2.zero };
             ObstacleData[] obstacleArray = obstacleDataList.Count > 0 ? obstacleDataList.ToArray() : new ObstacleData[] { new ObstacleData() };
             Color[] colorArray = obstacleColorsList.Count > 0 ? obstacleColorsList.ToArray() : new Color[] { Color.white };
 
-            // Create or update buffers
             ComputeHelper.CreateStructuredBuffer(ref vertexBuffer, verticesArray);
             ComputeHelper.CreateStructuredBuffer(ref obstacleBuffer, obstacleArray);
             ComputeHelper.CreateStructuredBuffer(ref obstacleColorsBuffer, colorArray);
 
-            // Update compute shader references
-            compute.SetBuffer(updatePositionKernel, "verticesBuffer", vertexBuffer);
-            compute.SetBuffer(updatePositionKernel, "obstaclesBuffer", obstacleBuffer);
-            compute.SetInt("numObstacles", obstacleDataList.Count);
+            if (compute != null)
+            {
+                compute.SetBuffer(updatePositionKernel, "verticesBuffer", vertexBuffer);
+                compute.SetBuffer(updatePositionKernel, "obstaclesBuffer", obstacleBuffer);
+                compute.SetInt("numObstacles", obstacleDataList.Count);
+                // compute.SetBuffer(updatePositionKernel, "obstacleColorsBuffer", obstacleColorsBuffer); // If needed
+            }
+            // --- End Buffer Update ---
         }
 
         void UpdateSettings(float deltaTime)

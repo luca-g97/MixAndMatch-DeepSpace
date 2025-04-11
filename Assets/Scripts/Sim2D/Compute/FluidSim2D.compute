@@ -19,6 +19,8 @@ struct Obstacle
     int vertexStart;
     int vertexCount;
     float lineWidth;
+    int obstacleType;
+    int4 obstacleColorToMix;
 };
 
 StructuredBuffer<Obstacle> obstaclesBuffer;
@@ -223,7 +225,7 @@ void HandleCollisions(uint particleIndex)
         for (int j = 0; j < vertexCount; j++)
         {
             // Fetch vertices for the current edge segment (a -> b)
-            int nextJ = (j + 1) % vertexCount; // Modulo for polygon wrapping
+            int nextJ = uint(j + 1) % uint(vertexCount); // Modulo for polygon wrapping
             float2 a = verticesBuffer[vertexStart + j];
             float2 b = verticesBuffer[vertexStart + nextJ];
             float2 edge = b - a;
@@ -301,7 +303,7 @@ void HandleCollisions(uint particleIndex)
 
         // --- Determine Inside/Outside & Collision Status (using squared distances) ---
         // Correct odd-even rule check for point-in-polygon (requires vertexCount >= 3).
-        bool isInside = (vertexCount >= 3) && ((intersections % 2) != 0);
+        bool isInside = (vertexCount >= 3) && ((uint(intersections) % 2) != 0);
 
         // Collision check: Inside OR outside but closer than squared padding distance.
         // This comparison avoids sqrt().
@@ -311,7 +313,7 @@ void HandleCollisions(uint particleIndex)
         // --- Coloring Logic (using squared distances) ---
         // Updated only if space available in collisionIndices and particle is close enough.
         // Uses squared distance checks, runs independent of collision response.
-        if (consideredObstacles < 4)
+        if (consideredObstacles < 4 && obstacle.obstacleType == 0)
         {
              // Use else-if to assign only one category per obstacle
             if (minDistSq < areaToColorAroundObstaclesSq)
@@ -323,10 +325,31 @@ void HandleCollisions(uint particleIndex)
                 collisionIndices[consideredObstacles++] = -2;
             }
         }
+        
+        bool ventil = false;
+        if (collisionDetected && obstacle.obstacleType == 2)
+        {
+            int4 playersToCheck = obstacle.obstacleColorToMix;
 
+            bool matchFound = false;
+            if (obstacleIdx == playersToCheck[0]) { matchFound = true; }
+            if (obstacleIdx == playersToCheck[1]) { matchFound = true; }
+            if (obstacleIdx == playersToCheck[2]) { matchFound = true; }
+            if (obstacleIdx == playersToCheck[3]) { matchFound = true; }
+
+            if (matchFound)
+            {
+                collisionIndices[consideredObstacles++] = obstacleIdx;
+                for (int i = consideredObstacles; i < 4; i++)
+                {
+                    collisionIndices[i] = -1;
+                }
+                ventil = true;
+            }
+        }
 
         // --- Collision Response --- Executes only if collision is detected.
-        if (collisionDetected)
+        if (collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1) && !ventil)
         {
             // CRITICAL OPTIMIZATION: Calculate sqrt(minDistSq) *only once* here, if needed.
             float actualDistance = sqrt(minDistSq);
