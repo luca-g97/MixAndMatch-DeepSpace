@@ -366,16 +366,16 @@ namespace Seb.Fluid2D.Simulation
                 // less efficient than defining it once as a static or member variable.
                 // However, this strictly adjusts only the provided lines.
                 List<Color> playerColorPalette = new List<Color> {
-                    new Color(0.9f, 0f, 0.4f),     // Red/Magenta-like Primary
-                    Color.yellow,                 // Yellow Primary (1f, 1f, 0f)
+                    new Color(0.9f, 0f, 0.4f),    // Red/Magenta-like Primary
+                    new Color(1f, 1f, 0f),        // Yellow Primary
                     new Color(0f, 0.5f, 1f),      // Blue/Azure-like Primary
 
-                    // Secondary Colors (approximated from image)
+                    // Secondary Colors
                     new Color(1f, 0.5f, 0f),      // Orange
                     new Color(0.5f, 0.8f, 0f),    // Lime Green
                     new Color(0.6f, 0f, 0.8f),    // Violet
 
-                    // Tertiary Colors (approximated from image - can be added for more players)
+                    // Tertiary Colors
                     new Color(1f, 0.75f, 0f),     // Yellow-Orange
                     new Color(1f, 0.3f, 0f),      // Red-Orange
                     new Color(0.8f, 0f, 0.8f),    // Red-Violet (Purple)
