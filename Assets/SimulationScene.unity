@@ -173,12 +173,12 @@ MonoBehaviour:
   smoothingRadius: 0.2
   boundsSize: {x: 16, y: 8}
   waterTargetDensity: 1
-  waterPressureMultiplier: 100
-  waterNearPressureMultiplier: 200
+  waterPressureMultiplier: 150
+  waterNearPressureMultiplier: 225
   waterViscosityStrength: 0.1
   oilTargetDensity: 0.92
-  oilPressureMultiplier: 80
-  oilNearPressureMultiplier: 150
+  oilPressureMultiplier: 120
+  oilNearPressureMultiplier: 180
   oilViscosityStrength: 0.4
   interactionRadius: 5
   interactionStrength: 50
@@ -207,25 +207,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   initialVelocity: {x: 0, y: 0}
-  jitterStr: 0.03
+  jitterStr: 0.05
   spawnRegions:
-  - position: {x: 0, y: 0}
-    size: {x: 0.1, y: 0.1}
-    spawnDensity: 1000
-    particleType: 1
-    debugCol: {r: 0.28524205, g: 1, b: 0.27843142, a: 1}
-  - position: {x: -5.25, y: 0}
-    size: {x: 4.71, y: 3.4}
-    spawnDensity: 1000
+  - position: {x: -6, y: 0}
+    size: {x: 6, y: 4}
+    spawnDensity: 1500
     particleType: 0
     debugCol: {r: 1, g: 0.2783019, b: 0.2783019, a: 1}
-  - position: {x: 5.53, y: 0}
-    size: {x: 4.71, y: 3.4}
-    spawnDensity: 1000
+  - position: {x: 6, y: 0}
+    size: {x: 6, y: 4}
+    spawnDensity: 1500
     particleType: 0
     debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
-  showSpawnBoundsGizmos: 0
-  spawnParticleCount: 32200
+  - position: {x: 0, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 30000
+    particleType: 1
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  showSpawnBoundsGizmos: 1
+  spawnParticleCount: 102506
 --- !u!114 &271053322
 MonoBehaviour:
   m_ObjectHideFlags: 0
