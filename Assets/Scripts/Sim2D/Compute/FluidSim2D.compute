@@ -23,9 +23,10 @@ struct Obstacle
     int4 obstacleColorToMix;
 };
 
-StructuredBuffer<Obstacle> obstaclesBuffer;
+StructuredBuffer<Obstacle> ObstaclesBuffer;
 StructuredBuffer<float2> verticesBuffer;
 RWStructuredBuffer<int4> CollisionBuffer;
+RWStructuredBuffer<int> ParticleTypeBuffer;
 
 int numObstacles;
 float areaToColorAroundObstacles;
@@ -47,10 +48,16 @@ const float gravity;
 const float deltaTime;
 const float collisionDamping;
 const float smoothingRadius;
-const float targetDensity;
-const float pressureMultiplier;
-const float nearPressureMultiplier;
-const float viscosityStrength;
+
+float waterTargetDensity;
+float waterPressureMultiplier;
+float waterNearPressureMultiplier;
+float waterViscosityStrength;
+float oilTargetDensity;
+float oilPressureMultiplier;
+float oilNearPressureMultiplier;
+float oilViscosityStrength;
+
 const float2 boundsSize;
 const float2 interactionInputPoint;
 const float interactionInputStrength;
@@ -121,11 +128,11 @@ float2 CalculateDensity(float2 pos)
     return float2(density, nearDensity);
 }
 
-float PressureFromDensity(float density)
+float PressureFromDensity(float density, float targetDensity, float pressureMultiplier)
 {
     return (density - targetDensity) * pressureMultiplier;
 }
-float NearPressureFromDensity(float nearDensity)
+float NearPressureFromDensity(float nearDensity, float nearPressureMultiplier)
 {
     return nearPressureMultiplier * nearDensity;
 }
@@ -196,7 +203,7 @@ void HandleCollisions(uint particleIndex)
     [loop]
     for (int obstacleIdx = 0; obstacleIdx < numObstacles && obstacleIdx < MAX_OBSTACLES; obstacleIdx++)
     {
-        Obstacle obstacle = obstaclesBuffer[obstacleIdx];
+        Obstacle obstacle = ObstaclesBuffer[obstacleIdx];
         int vertexStart = obstacle.vertexStart;
         int vertexCount = obstacle.vertexCount;
 
@@ -466,7 +473,7 @@ void ReorderCopyback(uint3 id : SV_DispatchThreadID)
 [numthreads(NumThreads, 1, 1)]
 void CalculateDensities(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= numParticles)
+    if (id.x >= numParticles || ParticleTypeBuffer[id.x] == -1)
         return;
     float2 pos = PredictedPositions[id.x];
     Densities[id.x] = CalculateDensity(pos);
@@ -475,13 +482,16 @@ void CalculateDensities(uint3 id : SV_DispatchThreadID)
 [numthreads(NumThreads, 1, 1)]
 void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= numParticles)
+    if (id.x >= numParticles || ParticleTypeBuffer[id.x] == -1)
         return;
-
+    
+    float targetDensity = ParticleTypeBuffer[id.x] == 0 ? waterTargetDensity : oilTargetDensity;
+    float pressureMultiplier = ParticleTypeBuffer[id.x] == 0 ? waterPressureMultiplier : oilPressureMultiplier;
+    float nearPressureMultiplier = ParticleTypeBuffer[id.x] == 0 ? waterNearPressureMultiplier : oilNearPressureMultiplier;
     float density = Densities[id.x][0];
     float densityNear = Densities[id.x][1];
-    float pressure = PressureFromDensity(density);
-    float nearPressure = NearPressureFromDensity(densityNear);
+    float pressure = PressureFromDensity(density, targetDensity, pressureMultiplier);
+    float nearPressure = NearPressureFromDensity(densityNear, nearPressureMultiplier);
     float2 pressureForce = 0;
 
     float2 pos = PredictedPositions[id.x];
@@ -489,7 +499,7 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
     float sqrRadius = smoothingRadius * smoothingRadius;
 
     for (int i = 0; i < 9; i++)
-    {
+    {        
         uint hash = HashCell2D(originCell + offsets2D[i]);
         uint key = KeyFromHash(hash, numParticles);
         uint currIndex = SpatialOffsets[key];
@@ -514,11 +524,15 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
 
             float dst = sqrt(sqrDstToNeighbour);
             float2 dirToNeighbour = dst > 0 ? offsetToNeighbour / dst : float2(0, 1);
+            
+            float neighbourTargetDensity = ParticleTypeBuffer[neighbourIndex] == 0 ? waterTargetDensity : oilTargetDensity;
+            float neighbourPressureMultiplier = ParticleTypeBuffer[neighbourIndex] == 0 ? waterPressureMultiplier : oilPressureMultiplier;
+            float neighbourNearPressureMultiplier = ParticleTypeBuffer[neighbourIndex] == 0 ? waterNearPressureMultiplier : oilNearPressureMultiplier;
 
             float neighbourDensity = Densities[neighbourIndex][0];
             float neighbourNearDensity = Densities[neighbourIndex][1];
-            float neighbourPressure = PressureFromDensity(neighbourDensity);
-            float neighbourNearPressure = NearPressureFromDensity(neighbourNearDensity);
+            float neighbourPressure = PressureFromDensity(neighbourDensity, neighbourTargetDensity, neighbourPressureMultiplier);
+            float neighbourNearPressure = NearPressureFromDensity(neighbourNearDensity, neighbourNearPressureMultiplier);
 
             float sharedPressure = (pressure + neighbourPressure) * 0.5;
             float sharedNearPressure = (nearPressure + neighbourNearPressure) * 0.5;
@@ -535,7 +549,7 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
 [numthreads(NumThreads, 1, 1)]
 void CalculateViscosity(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= numParticles)
+    if (id.x >= numParticles || ParticleTypeBuffer[id.x] == -1)
         return;
 
     float2 pos = PredictedPositions[id.x];
@@ -573,6 +587,8 @@ void CalculateViscosity(uint3 id : SV_DispatchThreadID)
             viscosityForce += (neighbourVelocity - velocity) * ViscosityKernel(dst, smoothingRadius);
         }
     }
+    
+    float viscosityStrength = ParticleTypeBuffer[id.x] == 0 ? waterViscosityStrength : oilViscosityStrength;
     Velocities[id.x] += viscosityForce * viscosityStrength * deltaTime;
 }
 

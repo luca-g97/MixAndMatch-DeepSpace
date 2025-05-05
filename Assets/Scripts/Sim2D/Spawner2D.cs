@@ -1,133 +1,146 @@
 using System.Collections.Generic;
-using UnityEngine;
 using Unity.Mathematics;
+using UnityEngine;
 
 public class Spawner2D : MonoBehaviour
 {
-	public float spawnDensity;
+    public enum ParticleType
+    {
+        Water = 0,
+        Oil = 1
+    };
 
-	public Vector2 initialVelocity;
-	public float jitterStr;
-	public SpawnRegion[] spawnRegions;
-	public bool showSpawnBoundsGizmos;
+    //public float spawnDensity;
 
-	[Header("Debug Info")]
-	public int spawnParticleCount;
+    public Vector2 initialVelocity;
+    public float jitterStr;
+    public SpawnRegion[] spawnRegions;
+    public bool showSpawnBoundsGizmos;
 
-	public ParticleSpawnData GetSpawnData()
-	{
-		var rng = new Unity.Mathematics.Random(42);
+    [Header("Debug Info")]
+    public int spawnParticleCount;
 
-		List<float2> allPoints = new();
-		List<float2> allVelocities = new();
-		List<int> allIndices = new();
+    public ParticleSpawnData GetSpawnData()
+    {
+        var rng = new Unity.Mathematics.Random(42);
 
-		for (int regionIndex = 0; regionIndex < spawnRegions.Length; regionIndex++)
-		{
-			SpawnRegion region = spawnRegions[regionIndex];
-			float2[] points = SpawnInRegion(region);
+        List<float2> allPoints = new();
+        List<float2> allVelocities = new();
+        List<int> allIndices = new();
+        List<int> particleTypes = new();
 
-			for (int i = 0; i < points.Length; i++)
-			{
-				float angle = (float)rng.NextDouble() * 3.14f * 2;
-				float2 dir = new float2(Mathf.Cos(angle), Mathf.Sin(angle));
-				float2 jitter = dir * jitterStr * ((float)rng.NextDouble() - 0.5f);
-				allPoints.Add(points[i] + jitter);
-				allVelocities.Add(initialVelocity);
-				allIndices.Add(regionIndex);
-			}
-		}
+        for (int regionIndex = 0; regionIndex < spawnRegions.Length; regionIndex++)
+        {
+            SpawnRegion region = spawnRegions[regionIndex];
+            float2[] points = SpawnInRegion(region);
 
-		ParticleSpawnData data = new()
-		{
-			positions = allPoints.ToArray(),
-			velocities = allVelocities.ToArray(),
-			spawnIndices = allIndices.ToArray(),
-		};
+            for (int i = 0; i < points.Length; i++)
+            {
+                float angle = (float)rng.NextDouble() * 3.14f * 2;
+                float2 dir = new float2(Mathf.Cos(angle), Mathf.Sin(angle));
+                float2 jitter = dir * jitterStr * ((float)rng.NextDouble() - 0.5f);
+                allPoints.Add(points[i] + jitter);
+                allVelocities.Add(initialVelocity);
+                allIndices.Add(regionIndex);
+                particleTypes.Add((int)region.particleType);
+            }
+        }
 
-		return data;
-	}
+        ParticleSpawnData data = new()
+        {
+            positions = allPoints.ToArray(),
+            velocities = allVelocities.ToArray(),
+            spawnIndices = allIndices.ToArray(),
+            particleTypes = particleTypes.ToArray(),
+        };
 
-	float2[] SpawnInRegion(SpawnRegion region)
-	{
-		Vector2 centre = region.position;
-		Vector2 size = region.size;
-		int i = 0;
-		Vector2Int numPerAxis = CalculateSpawnCountPerAxisBox2D(region.size, spawnDensity);
-		float2[] points = new float2[numPerAxis.x * numPerAxis.y];
+        return data;
+    }
 
-		for (int y = 0; y < numPerAxis.y; y++)
-		{
-			for (int x = 0; x < numPerAxis.x; x++)
-			{
-				float tx = x / (numPerAxis.x - 1f);
-				float ty = y / (numPerAxis.y - 1f);
+    float2[] SpawnInRegion(SpawnRegion region)
+    {
+        Vector2 centre = region.position;
+        Vector2 size = region.size;
+        int i = 0;
+        Vector2Int numPerAxis = CalculateSpawnCountPerAxisBox2D(region.size, region.spawnDensity);
+        float2[] points = new float2[numPerAxis.x * numPerAxis.y];
 
-				float px = (tx - 0.5f) * size.x + centre.x;
-				float py = (ty - 0.5f) * size.y + centre.y;
-				points[i] = new float2(px, py);
-				i++;
-			}
-		}
+        for (int y = 0; y < numPerAxis.y; y++)
+        {
+            for (int x = 0; x < numPerAxis.x; x++)
+            {
+                float tx = x / (numPerAxis.x - 1f);
+                float ty = y / (numPerAxis.y - 1f);
 
-		return points;
-	}
+                float px = (tx - 0.5f) * size.x + centre.x;
+                float py = (ty - 0.5f) * size.y + centre.y;
+                points[i] = new float2(px, py);
+                i++;
+            }
+        }
 
-	static Vector2Int CalculateSpawnCountPerAxisBox2D(Vector2 size, float spawnDensity)
-	{
-		float area = size.x * size.y;
-		int targetTotal = Mathf.CeilToInt(area * spawnDensity);
+        return points;
+    }
 
-		float lenSum = size.x + size.y;
-		Vector2 t = size / lenSum;
-		float m = Mathf.Sqrt(targetTotal / (t.x * t.y));
-		int nx = Mathf.CeilToInt(t.x * m);
-		int ny = Mathf.CeilToInt(t.y * m);
+    static Vector2Int CalculateSpawnCountPerAxisBox2D(Vector2 size, float spawnDensity)
+    {
+        float area = size.x * size.y;
+        int targetTotal = Mathf.CeilToInt(area * spawnDensity);
 
-		return new Vector2Int(nx, ny);
-	}
+        float lenSum = size.x + size.y;
+        Vector2 t = size / lenSum;
+        float m = Mathf.Sqrt(targetTotal / (t.x * t.y));
+        int nx = Mathf.CeilToInt(t.x * m);
+        int ny = Mathf.CeilToInt(t.y * m);
 
-	public struct ParticleSpawnData
-	{
-		public float2[] positions;
-		public float2[] velocities;
-		public int[] spawnIndices;
+        return new Vector2Int(nx, ny);
+    }
 
-		public ParticleSpawnData(int num)
-		{
-			positions = new float2[num];
-			velocities = new float2[num];
-			spawnIndices = new int[num];
-		}
-	}
+    public struct ParticleSpawnData
+    {
+        public float2[] positions;
+        public float2[] velocities;
+        public int[] spawnIndices;
+        public int[] particleTypes;
 
-	[System.Serializable]
-	public struct SpawnRegion
-	{
-		public Vector2 position;
-		public Vector2 size;
-		public Color debugCol;
-	}
+        public ParticleSpawnData(int num)
+        {
+            positions = new float2[num];
+            velocities = new float2[num];
+            spawnIndices = new int[num];
+            particleTypes = new int[num];
+        }
+    }
 
-	void OnValidate()
-	{
-		spawnParticleCount = 0;
-		foreach (SpawnRegion region in spawnRegions)
-		{
-			Vector2Int spawnCountPerAxis = CalculateSpawnCountPerAxisBox2D(region.size, spawnDensity);
-			spawnParticleCount += spawnCountPerAxis.x * spawnCountPerAxis.y;
-		}
-	}
+    [System.Serializable]
+    public struct SpawnRegion
+    {
+        public Vector2 position;
+        public Vector2 size;
+        public float spawnDensity;
+        public ParticleType particleType;
+        public Color debugCol;
+    }
 
-	void OnDrawGizmos()
-	{
-		if (showSpawnBoundsGizmos && !Application.isPlaying)
-		{
-			foreach (SpawnRegion region in spawnRegions)
-			{
-				Gizmos.color = region.debugCol;
-				Gizmos.DrawWireCube(region.position, region.size);
-			}
-		}
-	}
+    void OnValidate()
+    {
+        spawnParticleCount = 0;
+        foreach (SpawnRegion region in spawnRegions)
+        {
+            Vector2Int spawnCountPerAxis = CalculateSpawnCountPerAxisBox2D(region.size, region.spawnDensity);
+            spawnParticleCount += spawnCountPerAxis.x * spawnCountPerAxis.y;
+        }
+    }
+
+    void OnDrawGizmos()
+    {
+        if (showSpawnBoundsGizmos && !Application.isPlaying)
+        {
+            foreach (SpawnRegion region in spawnRegions)
+            {
+                Gizmos.color = region.debugCol;
+                Gizmos.DrawWireCube(region.position, region.size);
+            }
+        }
+    }
 }

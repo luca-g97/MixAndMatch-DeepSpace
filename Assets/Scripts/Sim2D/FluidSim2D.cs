@@ -18,11 +18,19 @@ namespace Seb.Fluid2D.Simulation
         public float gravity;
         [Range(0, 1)] public float collisionDamping = 0.95f;
         public float smoothingRadius = 2;
-        public float targetDensity;
-        public float pressureMultiplier;
-        public float nearPressureMultiplier;
-        public float viscosityStrength;
         public Vector2 boundsSize;
+
+        [Header("Water Properties")]
+        public float waterTargetDensity = 1;
+        public float waterPressureMultiplier = 100;
+        public float waterNearPressureMultiplier = 200;
+        public float waterViscosityStrength = 0.1f;
+
+        [Header("Oil Properties")]
+        public float oilTargetDensity = 0.92f;
+        public float oilPressureMultiplier = 80;
+        public float oilNearPressureMultiplier = 150;
+        public float oilViscosityStrength = 0.4f;
 
         [Header("Interaction Settings")]
         public float interactionRadius;
@@ -46,6 +54,7 @@ namespace Seb.Fluid2D.Simulation
 
         public ComputeBuffer obstacleBuffer;
         public ComputeBuffer collisionBuffer;
+        public ComputeBuffer particleTypeBuffer;
 
         ComputeBuffer sortTarget_Position;
         ComputeBuffer sortTarget_PredicitedPosition;
@@ -144,6 +153,7 @@ namespace Seb.Fluid2D.Simulation
             densityBuffer = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
             gravityScaleBuffer = ComputeHelper.CreateStructuredBuffer<float>(numParticles);
             collisionBuffer = ComputeHelper.CreateStructuredBuffer<int4>(numParticles);
+            particleTypeBuffer = ComputeHelper.CreateStructuredBuffer<int>(numParticles);
 
             // Sorting buffers
             sortTarget_Position = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
@@ -164,8 +174,9 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, densityBuffer, "Densities", densityKernel, pressureKernel, viscosityKernel);
             ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "GravityScales", externalForcesKernel);
 
-            ComputeHelper.SetBuffer(compute, obstacleBuffer, "obstaclesBuffer", updatePositionKernel);
+            ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
             ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", updatePositionKernel);
+            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", densityKernel, pressureKernel, viscosityKernel, updatePositionKernel);
 
             ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", spatialHashKernel, reorderKernel);
             ComputeHelper.SetBuffer(compute, spatialHash.SpatialOffsets, "SpatialOffsets", spatialHashKernel, densityKernel, pressureKernel, viscosityKernel);
@@ -595,11 +606,16 @@ namespace Seb.Fluid2D.Simulation
             compute.SetFloat("gravity", gravity);
             compute.SetFloat("collisionDamping", collisionDamping);
             compute.SetFloat("smoothingRadius", smoothingRadius);
-            compute.SetFloat("targetDensity", targetDensity);
-            compute.SetFloat("pressureMultiplier", pressureMultiplier);
-            compute.SetFloat("nearPressureMultiplier", nearPressureMultiplier);
-            compute.SetFloat("viscosityStrength", viscosityStrength);
             compute.SetVector("boundsSize", boundsSize);
+
+            compute.SetFloat("waterTargetDensity", waterTargetDensity);
+            compute.SetFloat("waterPressureMultiplier", waterPressureMultiplier);
+            compute.SetFloat("waterNearPressureMultiplier", waterNearPressureMultiplier);
+            compute.SetFloat("waterViscosityStrength", waterViscosityStrength);
+            compute.SetFloat("oilTargetDensity", oilTargetDensity);
+            compute.SetFloat("oilPressureMultiplier", oilPressureMultiplier);
+            compute.SetFloat("oilNearPressureMultiplier", oilNearPressureMultiplier);
+            compute.SetFloat("oilViscosityStrength", oilViscosityStrength);
 
             compute.SetFloat("Poly6ScalingFactor", 4 / (Mathf.PI * Mathf.Pow(smoothingRadius, 8)));
             compute.SetFloat("SpikyPow3ScalingFactor", 10 / (Mathf.PI * Mathf.Pow(smoothingRadius, 5)));
@@ -642,6 +658,7 @@ namespace Seb.Fluid2D.Simulation
             positionBuffer.SetData(allPoints);
             predictedPositionBuffer.SetData(allPoints);
             velocityBuffer.SetData(spawnData.velocities);
+            particleTypeBuffer.SetData(spawnData.particleTypes);
 
             // Initialize gravity scales (default to 1)
             float[] gravityScales = new float[numParticles];
@@ -658,6 +675,13 @@ namespace Seb.Fluid2D.Simulation
                 collisionData[i] = new int4(-1, -1, -1, -1);
             }
             collisionBuffer.SetData(collisionData);
+
+            /*int[] particleTypeData = new int[numParticles];
+            for (int i = 0; i < particleTypeData.Length; i++)
+            {
+                particleTypeData[i] = 0;
+            }
+            particleTypeBuffer.SetData(particleTypeData);*/
         }
 
         void HandleInput()
@@ -724,7 +748,7 @@ namespace Seb.Fluid2D.Simulation
         {
             ComputeHelper.Release(
                 positionBuffer, predictedPositionBuffer, velocityBuffer,
-                densityBuffer, gravityScaleBuffer, collisionBuffer,
+                densityBuffer, gravityScaleBuffer, collisionBuffer, particleTypeBuffer,
                 sortTarget_Position, sortTarget_Velocity, sortTarget_PredicitedPosition,
                 vertexBuffer, obstacleBuffer, obstacleColorsBuffer
             );
