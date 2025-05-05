@@ -210,22 +210,22 @@ MonoBehaviour:
   jitterStr: 0.03
   spawnRegions:
   - position: {x: 0, y: 0}
-    size: {x: 1, y: 1}
-    spawnDensity: 100
+    size: {x: 0.1, y: 0.1}
+    spawnDensity: 1000
     particleType: 1
     debugCol: {r: 0.28524205, g: 1, b: 0.27843142, a: 1}
   - position: {x: -5.25, y: 0}
     size: {x: 4.71, y: 3.4}
-    spawnDensity: 500
+    spawnDensity: 1000
     particleType: 0
     debugCol: {r: 1, g: 0.2783019, b: 0.2783019, a: 1}
   - position: {x: 5.53, y: 0}
     size: {x: 4.71, y: 3.4}
-    spawnDensity: 500
+    spawnDensity: 1000
     particleType: 0
     debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
   showSpawnBoundsGizmos: 0
-  spawnParticleCount: 16424
+  spawnParticleCount: 32200
 --- !u!114 &271053322
 MonoBehaviour:
   m_ObjectHideFlags: 0

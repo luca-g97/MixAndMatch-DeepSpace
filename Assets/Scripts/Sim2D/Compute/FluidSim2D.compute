@@ -448,6 +448,7 @@ void UpdateSpatialHash(uint3 id : SV_DispatchThreadID)
 RWStructuredBuffer<float2> SortTarget_Positions;
 RWStructuredBuffer<float2> SortTarget_PredictedPositions;
 RWStructuredBuffer<float2> SortTarget_Velocities;
+RWStructuredBuffer<int> SortTarget_ParticleType;
 
 [numthreads(NumThreads, 1, 1)]
 void Reorder(uint3 id : SV_DispatchThreadID)
@@ -458,6 +459,7 @@ void Reorder(uint3 id : SV_DispatchThreadID)
     SortTarget_Positions[id.x] = Positions[sortedIndex];
     SortTarget_PredictedPositions[id.x] = PredictedPositions[sortedIndex];
     SortTarget_Velocities[id.x] = Velocities[sortedIndex];
+    SortTarget_ParticleType[id.x] = ParticleTypeBuffer[sortedIndex];
 }
 
 [numthreads(NumThreads, 1, 1)]
@@ -468,6 +470,7 @@ void ReorderCopyback(uint3 id : SV_DispatchThreadID)
     Positions[id.x] = SortTarget_Positions[id.x];
     PredictedPositions[id.x] = SortTarget_PredictedPositions[id.x];
     Velocities[id.x] = SortTarget_Velocities[id.x];
+    ParticleTypeBuffer[id.x] = SortTarget_ParticleType[id.x];
 }
 
 [numthreads(NumThreads, 1, 1)]
@@ -531,7 +534,7 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
 
             float neighbourDensity = Densities[neighbourIndex][0];
             float neighbourNearDensity = Densities[neighbourIndex][1];
-            float neighbourPressure = PressureFromDensity(neighbourDensity, neighbourTargetDensity, neighbourPressureMultiplier);
+            float neighbourPressure = PressureFromDensity(neighbourDensity, neighbourTargetDensity-density, neighbourPressureMultiplier);
             float neighbourNearPressure = NearPressureFromDensity(neighbourNearDensity, neighbourNearPressureMultiplier);
 
             float sharedPressure = (pressure + neighbourPressure) * 0.5;
@@ -599,4 +602,9 @@ void UpdatePositions(uint3 id : SV_DispatchThreadID)
         return;
     Positions[id.x] += Velocities[id.x] * deltaTime;
     HandleCollisions(id.x);
+    
+    if (ParticleTypeBuffer[id.x] == 1)
+    {
+        CollisionBuffer[id.x] = int4(-2, -2, -2, -2);
+    }
 }

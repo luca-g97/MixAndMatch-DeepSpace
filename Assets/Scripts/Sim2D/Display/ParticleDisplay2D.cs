@@ -43,6 +43,7 @@ namespace Seb.Fluid2D.Rendering
 
             material.SetBuffer("CollisionBuffer", sim.collisionBuffer);
             material.SetBuffer("ObstacleColors", sim.obstacleColorsBuffer);
+            material.SetBuffer("ParticleTypeBuffer", sim.particleTypeBuffer);
 
             ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.positionBuffer.count);
             bounds = new Bounds(Vector3.zero, Vector3.one * 10000);

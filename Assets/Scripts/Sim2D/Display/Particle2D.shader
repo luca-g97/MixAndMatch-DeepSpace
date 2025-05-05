@@ -37,6 +37,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
             StructuredBuffer<float2> Velocities;    // Particle velocities (for speed color)
             StructuredBuffer<int4> CollisionBuffer; // Indices of nearby obstacles (-1/-2 if none/other)
             StructuredBuffer<float4> ObstacleColors;// Base RGBA colors of obstacles (RGB assumed less saturated)
+            StructuredBuffer<int> ParticleTypeBuffer;
 
             // --- Uniforms (Set by Script or Material) ---
             float scale;                // Particle scale factor (usually set via script)
@@ -149,6 +150,14 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 float3 worldVertPos = centreWorld + mul(unity_ObjectToWorld, float4(v.vertex.xyz * nonZeroScale, 0)).xyz;
                 // Transform from world space to clip space for the GPU rasterizer
                 o.pos = mul(UNITY_MATRIX_VP, float4(worldVertPos, 1.0));
+
+                if(obstacleIndices[0] == -2){
+                    finalColour = float3(1.0, 0.0, 1.0);
+                }
+
+                //if(ParticleTypeBuffer[instanceID] == 0){
+                //    finalColour = float3(1.0, 0.0, 1.0);
+                //}
 
                 // 5. Assign other outputs to be interpolated for the fragment shader
                 o.uv = v.texcoord; // Pass the quad's UV coordinates

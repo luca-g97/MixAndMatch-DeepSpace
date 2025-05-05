@@ -59,6 +59,7 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer sortTarget_Position;
         ComputeBuffer sortTarget_PredicitedPosition;
         ComputeBuffer sortTarget_Velocity;
+        ComputeBuffer sortTarget_ParticleType;
 
         SpatialHash spatialHash;
 
@@ -159,6 +160,7 @@ namespace Seb.Fluid2D.Simulation
             sortTarget_Position = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
             sortTarget_PredicitedPosition = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
             sortTarget_Velocity = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
+            sortTarget_ParticleType = ComputeHelper.CreateStructuredBuffer<int>(numParticles);
 
             // Obstacle buffers (initialize with minimum size of 1)
             vertexBuffer = ComputeHelper.CreateStructuredBuffer(new Vector2[1]);
@@ -176,7 +178,7 @@ namespace Seb.Fluid2D.Simulation
 
             ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
             ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", updatePositionKernel);
-            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", densityKernel, pressureKernel, viscosityKernel, updatePositionKernel);
+            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", densityKernel, pressureKernel, viscosityKernel, updatePositionKernel, reorderKernel, copybackKernel);
 
             ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", spatialHashKernel, reorderKernel);
             ComputeHelper.SetBuffer(compute, spatialHash.SpatialOffsets, "SpatialOffsets", spatialHashKernel, densityKernel, pressureKernel, viscosityKernel);
@@ -185,6 +187,7 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", reorderKernel, copybackKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel, copybackKernel);
 
             compute.SetInt("numParticles", numParticles);
             compute.SetBuffer(updatePositionKernel, "verticesBuffer", vertexBuffer);
@@ -675,13 +678,6 @@ namespace Seb.Fluid2D.Simulation
                 collisionData[i] = new int4(-1, -1, -1, -1);
             }
             collisionBuffer.SetData(collisionData);
-
-            /*int[] particleTypeData = new int[numParticles];
-            for (int i = 0; i < particleTypeData.Length; i++)
-            {
-                particleTypeData[i] = 0;
-            }
-            particleTypeBuffer.SetData(particleTypeData);*/
         }
 
         void HandleInput()
@@ -750,7 +746,7 @@ namespace Seb.Fluid2D.Simulation
                 positionBuffer, predictedPositionBuffer, velocityBuffer,
                 densityBuffer, gravityScaleBuffer, collisionBuffer, particleTypeBuffer,
                 sortTarget_Position, sortTarget_Velocity, sortTarget_PredicitedPosition,
-                vertexBuffer, obstacleBuffer, obstacleColorsBuffer
+                sortTarget_ParticleType, vertexBuffer, obstacleBuffer, obstacleColorsBuffer
             );
 
             spatialHash?.Release();

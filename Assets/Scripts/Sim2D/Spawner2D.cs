@@ -61,6 +61,7 @@ public class Spawner2D : MonoBehaviour
     {
         Vector2 centre = region.position;
         Vector2 size = region.size;
+
         int i = 0;
         Vector2Int numPerAxis = CalculateSpawnCountPerAxisBox2D(region.size, region.spawnDensity);
         float2[] points = new float2[numPerAxis.x * numPerAxis.y];
