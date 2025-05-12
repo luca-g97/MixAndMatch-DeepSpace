@@ -209,23 +209,73 @@ MonoBehaviour:
   initialVelocity: {x: 0, y: 0}
   jitterStr: 0.05
   spawnRegions:
-  - position: {x: -6, y: 0}
-    size: {x: 6, y: 4}
-    spawnDensity: 1500
-    particleType: 0
-    debugCol: {r: 1, g: 0.2783019, b: 0.2783019, a: 1}
   - position: {x: 6, y: 0}
     size: {x: 6, y: 4}
     spawnDensity: 1500
     particleType: 0
     debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
-  - position: {x: 0, y: 0}
+  - position: {x: -8.5, y: 4}
     size: {x: 1, y: 1}
-    spawnDensity: 30000
+    spawnDensity: 2000
     particleType: 1
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -7, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 2
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -5.5, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 3
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -4, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 4
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -2.5, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 5
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -1, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 6
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 1, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 7
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 2.5, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 8
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 4, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 9
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 5.5, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 10
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 7, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 11
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 8.5, y: 4}
+    size: {x: 1, y: 1}
+    spawnDensity: 2000
+    particleType: 12
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   showSpawnBoundsGizmos: 1
-  spawnParticleCount: 102506
+  spawnParticleCount: 60415
 --- !u!114 &271053322
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -470,63 +520,6 @@ MonoBehaviour:
   zeroAbsoluteY: 1.98
   fullAbsoluteX: 5.46
   fullAbsoluteY: 5.77
---- !u!1001 &2785563159354763505
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 7564270855486431386, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_Name
-      value: Ventil
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -5.45
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -0.82
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
 --- !u!1001 &7257038834081003737
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -596,4 +589,3 @@ SceneRoots:
   - {fileID: 1621349553}
   - {fileID: 271053318}
   - {fileID: 7257038834081003737}
-  - {fileID: 2785563159354763505}
