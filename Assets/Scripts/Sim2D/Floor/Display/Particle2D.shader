@@ -45,6 +45,8 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
             SamplerState linear_clamp_sampler;
             float velocityMax;          // Max velocity for normalizing speed (usually set via script)
             float _SaturationBoost;     // Factor to boost saturation on mixing (from Properties)
+            int playerCount;
+            float3 mixableColors[12];
 
             // --- Structs ---
             // Data passed from Vertex to Fragment shader
@@ -96,6 +98,19 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 // Using tex2Dlod for explicit Mip level 0 sampling
                 float3 baseColour = ColourMap.SampleLevel(linear_clamp_sampler, float2(speedT, 0.5), 0).rgb; // Assuming V=0.5 is middle of texture
 
+                static const float COMPARE_EPSILON = 0.001f;
+                int colorsToMixCount = 0;
+                for (int i = 0; i < 12; i++)
+                {
+                    float3 diff = abs(mixableColors[i] - float3(-1, -1, -1));
+                    if(all(diff > COMPARE_EPSILON))
+                    {
+                        colorsToMixCount++;
+                    }
+                }
+
+                int particleTypeToUse = (particleType-1) % colorsToMixCount;
+
                 // 2. Accumulate color influence from nearby obstacles stored in CollisionBuffer
                 int4 obstacleIndices = CollisionBuffer[instanceID];
                 float3 obstacleColorSum = float3(0, 0, 0); // Sum of influencing obstacle colors
@@ -117,15 +132,18 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
 
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
                 if (obstacleCount > 0) // If at least one obstacle is influencing the particle
-                {
-                    float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
-                    finalColour = saturate(obstacleColorSum * additiveStrength);
-                    // 'finalColour' now holds the additively mixed color.
-                    // -----------------------
+                    float3 colorA = obstacleColorSum;
+                    float3 colorB = mixableColors[particleTypeToUse].rgb;
 
-                    // --- Saturation Boost (Applied *after* additive mixing) ---
-                    // Boost saturation only if multiple obstacles contributed to the sum.
-                    if (obstacleCount > 1)
+                    // Calculate the absolute difference for each component
+                    float3 diff = abs(colorA - colorB);
+
+                    // Check if ALL components of the difference are less than epsilon
+                    // The comparison (diff < COMPARE_EPSILON) results in a bool3
+                    // all() returns true only if x, y, and z are all true
+                    bool approximatelyEqual = all(diff < COMPARE_EPSILON);
+
+                    if(approximatelyEqual)
                     {
                         // Get the boost factor from the material property (ensure it's >= 1.0)
                         float boostFactor = max(1.0, _SaturationBoost);
@@ -138,8 +156,11 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                         finalColour = HsvToRgb(hsv);
                     }
                 }
-                else if (ParticleTypeBuffer[instanceID] > 0){
-                    finalColour = float3(1.0, 0.0, 1.0);
+                else if (particleType > 0)
+                {
+                    float3 playerColour = mixableColors[particleTypeToUse].rgb;
+                    finalColour = saturate(playerColour * additiveStrength);
+                    finalColour = saturateColourFurther(finalColour);
                 }
 
                 // 4. Calculate the world position and final clip space position for this vertex
