@@ -24,7 +24,7 @@ struct Obstacle
 };
 
 StructuredBuffer<Obstacle> ObstaclesBuffer;
-StructuredBuffer<float2> verticesBuffer;
+StructuredBuffer<float2> VerticesBuffer;
 RWStructuredBuffer<int4> CollisionBuffer;
 RWStructuredBuffer<int> ParticleTypeBuffer;
 
@@ -233,8 +233,8 @@ void HandleCollisions(uint particleIndex)
         {
             // Fetch vertices for the current edge segment (a -> b)
             int nextJ = uint(j + 1) % uint(vertexCount); // Modulo for polygon wrapping
-            float2 a = verticesBuffer[vertexStart + j];
-            float2 b = verticesBuffer[vertexStart + nextJ];
+            float2 a = VerticesBuffer[vertexStart + j];
+            float2 b = VerticesBuffer[vertexStart + nextJ];
             float2 edge = b - a;
             float2 vecToA = pos - a; // Vector from start vertex to particle position
 

@@ -190,8 +190,8 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel, copybackKernel);
 
             compute.SetInt("numParticles", numParticles);
-            compute.SetBuffer(updatePositionKernel, "verticesBuffer", vertexBuffer);
-            compute.SetBuffer(updatePositionKernel, "obstaclesBuffer", obstacleBuffer);
+            compute.SetBuffer(updatePositionKernel, "VerticesBuffer", vertexBuffer);
+            compute.SetBuffer(updatePositionKernel, "ObstaclesBuffer", obstacleBuffer);
 
             UpdateObstacleBuffer();
         }
@@ -595,10 +595,10 @@ namespace Seb.Fluid2D.Simulation
 
             if (compute != null)
             {
-                compute.SetBuffer(updatePositionKernel, "verticesBuffer", vertexBuffer);
-                compute.SetBuffer(updatePositionKernel, "obstaclesBuffer", obstacleBuffer);
+                compute.SetBuffer(updatePositionKernel, "VerticesBuffer", vertexBuffer);
+                compute.SetBuffer(updatePositionKernel, "ObstaclesBuffer", obstacleBuffer);
                 compute.SetInt("numObstacles", obstacleDataList.Count);
-                // compute.SetBuffer(updatePositionKernel, "obstacleColorsBuffer", obstacleColorsBuffer); // If needed
+                compute.SetBuffer(updatePositionKernel, "obstacleColorsBuffer", obstacleColorsBuffer); // If needed
             }
             // --- End Buffer Update ---
         }
