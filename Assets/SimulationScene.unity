@@ -172,7 +172,6 @@ MonoBehaviour:
   collisionDamping: 0.5
   smoothingRadius: 0.2
   boundsSize: {x: 16, y: 8}
-  yOffset: 0
   waterTargetDensity: 1
   waterPressureMultiplier: 150
   waterNearPressureMultiplier: 225
@@ -188,6 +187,7 @@ MonoBehaviour:
   invertMouseGravity: 1
   compute: {fileID: 7200000, guid: 1c77ce8de78fddb419ed2d15cae41af0, type: 3}
   spawner2D: {fileID: 271053320}
+  mixableColors: []
   obstacles: []
   areaToColorAroundObstacles: 1
   coloredAreaAroundObstaclesDivider: 0
@@ -210,18 +210,78 @@ MonoBehaviour:
   initialVelocity: {x: 0, y: 0}
   jitterStr: 0.05
   spawnRegions:
+  - position: {x: 6, y: 0}
+    size: {x: 6, y: 4}
+    spawnDensity: 750
+    particleType: 0
+    debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
   - position: {x: -6, y: 0}
     size: {x: 6, y: 4}
-    spawnDensity: 150
+    spawnDensity: 750
     particleType: 0
     debugCol: {r: 1, g: 0.27843142, b: 0.3170616, a: 1}
-  - position: {x: 0, y: 0}
+  - position: {x: -8.5, y: 0}
     size: {x: 1, y: 1}
-    spawnDensity: 2000
+    spawnDensity: 1000
     particleType: 1
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -7, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 2
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -5.5, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 3
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -4, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 4
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -2.5, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 5
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -1, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 6
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 1, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 7
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 2.5, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 8
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 4, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 9
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 5.5, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 10
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 7, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 11
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: 8.5, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
+    particleType: 12
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   showSpawnBoundsGizmos: 1
-  spawnParticleCount: 5651
+  spawnParticleCount: 48588
 --- !u!114 &271053322
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -237,10 +297,10 @@ MonoBehaviour:
   sim: {fileID: 271053319}
   mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
   shader: {fileID: 4800000, guid: 441b7193936682446b30d2140d15792a, type: 3}
-  scale: 0.045
+  scale: 0.06
   colourMap:
     serializedVersion: 2
-    key0: {r: 0, g: 0.071455285, b: 0.4009434, a: 1}
+    key0: {r: 0, g: 0.02996673, b: 0.16981131, a: 1}
     key1: {r: 0.6273585, g: 0.8659867, b: 1, a: 1}
     key2: {r: 1, g: 1, b: 1, a: 0}
     key3: {r: 0, g: 0, b: 0, a: 0}
