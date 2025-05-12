@@ -59,6 +59,7 @@ float oilNearPressureMultiplier;
 float oilViscosityStrength;
 
 const float2 boundsSize;
+const float yOffset;
 const float2 interactionInputPoint;
 const float interactionInputStrength;
 const float interactionInputRadius;
@@ -218,7 +219,7 @@ void HandleCollisions(uint particleIndex)
         // Calculate squared collision padding distance once per obstacle.
         // TODO: Consider making particleRadius a uniform if it's consistent.
         float particleRadius = 0.1f;
-        float collisionPadding = particleRadius;//+(lineWidth * 0.5f);
+        float collisionPadding = particleRadius + (lineWidth * 0.5f);
         float collisionPaddingSq = collisionPadding * collisionPadding; // Key optimization: compare squared distances
 
         // --- State for finding closest point and raycasting ---

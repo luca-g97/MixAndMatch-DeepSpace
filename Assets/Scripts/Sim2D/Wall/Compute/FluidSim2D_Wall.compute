@@ -1,0 +1,612 @@
+#pragma kernel ExternalForces_Wall
+#pragma kernel UpdateSpatialHash_Wall
+#pragma kernel Reorder_Wall
+#pragma kernel ReorderCopyback_Wall
+#pragma kernel CalculateDensities_Wall
+#pragma kernel CalculatePressureForce_Wall
+#pragma kernel CalculateViscosity_Wall
+#pragma kernel UpdatePositions_Wall
+
+#include "./FluidMaths2D_Wall.hlsl"
+#include "./SpatialHash_Wall.hlsl"
+
+#define FLT_MAX 3.402823466e+38
+#define MAX_OBSTACLES 256
+
+struct Obstacle
+{
+    float2 centre;
+    int vertexStart;
+    int vertexCount;
+    float lineWidth;
+    int obstacleType;
+    int4 obstacleColorToMix;
+};
+
+StructuredBuffer<Obstacle> ObstaclesBuffer_Wall;
+StructuredBuffer<float2> VerticesBuffer_Wall;
+RWStructuredBuffer<int4> CollisionBuffer_Wall;
+RWStructuredBuffer<int> ParticleTypeBuffer_Wall;
+
+int numObstacles_Wall;
+float areaToColorAroundObstacles_Wall;
+float coloredAreaAroundObstaclesDivider_Wall;
+static const int NumThreads_Wall = 64;
+
+RWStructuredBuffer<float2> Positions_Wall;
+RWStructuredBuffer<float2> PredictedPositions_Wall;
+RWStructuredBuffer<float2> Velocities_Wall;
+RWStructuredBuffer<float2> Densities_Wall;
+StructuredBuffer<float> GravityScales_Wall;
+
+RWStructuredBuffer<uint> SpatialKeys_Wall;
+RWStructuredBuffer<uint> SpatialOffsets_Wall;
+StructuredBuffer<uint> SortedIndices_Wall;
+
+const uint numParticles_Wall;
+const float gravity_Wall;
+const float deltaTime_Wall;
+const float collisionDamping_Wall;
+const float smoothingRadius_Wall;
+
+float waterTargetDensity_Wall;
+float waterPressureMultiplier_Wall;
+float waterNearPressureMultiplier_Wall;
+float waterViscosityStrength_Wall;
+float oilTargetDensity_Wall;
+float oilPressureMultiplier_Wall;
+float oilNearPressureMultiplier_Wall;
+float oilViscosityStrength_Wall;
+
+const float2 boundsSize_Wall;
+const float yOffset_Wall;
+const float2 interactionInputPoint_Wall;
+const float interactionInputStrength_Wall;
+const float interactionInputRadius_Wall;
+
+const float mouseGravityStrength_Wall;
+const float mouseGravityRadius_Wall;
+const int invertMouseGravity_Wall;
+const float2 mousePosition_Wall;
+const int gKeyPressed_Wall;
+
+float DensityKernel_Wall(float dst, float radius)
+{
+    return SpikyKernelPow2_Wall(dst, radius);
+}
+float NearDensityKernel_Wall(float dst, float radius)
+{
+    return SpikyKernelPow3_Wall(dst, radius);
+}
+float DensityDerivative_Wall(float dst, float radius)
+{
+    return DerivativeSpikyPow2_Wall(dst, radius);
+}
+float NearDensityDerivative_Wall(float dst, float radius)
+{
+    return DerivativeSpikyPow3_Wall(dst, radius);
+}
+float ViscosityKernel_Wall(float dst, float radius)
+{
+    return SmoothingKernelPoly6_Wall(dst, smoothingRadius_Wall);
+}
+
+float2 CalculateDensity_Wall(float2 pos)
+{
+    int2 originCell = GetCell2D_Wall(pos, smoothingRadius_Wall);
+    float sqrRadius = smoothingRadius_Wall * smoothingRadius_Wall;
+    float density = 0;
+    float nearDensity = 0;
+
+    for (int i = 0; i < 9; i++)
+    {
+        uint hash = HashCell2D_Wall(originCell + offsets2D_Wall[i]);
+        uint key = KeyFromHash_Wall(hash, numParticles_Wall);
+        uint currIndex = SpatialOffsets_Wall[key];
+
+        while (currIndex < numParticles_Wall)
+        {
+            uint neighbourIndex = currIndex;
+            currIndex++;
+
+            uint neighbourKey = SpatialKeys_Wall[neighbourIndex];
+            if (neighbourKey != key)
+                break;
+
+            float2 neighbourPos = PredictedPositions_Wall[neighbourIndex];
+            float2 offsetToNeighbour = neighbourPos - pos;
+            float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
+
+            if (sqrDstToNeighbour > sqrRadius)
+                continue;
+
+            float dst = sqrt(sqrDstToNeighbour);
+            density += DensityKernel_Wall(dst, smoothingRadius_Wall);
+            nearDensity += NearDensityKernel_Wall(dst, smoothingRadius_Wall);
+        }
+    }
+
+    return float2(density, nearDensity);
+}
+
+float PressureFromDensity_Wall(float density, float targetDensity, float pressureMultiplier)
+{
+    return (density - targetDensity) * pressureMultiplier;
+}
+float NearPressureFromDensity_Wall(float nearDensity, float nearPressureMultiplier)
+{
+    return nearPressureMultiplier * nearDensity;
+}
+
+float2 ExternalForces_Wall(float2 pos, float2 velocity, float gravityScale)
+{
+    float2 gravityAccel = float2(0, gravity_Wall * gravityScale);
+
+    if (interactionInputStrength_Wall != 0)
+    {
+        float2 inputPointOffset = interactionInputPoint_Wall - pos;
+        float sqrDst = dot(inputPointOffset, inputPointOffset);
+        if (sqrDst < interactionInputRadius_Wall * interactionInputRadius_Wall)
+        {
+            float dst = sqrt(sqrDst);
+            float edgeT = (dst / interactionInputRadius_Wall);
+            float centreT = 1 - edgeT;
+            float2 dirToCentre = inputPointOffset / max(dst, 0.0001);
+
+            float2 interactionForce = dirToCentre * interactionInputStrength_Wall * centreT;
+            gravityAccel += interactionForce;
+            gravityAccel -= velocity * centreT * 0.5;
+        }
+    }
+
+    return gravityAccel;
+}
+
+// Optimized HandleCollisions - Focused on reducing expensive operations (sqrt, normalization)
+// and minimizing work inside the inner vertex loop after performance degradation was observed.
+void HandleCollisions_Wall(uint particleIndex)
+{
+    float2 pos = Positions_Wall[particleIndex];
+    float2 vel = Velocities_Wall[particleIndex];
+    int particleType = ParticleTypeBuffer_Wall[particleIndex];
+
+    // --- Pre-calculations (Avoid redundant calculations later) ---
+    const float2 halfSize = boundsSize_Wall * 0.5;
+    const float boundaryEpsilon = 0.001f; // Small offset for boundary push-off
+
+    // Pre-calculate squared distances for coloring checks to avoid sqrt() later
+    float areaToColorAroundObstaclesSq = areaToColorAroundObstacles_Wall * areaToColorAroundObstacles_Wall;
+    float secondaryColorDist = areaToColorAroundObstacles_Wall + coloredAreaAroundObstaclesDivider_Wall;
+    float secondaryColorDistSq = secondaryColorDist * secondaryColorDist;
+
+    // Collision state tracking
+    int collisionIndices[4] = { -1, -1, -1, -1 }; // Store indices for coloring
+    int consideredObstacles = 0; // Counter for coloring indices array
+
+
+    // --- 1. Boundary Collisions ---
+    // Simplified, direct boundary check and response using pre-calculated halfSize.
+    // Using abs() avoids branching on sign().
+    if (abs(pos.x) >= halfSize.x)
+    {
+        pos.x = (halfSize.x - boundaryEpsilon) * sign(pos.x); // Push slightly off boundary
+        vel.x *= -collisionDamping_Wall; // Reflect and dampen normal velocity
+    }
+    if (pos.y >= halfSize.y + yOffset_Wall)
+    {
+        pos.y = (halfSize.y - boundaryEpsilon) * sign(pos.y) + yOffset_Wall; // Push slightly off boundary
+        vel.y *= -collisionDamping_Wall; // Reflect and dampen normal velocity
+    }
+    if (pos.y <= -halfSize.y + yOffset_Wall)
+    {
+        pos.y = (-halfSize.y - boundaryEpsilon) * sign(pos.y) + yOffset_Wall; // Push slightly off boundary
+        vel.y *= -collisionDamping_Wall; // Reflect and dampen normal velocity
+    }
+
+
+    // --- 2. Obstacle Collisions ---
+    // Loop over relevant obstacles, capped at compile-time MAX_OBSTACLES for safety.
+    // [loop] attribute can sometimes help the compiler optimize, mileage may vary.
+    [loop]
+    for (int obstacleIdx = 0; obstacleIdx < numObstacles_Wall && obstacleIdx < MAX_OBSTACLES; obstacleIdx++)
+    {
+        Obstacle obstacle = ObstaclesBuffer_Wall[obstacleIdx];
+        int vertexStart = obstacle.vertexStart;
+        int vertexCount = obstacle.vertexCount;
+
+        // Skip degenerate obstacles early. Need >= 2 vertices for a line/polygon edge.
+        if (vertexCount < 2)
+            continue;
+
+        float lineWidth = obstacle.lineWidth;
+
+        // --- Per-Obstacle Pre-calculations ---
+        // Calculate squared collision padding distance once per obstacle.
+        // TODO: Consider making particleRadius a uniform if it's consistent.
+        float particleRadius = 0.1f;
+        float collisionPadding = particleRadius + (lineWidth * 0.5f);
+        float collisionPaddingSq = collisionPadding * collisionPadding; // Key optimization: compare squared distances
+
+        // --- State for finding closest point and raycasting ---
+        int intersections = 0;
+        float minDistSq = FLT_MAX; // Track minimum *squared* distance
+        float2 normalAtClosestPoint = float2(0, 0); // Normal associated with minDistSq
+
+
+        // --- Inner Loop: Iterate through obstacle vertices/edges ---
+        // This is the performance-critical loop. Minimize work inside.
+        [loop]
+        for (int j = 0; j < vertexCount; j++)
+        {
+            // Fetch vertices for the current edge segment (a -> b)
+            int nextJ = uint(j + 1) % uint(vertexCount); // Modulo for polygon wrapping
+            float2 a = VerticesBuffer_Wall[vertexStart + j];
+            float2 b = VerticesBuffer_Wall[vertexStart + nextJ];
+            float2 edge = b - a;
+            float2 vecToA = pos - a; // Vector from start vertex to particle position
+
+            // --- Closest point on edge segment calculation ---
+            float edgeLengthSq = dot(edge, edge);
+            float2 pointOnEdge;
+            // Use squared length check to handle degenerate edges (a == b)
+            if (edgeLengthSq > 1e-6f)
+            {
+                // Project vecToA onto edge, clamp projection factor t to [0, 1] for segment
+                float t = clamp(dot(vecToA, edge) / edgeLengthSq, 0.0, 1.0);
+                pointOnEdge = a + t * edge;
+            }
+            else
+            {
+                pointOnEdge = a; // If edge is degenerate, closest point is the vertex itself
+            }
+
+            // --- Distance Check (Squared) ---
+            float2 offsetToEdgePoint = pos - pointOnEdge;
+            float distSq = dot(offsetToEdgePoint, offsetToEdgePoint); // Calculate squared distance
+
+            // Update minimum squared distance and associated normal if this point is closer
+            if (distSq < minDistSq)
+            {
+                minDistSq = distSq;
+                // Calculate the normal *only* when minDistSq is updated.
+                // Avoid sqrt via normalize() if possible, but needed for direction.
+                // Check for zero distance to avoid normalizing zero vector.
+                if (distSq > 1e-6f)
+                {
+                     // Standard normalize(). rsqrt() could be faster but less precise.
+                    normalAtClosestPoint = normalize(offsetToEdgePoint);
+                    // alternative: normalAtClosestPoint = offsetToEdgePoint * rsqrt(distSq);
+                }
+                else
+                {
+                    // Particle is exactly on the edge/vertex. Need a fallback normal.
+                    // Derive from edge perpendicular if edge exists, otherwise use arbitrary axis.
+                    // This normal might not consistently point "out" if particle is exactly on vertex.
+                    // `isInside` check later helps resolve ambiguity.
+                    if (edgeLengthSq > 1e-6f)
+                    {
+                        float2 edgeDir = normalize(edge); // Need normalize here to get direction
+                        normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x)); // Ensure unit length
+                    }
+                    else
+                    {
+                        normalAtClosestPoint = float2(0, 1); // Arbitrary fallback for point obstacle
+                    }
+                }
+            } // End distance update check
+
+            // --- Raycasting Test (Only for polygons, vertexCount >= 3) ---
+            // Optimized check slightly by calculating intersectX only if y-range matches.
+            if (vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
+            {
+                 // Avoid division by zero for horizontal lines (check y diff)
+                if (abs(b.y - a.y) > 1e-6f)
+                {
+                    // Calculate horizontal intersection point of ray from pos
+                    float intersectX = a.x + (b.x - a.x) * (pos.y - a.y) / (b.y - a.y);
+                    if (pos.x < intersectX)
+                    { // Count intersections to the right
+                        intersections++;
+                    }
+                }
+                 // else: Horizontal line aligned with ray - typically ignored in robust point-in-polygon.
+            } // End raycasting check
+
+        } // --- End Inner Vertex Loop ---
+
+
+        // --- Determine Inside/Outside & Collision Status (using squared distances) ---
+        // Correct odd-even rule check for point-in-polygon (requires vertexCount >= 3).
+        bool isInside = (vertexCount >= 3) && ((uint(intersections) % 2) != 0);
+
+        // Collision check: Inside OR outside but closer than squared padding distance.
+        // This comparison avoids sqrt().
+        bool collisionDetected = isInside || (minDistSq < collisionPaddingSq);
+
+
+        // --- Coloring Logic (using squared distances) ---
+        // Updated only if space available in collisionIndices and particle is close enough.
+        // Uses squared distance checks, runs independent of collision response.
+        if (consideredObstacles < 4 && obstacle.obstacleType == 0)
+        {
+             // Use else-if to assign only one category per obstacle
+            if (minDistSq < areaToColorAroundObstaclesSq && particleType > 0)
+            {
+                collisionIndices[consideredObstacles++] = obstacleIdx;
+            }
+            else if (minDistSq < secondaryColorDistSq)
+            {
+                collisionIndices[consideredObstacles++] = -2;
+            }
+        }
+        
+        bool ventil = false;
+        if (collisionDetected && obstacle.obstacleType == 2)
+        {
+            int4 playersToCheck = obstacle.obstacleColorToMix;
+
+            bool matchFound = false;
+            if (obstacleIdx == playersToCheck[0]) { matchFound = true; }
+            if (obstacleIdx == playersToCheck[1]) { matchFound = true; }
+            if (obstacleIdx == playersToCheck[2]) { matchFound = true; }
+            if (obstacleIdx == playersToCheck[3]) { matchFound = true; }
+
+            if (matchFound)
+            {
+                collisionIndices[consideredObstacles++] = obstacleIdx;
+                for (int i = consideredObstacles; i < 4; i++)
+                {
+                    collisionIndices[i] = -1;
+                }
+                ventil = true;
+            }
+        }
+
+        // --- Collision Response --- Executes only if collision is detected.
+        if (collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1) && !ventil)
+        {
+            // CRITICAL OPTIMIZATION: Calculate sqrt(minDistSq) *only once* here, if needed.
+            float actualDistance = sqrt(minDistSq);
+
+            // Calculate penetration depth based on whether particle is inside or just overlapping padding.
+            float penetrationDepth;
+            if (isInside)
+            {
+                 // If inside, push out by current distance + padding.
+                penetrationDepth = actualDistance + collisionPadding;
+            }
+            else
+            { // Outside but within padding.
+                 // If outside, push out just enough to clear the padding overlap.
+                penetrationDepth = collisionPadding - actualDistance;
+            }
+            penetrationDepth += 0.001f; // Add epsilon to ensure clear separation.
+
+            // Apply positional correction along the calculated normal.
+            pos += normalAtClosestPoint * penetrationDepth;
+
+            // --- Velocity Response ---
+            // Calculate speed along the collision normal.
+            float normalSpeed = dot(vel, normalAtClosestPoint);
+
+            // Respond only if particle is moving *into* the obstacle surface (normalSpeed < 0).
+            if (normalSpeed < 0)
+            {
+                // Decompose velocity into normal and tangential components.
+                float2 tangentVel = vel - normalAtClosestPoint * normalSpeed;
+                float2 normalVel = -normalAtClosestPoint * normalSpeed * collisionDamping_Wall; // Apply damping factor for bounce restitution.
+
+                // Apply friction to the tangential component.
+                // TODO: Make friction factor a uniform parameter.
+                float friction = 0.1f;
+                vel = tangentVel * (1.0f - friction) + normalVel; // Recombine components.
+            }
+            // else: Particle moving away or parallel, no velocity correction needed.
+
+        } // --- End Collision Response ---
+
+    } // --- End Outer Obstacle Loop ---
+
+
+    // --- Write Back Results ---
+    // Update particle state in the buffers.
+    CollisionBuffer_Wall[particleIndex] = int4(collisionIndices[0], collisionIndices[1], collisionIndices[2], collisionIndices[3]);
+    Positions_Wall[particleIndex] = pos;
+    Velocities_Wall[particleIndex] = vel;
+}
+
+[numthreads(NumThreads_Wall, 1, 1)]
+void ExternalForces_Wall(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall)
+        return;
+
+    float gravityScale = GravityScales_Wall[id.x];
+    float2 pos = Positions_Wall[id.x];
+    float2 toMouse = mousePosition_Wall - pos;
+    float mouseDist = length(toMouse);
+
+    if (mouseDist < mouseGravityRadius_Wall && mouseDist > 0 && gKeyPressed_Wall)
+    {
+        float2 mouseDir = toMouse / mouseDist;
+        float falloff = 1 - (mouseDist / mouseGravityRadius_Wall);
+        float mouseInfluence = mouseGravityStrength_Wall * falloff;
+        if (invertMouseGravity_Wall)
+            mouseInfluence *= -1;
+        gravityScale += mouseInfluence;
+    }
+
+    Velocities_Wall[id.x] += ExternalForces_Wall(pos, Velocities_Wall[id.x], gravityScale) * deltaTime_Wall;
+    PredictedPositions_Wall[id.x] = pos + Velocities_Wall[id.x] * (1 / 120.0);
+}
+
+[numthreads(NumThreads_Wall, 1, 1)]
+void UpdateSpatialHash_Wall(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall)
+        return;
+    uint index = id.x;
+    int2 cell = GetCell2D_Wall(PredictedPositions_Wall[index], smoothingRadius_Wall);
+    uint hash = HashCell2D_Wall(cell);
+    uint key = KeyFromHash_Wall(hash, numParticles_Wall);
+    SpatialKeys_Wall[id.x] = key;
+}
+
+RWStructuredBuffer<float2> SortTarget_Positions_Wall;
+RWStructuredBuffer<float2> SortTarget_PredictedPositions_Wall;
+RWStructuredBuffer<float2> SortTarget_Velocities_Wall;
+RWStructuredBuffer<int> SortTarget_ParticleType_Wall;
+
+[numthreads(NumThreads_Wall, 1, 1)]
+void Reorder_Wall(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall)
+        return;
+    uint sortedIndex = SortedIndices_Wall[id.x];
+    SortTarget_Positions_Wall[id.x] = Positions_Wall[sortedIndex];
+    SortTarget_PredictedPositions_Wall[id.x] = PredictedPositions_Wall[sortedIndex];
+    SortTarget_Velocities_Wall[id.x] = Velocities_Wall[sortedIndex];
+    SortTarget_ParticleType_Wall[id.x] = ParticleTypeBuffer_Wall[sortedIndex];
+}
+
+[numthreads(NumThreads_Wall, 1, 1)]
+void ReorderCopyback_Wall(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall)
+        return;
+    Positions_Wall[id.x] = SortTarget_Positions_Wall[id.x];
+    PredictedPositions_Wall[id.x] = SortTarget_PredictedPositions_Wall[id.x];
+    Velocities_Wall[id.x] = SortTarget_Velocities_Wall[id.x];
+    ParticleTypeBuffer_Wall[id.x] = SortTarget_ParticleType_Wall[id.x];
+}
+
+[numthreads(NumThreads_Wall, 1, 1)]
+void CalculateDensities_Wall(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall || ParticleTypeBuffer_Wall[id.x] == -1)
+        return;
+    float2 pos = PredictedPositions_Wall[id.x];
+    Densities_Wall[id.x] = CalculateDensity_Wall(pos);
+}
+
+[numthreads(NumThreads_Wall, 1, 1)]
+void CalculatePressureForce_Wall(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall || ParticleTypeBuffer_Wall[id.x] == -1)
+        return;
+    
+    float targetDensity = ParticleTypeBuffer_Wall[id.x] == 0 ? waterTargetDensity_Wall : oilTargetDensity_Wall;
+    float pressureMultiplier = ParticleTypeBuffer_Wall[id.x] == 0 ? waterPressureMultiplier_Wall : oilPressureMultiplier_Wall;
+    float nearPressureMultiplier = ParticleTypeBuffer_Wall[id.x] == 0 ? waterNearPressureMultiplier_Wall : oilNearPressureMultiplier_Wall;
+    float density = Densities_Wall[id.x][0];
+    float densityNear = Densities_Wall[id.x][1];
+    float pressure = PressureFromDensity_Wall(density, targetDensity, pressureMultiplier);
+    float nearPressure = NearPressureFromDensity_Wall(densityNear, nearPressureMultiplier);
+    float2 pressureForce = 0;
+
+    float2 pos = PredictedPositions_Wall[id.x];
+    int2 originCell = GetCell2D_Wall(pos, smoothingRadius_Wall);
+    float sqrRadius = smoothingRadius_Wall * smoothingRadius_Wall;
+
+    for (int i = 0; i < 9; i++)
+    {        
+        uint hash = HashCell2D_Wall(originCell + offsets2D_Wall[i]);
+        uint key = KeyFromHash_Wall(hash, numParticles_Wall);
+        uint currIndex = SpatialOffsets_Wall[key];
+
+        while (currIndex < numParticles_Wall)
+        {
+            uint neighbourIndex = currIndex;
+            currIndex++;
+
+            if (neighbourIndex == id.x)
+                continue;
+            uint neighbourKey = SpatialKeys_Wall[neighbourIndex];
+            if (neighbourKey != key)
+                break;
+
+            float2 neighbourPos = PredictedPositions_Wall[neighbourIndex];
+            float2 offsetToNeighbour = neighbourPos - pos;
+            float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
+
+            if (sqrDstToNeighbour > sqrRadius)
+                continue;
+
+            float dst = sqrt(sqrDstToNeighbour);
+            float2 dirToNeighbour = dst > 0 ? offsetToNeighbour / dst : float2(0, 1);
+            
+            float neighbourTargetDensity = ParticleTypeBuffer_Wall[neighbourIndex] == 0 ? waterTargetDensity_Wall : oilTargetDensity_Wall;
+            float neighbourPressureMultiplier = ParticleTypeBuffer_Wall[neighbourIndex] == 0 ? waterPressureMultiplier_Wall : oilPressureMultiplier_Wall;
+            float neighbourNearPressureMultiplier = ParticleTypeBuffer_Wall[neighbourIndex] == 0 ? waterNearPressureMultiplier_Wall : oilNearPressureMultiplier_Wall;
+
+            float neighbourDensity = Densities_Wall[neighbourIndex][0];
+            float neighbourNearDensity = Densities_Wall[neighbourIndex][1];
+            float neighbourPressure = PressureFromDensity_Wall(neighbourDensity, neighbourTargetDensity - density, neighbourPressureMultiplier);
+            float neighbourNearPressure = NearPressureFromDensity_Wall(neighbourNearDensity, neighbourNearPressureMultiplier);
+
+            float sharedPressure = (pressure + neighbourPressure) * 0.5;
+            float sharedNearPressure = (nearPressure + neighbourNearPressure) * 0.5;
+
+            pressureForce += dirToNeighbour * DensityDerivative_Wall(dst, smoothingRadius_Wall) * sharedPressure / neighbourDensity;
+            pressureForce += dirToNeighbour * NearDensityDerivative_Wall(dst, smoothingRadius_Wall) * sharedNearPressure / neighbourNearDensity;
+        }
+    }
+
+    float2 acceleration = pressureForce / density;
+    Velocities_Wall[id.x] += acceleration * deltaTime_Wall;
+}
+
+[numthreads(NumThreads_Wall, 1, 1)]
+void CalculateViscosity_Wall(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall || ParticleTypeBuffer_Wall[id.x] == -1)
+        return;
+
+    float2 pos = PredictedPositions_Wall[id.x];
+    int2 originCell = GetCell2D_Wall(pos, smoothingRadius_Wall);
+    float sqrRadius = smoothingRadius_Wall * smoothingRadius_Wall;
+    float2 viscosityForce = 0;
+    float2 velocity = Velocities_Wall[id.x];
+
+    for (int i = 0; i < 9; i++)
+    {
+        uint hash = HashCell2D_Wall(originCell + offsets2D_Wall[i]);
+        uint key = KeyFromHash_Wall(hash, numParticles_Wall);
+        uint currIndex = SpatialOffsets_Wall[key];
+
+        while (currIndex < numParticles_Wall)
+        {
+            uint neighbourIndex = currIndex;
+            currIndex++;
+
+            if (neighbourIndex == id.x)
+                continue;
+            uint neighbourKey = SpatialKeys_Wall[neighbourIndex];
+            if (neighbourKey != key)
+                break;
+
+            float2 neighbourPos = PredictedPositions_Wall[neighbourIndex];
+            float2 offsetToNeighbour = neighbourPos - pos;
+            float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
+
+            if (sqrDstToNeighbour > sqrRadius)
+                continue;
+
+            float dst = sqrt(sqrDstToNeighbour);
+            float2 neighbourVelocity = Velocities_Wall[neighbourIndex];
+            viscosityForce += (neighbourVelocity - velocity) * ViscosityKernel_Wall(dst, smoothingRadius_Wall);
+        }
+    }
+    
+    float viscosityStrength = ParticleTypeBuffer_Wall[id.x] == 0 ? waterViscosityStrength_Wall : oilViscosityStrength_Wall;
+    Velocities_Wall[id.x] += viscosityForce * viscosityStrength * deltaTime_Wall;
+}
+
+[numthreads(NumThreads_Wall, 1, 1)]
+void UpdatePositions_Wall(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall)
+        return;
+    Positions_Wall[id.x] += Velocities_Wall[id.x] * deltaTime_Wall;
+    HandleCollisions_Wall(id.x);
+}

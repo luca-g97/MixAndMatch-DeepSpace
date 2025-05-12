@@ -1,0 +1,37 @@
+#pragma kernel InitializeOffsets_Wall
+#pragma kernel CalculateOffsets_Wall
+
+// Calculate offsets for the given sorted keys. For example, given:
+// SortedKeys = {2, 2, 2, 3, 6, 6, 9, 9, 9, 9}
+// Output will be ('x' represents irrelevant entries):
+// Offsets = {x, x, 0, 3, x, x, 4, x, x, 6} 
+// Now, to look up where the '6' keys start for instance, Offsets[6] gives the answer (4)
+
+// NOTE: offsets buffer must be initialized with values equal to (or greater than) its length to ensure that this works correctly
+StructuredBuffer<uint> SortedKeys_Wall;
+RWStructuredBuffer<uint> Offsets_Wall;
+uint numInputs;
+
+[numthreads(256, 1, 1)]
+void InitializeOffsets_Wall(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= numInputs) { return; }
+    Offsets_Wall[id.x] = numInputs;
+}
+
+[numthreads(256, 1, 1)]
+void CalculateOffsets_Wall(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= numInputs) { return; }
+
+	uint i = id.x;
+	uint null = numInputs;
+
+    uint key = SortedKeys_Wall[i];
+    uint keyPrev = i == 0 ? null : SortedKeys_Wall[i - 1];
+
+	if (key != keyPrev)
+	{
+        Offsets_Wall[key] = i;
+    }
+}

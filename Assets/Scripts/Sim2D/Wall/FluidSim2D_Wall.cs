@@ -4,10 +4,11 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Seb.Fluid2D.Simulation
 {
-    public class FluidSim2D : MonoBehaviour
+    public class FluidSim2D_Wall : MonoBehaviour
     {
         public event System.Action SimulationStepCompleted;
 
@@ -19,6 +20,7 @@ namespace Seb.Fluid2D.Simulation
         [Range(0, 1)] public float collisionDamping = 0.95f;
         public float smoothingRadius = 2;
         public Vector2 boundsSize;
+        public float yOffset;
 
         [Header("Water Properties")]
         public float waterTargetDensity = 1;
@@ -43,7 +45,7 @@ namespace Seb.Fluid2D.Simulation
 
         [Header("References")]
         public ComputeShader compute;
-        public Spawner2D spawner2D;
+        public Spawner2D_Wall spawner2D;
 
         // Buffers
         public ComputeBuffer positionBuffer { get; private set; }
@@ -61,21 +63,21 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer sortTarget_Velocity;
         ComputeBuffer sortTarget_ParticleType;
 
-        SpatialHash spatialHash;
+        SpatialHash_Wall spatialHash;
 
         // Kernels
-        const int externalForcesKernel = 0;
-        const int spatialHashKernel = 1;
-        const int reorderKernel = 2;
-        const int copybackKernel = 3;
-        const int densityKernel = 4;
-        const int pressureKernel = 5;
-        const int viscosityKernel = 6;
-        const int updatePositionKernel = 7;
+        const int externalForcesKernel_Wall = 0;
+        const int spatialHashKernel_Wall = 1;
+        const int reorderKernel_Wall = 2;
+        const int copybackKernel_Wall = 3;
+        const int densityKernel_Wall = 4;
+        const int pressureKernel_Wall = 5;
+        const int viscosityKernel_Wall = 6;
+        const int updatePositionKernel_Wall = 7;
 
         // State
         bool isPaused;
-        Spawner2D.ParticleSpawnData spawnData;
+        Spawner2D_Wall.ParticleSpawnData spawnData;
         bool pauseNextFrame;
         public int numParticles { get; private set; }
 
@@ -85,7 +87,7 @@ namespace Seb.Fluid2D.Simulation
         [Min(0)] public float areaToColorAroundObstacles = 0.1f;
         [Min(0)] public float coloredAreaAroundObstaclesDivider = 0.05f;
 
-        private MaterialPropertyBlock _propBlock;
+        private MaterialPropertyBlock _propBlock_Wall;
         private Material _sharedUnlitMaterial;
 
         [StructLayout(LayoutKind.Explicit, Size = 40)]
@@ -128,13 +130,13 @@ namespace Seb.Fluid2D.Simulation
             Time.fixedDeltaTime = 1 / 60f;
             spawnData = spawner2D.GetSpawnData();
             numParticles = spawnData.positions.Length;
-            spatialHash = new SpatialHash(numParticles);
+            spatialHash = new SpatialHash_Wall(numParticles);
 
             CreateBuffers();
             SetInitialBufferData(spawnData);
 
             // Create the property block and shared fallback material once
-            _propBlock = new MaterialPropertyBlock();
+            _propBlock_Wall = new MaterialPropertyBlock();
             // Ensure we have a fallback material if lineRendererMaterial is not set
             if (Shader.Find("Unlit/Color") != null)
                 _sharedUnlitMaterial = new Material(Shader.Find("Unlit/Color"));
@@ -148,50 +150,50 @@ namespace Seb.Fluid2D.Simulation
         void CreateBuffers()
         {
             // Main particle buffers
-            positionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
-            predictedPositionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
-            velocityBuffer = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
-            densityBuffer = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
-            gravityScaleBuffer = ComputeHelper.CreateStructuredBuffer<float>(numParticles);
-            collisionBuffer = ComputeHelper.CreateStructuredBuffer<int4>(numParticles);
-            particleTypeBuffer = ComputeHelper.CreateStructuredBuffer<int>(numParticles);
+            positionBuffer = ComputeHelper_Wall.CreateStructuredBuffer<float2>(numParticles);
+            predictedPositionBuffer = ComputeHelper_Wall.CreateStructuredBuffer<float2>(numParticles);
+            velocityBuffer = ComputeHelper_Wall.CreateStructuredBuffer<float2>(numParticles);
+            densityBuffer = ComputeHelper_Wall.CreateStructuredBuffer<float2>(numParticles);
+            gravityScaleBuffer = ComputeHelper_Wall.CreateStructuredBuffer<float>(numParticles);
+            collisionBuffer = ComputeHelper_Wall.CreateStructuredBuffer<int4>(numParticles);
+            particleTypeBuffer = ComputeHelper_Wall.CreateStructuredBuffer<int>(numParticles);
 
             // Sorting buffers
-            sortTarget_Position = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
-            sortTarget_PredicitedPosition = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
-            sortTarget_Velocity = ComputeHelper.CreateStructuredBuffer<float2>(numParticles);
-            sortTarget_ParticleType = ComputeHelper.CreateStructuredBuffer<int>(numParticles);
+            sortTarget_Position = ComputeHelper_Wall.CreateStructuredBuffer<float2>(numParticles);
+            sortTarget_PredicitedPosition = ComputeHelper_Wall.CreateStructuredBuffer<float2>(numParticles);
+            sortTarget_Velocity = ComputeHelper_Wall.CreateStructuredBuffer<float2>(numParticles);
+            sortTarget_ParticleType = ComputeHelper_Wall.CreateStructuredBuffer<int>(numParticles);
 
             // Obstacle buffers (initialize with minimum size of 1)
-            vertexBuffer = ComputeHelper.CreateStructuredBuffer(new Vector2[1]);
-            obstacleBuffer = ComputeHelper.CreateStructuredBuffer(new ObstacleData[1]);
-            obstacleColorsBuffer = ComputeHelper.CreateStructuredBuffer(new Color[1]);
+            vertexBuffer = ComputeHelper_Wall.CreateStructuredBuffer(new Vector2[1]);
+            obstacleBuffer = ComputeHelper_Wall.CreateStructuredBuffer(new ObstacleData[1]);
+            obstacleColorsBuffer = ComputeHelper_Wall.CreateStructuredBuffer(new Color[1]);
         }
 
         void InitComputeShader()
         {
-            ComputeHelper.SetBuffer(compute, positionBuffer, "Positions", externalForcesKernel, updatePositionKernel, reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "PredictedPositions", externalForcesKernel, spatialHashKernel, densityKernel, pressureKernel, viscosityKernel, reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, velocityBuffer, "Velocities", externalForcesKernel, pressureKernel, viscosityKernel, updatePositionKernel, reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, densityBuffer, "Densities", densityKernel, pressureKernel, viscosityKernel);
-            ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "GravityScales", externalForcesKernel);
+            ComputeHelper_Wall.SetBuffer(compute, positionBuffer, "Positions_Wall", externalForcesKernel_Wall, updatePositionKernel_Wall, reorderKernel_Wall, copybackKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, predictedPositionBuffer, "PredictedPositions_Wall", externalForcesKernel_Wall, spatialHashKernel_Wall, densityKernel_Wall, pressureKernel_Wall, viscosityKernel_Wall, reorderKernel_Wall, copybackKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, velocityBuffer, "Velocities_Wall", externalForcesKernel_Wall, pressureKernel_Wall, viscosityKernel_Wall, updatePositionKernel_Wall, reorderKernel_Wall, copybackKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, densityBuffer, "Densities_Wall", densityKernel_Wall, pressureKernel_Wall, viscosityKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, gravityScaleBuffer, "GravityScales_Wall", externalForcesKernel_Wall);
 
-            ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
-            ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", updatePositionKernel);
-            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", densityKernel, pressureKernel, viscosityKernel, updatePositionKernel, reorderKernel, copybackKernel);
+            ComputeHelper_Wall.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer_Wall", updatePositionKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, collisionBuffer, "CollisionBuffer_Wall", updatePositionKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer_Wall", densityKernel_Wall, pressureKernel_Wall, viscosityKernel_Wall, updatePositionKernel_Wall, reorderKernel_Wall, copybackKernel_Wall);
 
-            ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", spatialHashKernel, reorderKernel);
-            ComputeHelper.SetBuffer(compute, spatialHash.SpatialOffsets, "SpatialOffsets", spatialHashKernel, densityKernel, pressureKernel, viscosityKernel);
-            ComputeHelper.SetBuffer(compute, spatialHash.SpatialKeys, "SpatialKeys", spatialHashKernel, densityKernel, pressureKernel, viscosityKernel);
+            ComputeHelper_Wall.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices_Wall", spatialHashKernel_Wall, reorderKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, spatialHash.SpatialOffsets, "SpatialOffsets_Wall", spatialHashKernel_Wall, densityKernel_Wall, pressureKernel_Wall, viscosityKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, spatialHash.SpatialKeys, "SpatialKeys_Wall", spatialHashKernel_Wall, densityKernel_Wall, pressureKernel_Wall, viscosityKernel_Wall);
 
-            ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel, copybackKernel);
+            ComputeHelper_Wall.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions_Wall", reorderKernel_Wall, copybackKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions_Wall", reorderKernel_Wall, copybackKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities_Wall", reorderKernel_Wall, copybackKernel_Wall);
+            ComputeHelper_Wall.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType_Wall", reorderKernel_Wall, copybackKernel_Wall);
 
-            compute.SetInt("numParticles", numParticles);
-            compute.SetBuffer(updatePositionKernel, "VerticesBuffer", vertexBuffer);
-            compute.SetBuffer(updatePositionKernel, "ObstaclesBuffer", obstacleBuffer);
+            compute.SetInt("numParticles_Wall", numParticles);
+            compute.SetBuffer(updatePositionKernel_Wall, "VerticesBuffer_Wall", vertexBuffer);
+            compute.SetBuffer(updatePositionKernel_Wall, "ObstaclesBuffer_Wall", obstacleBuffer);
 
             UpdateObstacleBuffer();
         }
@@ -421,7 +423,7 @@ namespace Seb.Fluid2D.Simulation
             obstacleDataList.Clear();
             obstacleColorsList.Clear();
 
-            if (_propBlock == null) _propBlock = new MaterialPropertyBlock(); // Ensure block exists
+            if (_propBlock_Wall == null) _propBlock_Wall = new MaterialPropertyBlock(); // Ensure block exists
 
             int vertexCounter = 0;
 
@@ -504,8 +506,8 @@ namespace Seb.Fluid2D.Simulation
                         Debug.LogWarning($"Player color not found for {obstacle.name}", obstacle);
                     }
                     // Apply color to LR using Property Block
-                    _propBlock.SetColor("_Color", colorForBufferList);
-                    lr.SetPropertyBlock(_propBlock);
+                    _propBlock_Wall.SetColor("_Color", colorForBufferList);
+                    lr.SetPropertyBlock(_propBlock_Wall);
                 }
                 else if (obstacleType == 2) // Ventil
                 {
@@ -540,8 +542,8 @@ namespace Seb.Fluid2D.Simulation
 
                         colorForBufferList = mixedColor; // Use the newly calculated color for the buffer
                                                          // Apply the new color to the LR via Property Block
-                        _propBlock.SetColor("_Color", colorForBufferList);
-                        lr.SetPropertyBlock(_propBlock);
+                        _propBlock_Wall.SetColor("_Color", colorForBufferList);
+                        lr.SetPropertyBlock(_propBlock_Wall);
                     }
                     else
                     {
@@ -549,11 +551,11 @@ namespace Seb.Fluid2D.Simulation
                         // *** DO NOT apply color to the Line Renderer here. *** It retains its previous color.
                         // We still need a color value for the obstacleColorsList buffer.
                         // Read the *current* color back from the Line Renderer's property block.
-                        lr.GetPropertyBlock(_propBlock); // Populate _propBlock with current LR values
+                        lr.GetPropertyBlock(_propBlock_Wall); // Populate _propBlock with current LR values
                                                          // Check if the property exists before getting it
-                        if (_propBlock.HasColor("_Color"))
+                        if (_propBlock_Wall.HasColor("_Color"))
                         {
-                            colorForBufferList = _propBlock.GetColor("_Color");
+                            colorForBufferList = _propBlock_Wall.GetColor("_Color");
                         }
                         else
                         {
@@ -567,8 +569,8 @@ namespace Seb.Fluid2D.Simulation
                 {
                     colorForBufferList = Color.white; // Default color
                                                       // Apply color to LR using Property Block
-                    _propBlock.SetColor("_Color", colorForBufferList);
-                    lr.SetPropertyBlock(_propBlock);
+                    _propBlock_Wall.SetColor("_Color", colorForBufferList);
+                    lr.SetPropertyBlock(_propBlock_Wall);
                 }
                 // --- End Color Calculation/Application ---
 
@@ -589,42 +591,43 @@ namespace Seb.Fluid2D.Simulation
             ObstacleData[] obstacleArray = obstacleDataList.Count > 0 ? obstacleDataList.ToArray() : new ObstacleData[] { new ObstacleData() };
             Color[] colorArray = obstacleColorsList.Count > 0 ? obstacleColorsList.ToArray() : new Color[] { Color.white };
 
-            ComputeHelper.CreateStructuredBuffer(ref vertexBuffer, verticesArray);
-            ComputeHelper.CreateStructuredBuffer(ref obstacleBuffer, obstacleArray);
-            ComputeHelper.CreateStructuredBuffer(ref obstacleColorsBuffer, colorArray);
+            ComputeHelper_Wall.CreateStructuredBuffer(ref vertexBuffer, verticesArray);
+            ComputeHelper_Wall.CreateStructuredBuffer(ref obstacleBuffer, obstacleArray);
+            ComputeHelper_Wall.CreateStructuredBuffer(ref obstacleColorsBuffer, colorArray);
 
             if (compute != null)
             {
-                compute.SetBuffer(updatePositionKernel, "VerticesBuffer", vertexBuffer);
-                compute.SetBuffer(updatePositionKernel, "ObstaclesBuffer", obstacleBuffer);
-                compute.SetInt("numObstacles", obstacleDataList.Count);
-                compute.SetBuffer(updatePositionKernel, "obstacleColorsBuffer", obstacleColorsBuffer); // If needed
+                compute.SetBuffer(updatePositionKernel_Wall, "VerticesBuffer_Wall", vertexBuffer);
+                compute.SetBuffer(updatePositionKernel_Wall, "ObstaclesBuffer_Wall", obstacleBuffer);
+                compute.SetInt("numObstacles_Wall", obstacleDataList.Count);
+                compute.SetBuffer(updatePositionKernel_Wall, "obstacleColorsBuffer", obstacleColorsBuffer); // If needed
             }
             // --- End Buffer Update ---
         }
 
         void UpdateSettings(float deltaTime)
         {
-            compute.SetFloat("deltaTime", deltaTime);
-            compute.SetFloat("gravity", gravity);
-            compute.SetFloat("collisionDamping", collisionDamping);
-            compute.SetFloat("smoothingRadius", smoothingRadius);
-            compute.SetVector("boundsSize", boundsSize);
+            compute.SetFloat("deltaTime_Wall", deltaTime);
+            compute.SetFloat("gravity_Wall", gravity);
+            compute.SetFloat("collisionDamping_Wall", collisionDamping);
+            compute.SetFloat("smoothingRadius_Wall", smoothingRadius);
+            compute.SetVector("boundsSize_Wall", boundsSize);
+            compute.SetFloat("yOffset_Wall", yOffset);
 
-            compute.SetFloat("waterTargetDensity", waterTargetDensity);
-            compute.SetFloat("waterPressureMultiplier", waterPressureMultiplier);
-            compute.SetFloat("waterNearPressureMultiplier", waterNearPressureMultiplier);
-            compute.SetFloat("waterViscosityStrength", waterViscosityStrength);
-            compute.SetFloat("oilTargetDensity", oilTargetDensity);
-            compute.SetFloat("oilPressureMultiplier", oilPressureMultiplier);
-            compute.SetFloat("oilNearPressureMultiplier", oilNearPressureMultiplier);
-            compute.SetFloat("oilViscosityStrength", oilViscosityStrength);
+            compute.SetFloat("waterTargetDensity_Wall", waterTargetDensity);
+            compute.SetFloat("waterPressureMultiplier_Wall", waterPressureMultiplier);
+            compute.SetFloat("waterNearPressureMultiplier_Wall", waterNearPressureMultiplier);
+            compute.SetFloat("waterViscosityStrength_Wall", waterViscosityStrength);
+            compute.SetFloat("oilTargetDensity_Wall", oilTargetDensity);
+            compute.SetFloat("oilPressureMultiplier_Wall", oilPressureMultiplier);
+            compute.SetFloat("oilNearPressureMultiplier_Wall", oilNearPressureMultiplier);
+            compute.SetFloat("oilViscosityStrength_Wall", oilViscosityStrength);
 
-            compute.SetFloat("Poly6ScalingFactor", 4 / (Mathf.PI * Mathf.Pow(smoothingRadius, 8)));
-            compute.SetFloat("SpikyPow3ScalingFactor", 10 / (Mathf.PI * Mathf.Pow(smoothingRadius, 5)));
-            compute.SetFloat("SpikyPow2ScalingFactor", 6 / (Mathf.PI * Mathf.Pow(smoothingRadius, 4)));
-            compute.SetFloat("SpikyPow3DerivativeScalingFactor", 30 / (Mathf.Pow(smoothingRadius, 5) * Mathf.PI));
-            compute.SetFloat("SpikyPow2DerivativeScalingFactor", 12 / (Mathf.Pow(smoothingRadius, 4) * Mathf.PI));
+            compute.SetFloat("Poly6ScalingFactor_Wall", 4 / (Mathf.PI * Mathf.Pow(smoothingRadius, 8)));
+            compute.SetFloat("SpikyPow3ScalingFactor_Wall", 10 / (Mathf.PI * Mathf.Pow(smoothingRadius, 5)));
+            compute.SetFloat("SpikyPow2ScalingFactor_Wall", 6 / (Mathf.PI * Mathf.Pow(smoothingRadius, 4)));
+            compute.SetFloat("SpikyPow3DerivativeScalingFactor_Wall", 30 / (Mathf.Pow(smoothingRadius, 5) * Mathf.PI));
+            compute.SetFloat("SpikyPow2DerivativeScalingFactor_Wall", 12 / (Mathf.Pow(smoothingRadius, 4) * Mathf.PI));
 
             // Mouse interaction settings
             Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -636,23 +639,23 @@ namespace Seb.Fluid2D.Simulation
                 currInteractStrength = isPushInteraction ? -interactionStrength : interactionStrength;
             }
 
-            compute.SetFloat("areaToColorAroundObstacles", areaToColorAroundObstacles);
-            compute.SetFloat("coloredAreaAroundObstaclesDivider", coloredAreaAroundObstaclesDivider);
+            compute.SetFloat("areaToColorAroundObstacles_Wall", areaToColorAroundObstacles);
+            compute.SetFloat("coloredAreaAroundObstaclesDivider_Wall", coloredAreaAroundObstaclesDivider);
 
-            compute.SetFloat("mouseGravityStrength", mouseGravityStrength);
-            compute.SetFloat("mouseGravityRadius", mouseGravityRadius);
-            compute.SetInt("invertMouseGravity", invertMouseGravity ? 1 : 0);
-            compute.SetVector("mousePosition", mousePos);
+            compute.SetFloat("mouseGravityStrength_Wall", mouseGravityStrength);
+            compute.SetFloat("mouseGravityRadius_Wall", mouseGravityRadius);
+            compute.SetInt("invertMouseGravity_Wall", invertMouseGravity ? 1 : 0);
+            compute.SetVector("mousePosition_Wall", mousePos);
 
-            compute.SetVector("interactionInputPoint", mousePos);
-            compute.SetFloat("interactionInputStrength", currInteractStrength);
-            compute.SetFloat("interactionInputRadius", interactionRadius);
+            compute.SetVector("interactionInputPoint_Wall", mousePos);
+            compute.SetFloat("interactionInputStrength_Wall", currInteractStrength);
+            compute.SetFloat("interactionInputRadius_Wall", interactionRadius);
 
             bool gKeyPressed = Input.GetKey(KeyCode.G);
-            compute.SetInt("gKeyPressed", gKeyPressed ? 1 : 0);
+            compute.SetInt("gKeyPressed_Wall", gKeyPressed ? 1 : 0);
         }
 
-        void SetInitialBufferData(Spawner2D.ParticleSpawnData spawnData)
+        void SetInitialBufferData(Spawner2D_Wall.ParticleSpawnData spawnData)
         {
             // Copy position data
             float2[] allPoints = new float2[spawnData.positions.Length];
@@ -724,25 +727,26 @@ namespace Seb.Fluid2D.Simulation
 
         void RunSimulationStep()
         {
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: externalForcesKernel);
+            ComputeHelper_Wall.Dispatch(compute, numParticles, kernelIndex: externalForcesKernel_Wall);
             RunSpatial();
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: densityKernel);
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: pressureKernel);
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: viscosityKernel);
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: updatePositionKernel);
+            ComputeHelper_Wall.Dispatch(compute, numParticles, kernelIndex: densityKernel_Wall);
+            ComputeHelper_Wall.Dispatch(compute, numParticles, kernelIndex: pressureKernel_Wall);
+            ComputeHelper_Wall.Dispatch(compute, numParticles, kernelIndex: viscosityKernel_Wall);
+            ComputeHelper_Wall.Dispatch(compute, numParticles, kernelIndex: updatePositionKernel_Wall);
+            AsyncGPUReadback.WaitAllRequests(); // Sync before next simulation
         }
 
         void RunSpatial()
         {
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: spatialHashKernel);
+            ComputeHelper_Wall.Dispatch(compute, numParticles, kernelIndex: spatialHashKernel_Wall);
             spatialHash.Run();
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: reorderKernel);
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
+            ComputeHelper_Wall.Dispatch(compute, numParticles, kernelIndex: reorderKernel_Wall);
+            ComputeHelper_Wall.Dispatch(compute, numParticles, kernelIndex: copybackKernel_Wall);
         }
 
         void OnDestroy()
         {
-            ComputeHelper.Release(
+            ComputeHelper_Wall.Release(
                 positionBuffer, predictedPositionBuffer, velocityBuffer,
                 densityBuffer, gravityScaleBuffer, collisionBuffer, particleTypeBuffer,
                 sortTarget_Position, sortTarget_Velocity, sortTarget_PredicitedPosition,

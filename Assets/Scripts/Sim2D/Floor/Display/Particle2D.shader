@@ -54,21 +54,6 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 float3 colour : TEXCOORD1;  // Final calculated color for the particle vertex
             };
 
-            static const float3 playerColourPalette[12] = {
-                float3(0.9, 0.0, 0.4),    // [1] OilRed (matches ParticleType = 1)
-                float3(1.0, 1.0, 0.0),    // [2] OilYellow
-                float3(0.0, 0.5, 1.0),    // [3] Blue
-                float3(1.0, 0.5, 0.0),    // [4] Orange
-                float3(0.5, 0.8, 0.0),    // [5] LimeGreen
-                float3(0.6, 0.0, 0.8),    // [6] Violet
-                float3(1.0, 0.75, 0.0),   // [7] YellowOrange
-                float3(1.0, 0.3, 0.0),    // [8] RedOrange
-                float3(0.8, 0.0, 0.8),    // [9] RedViolet
-                float3(0.3, 0.3, 0.9),    // [10] BlueViolet
-                float3(0.0, 0.7, 0.7),    // [11] BlueGreen
-                float3(0.7, 1.0, 0.0)     // [12] YellowGreen
-            };
-
             // --- Helper Functions: RGB <-> HSV Conversion ---
             // These functions allow manipulation of saturation directly.
 
@@ -96,19 +81,6 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
             }
             // --- End Helper Functions ---
 
-            float3 saturateColourFurther(float3 colour)
-            {
-                // Get the boost factor from the material property (ensure it's >= 1.0)
-                float boostFactor = max(1.0, _SaturationBoost);
-
-                // Convert the additively mixed color to HSV
-                float3 hsv = RgbToHsv(colour);
-                // Increase the Saturation value, clamping between 0 and 1
-                hsv.y = saturate(hsv.y * boostFactor);
-                // Convert back to RGB and update finalColour
-
-                return HsvToRgb(hsv);
-            }
 
             // --- Vertex Shader ---
             // Calculates final vertex color and position for each particle instance.
@@ -123,7 +95,6 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 // Sample the color map (gradient texture) based on normalized speed
                 // Using tex2Dlod for explicit Mip level 0 sampling
                 float3 baseColour = ColourMap.SampleLevel(linear_clamp_sampler, float2(speedT, 0.5), 0).rgb; // Assuming V=0.5 is middle of texture
-                int particleType = ParticleTypeBuffer[instanceID];
 
                 // 2. Accumulate color influence from nearby obstacles stored in CollisionBuffer
                 int4 obstacleIndices = CollisionBuffer[instanceID];
@@ -143,49 +114,32 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 }
 
                 float3 finalColour = baseColour; // Start with base speed color
-                float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
 
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
-                if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
+                if (obstacleCount > 0) // If at least one obstacle is influencing the particle
                 {
-                    // Define a small tolerance value
-                    // Adjust this based on the precision you need
-                    static const float COMPARE_EPSILON = 0.001f;
+                    float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
+                    finalColour = saturate(obstacleColorSum * additiveStrength);
+                    // 'finalColour' now holds the additively mixed color.
+                    // -----------------------
 
-                    // Your float3 variables
-                    float3 colorA = obstacleColorSum;
-                    float3 colorB = playerColourPalette[particleType-1];
-
-                    // Calculate the absolute difference for each component
-                    float3 diff = abs(colorA - colorB);
-
-                    // Check if ALL components of the difference are less than epsilon
-                    // The comparison (diff < COMPARE_EPSILON) results in a bool3
-                    // all() returns true only if x, y, and z are all true
-                    bool approximatelyEqual = all(diff < COMPARE_EPSILON);
-
-                    if(approximatelyEqual)
+                    // --- Saturation Boost (Applied *after* additive mixing) ---
+                    // Boost saturation only if multiple obstacles contributed to the sum.
+                    if (obstacleCount > 1)
                     {
-                        finalColour = saturate(obstacleColorSum * additiveStrength*2);
+                        // Get the boost factor from the material property (ensure it's >= 1.0)
+                        float boostFactor = max(1.0, _SaturationBoost);
 
-                        // --- Saturation Boost (Applied *after* additive mixing) ---
-                        // Boost saturation only if multiple obstacles contributed to the sum.
-                        if (obstacleCount > 1)
-                        {
-                            finalColour = saturateColourFurther(finalColour);
-                        }
-                    }
-                    else
-                    {
-                        finalColour = saturate(colorB * additiveStrength);
-                        finalColour = saturateColourFurther(finalColour);
+                        // Convert the additively mixed color to HSV
+                        float3 hsv = RgbToHsv(finalColour);
+                        // Increase the Saturation value, clamping between 0 and 1
+                        hsv.y = saturate(hsv.y * boostFactor);
+                        // Convert back to RGB and update finalColour
+                        finalColour = HsvToRgb(hsv);
                     }
                 }
-                else if (particleType > 0)
-                {
-                    float3 playerColour = playerColourPalette[particleType-1];
-                    finalColour = saturate(playerColour * additiveStrength);
-                    finalColour = saturateColourFurther(finalColour);
+                else if (ParticleTypeBuffer[instanceID] > 0){
+                    finalColour = float3(1.0, 0.0, 1.0);
                 }
 
                 // 4. Calculate the world position and final clip space position for this vertex

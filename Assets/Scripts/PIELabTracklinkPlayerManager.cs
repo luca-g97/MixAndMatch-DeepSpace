@@ -21,8 +21,17 @@ namespace Assets.Tracking_Example.Scripts
 
         void Start()
         {
-            fluidSim = GameObject.FindFirstObjectByType<FluidSim2D>().gameObject.GetComponent<FluidSim2D>();
-            simulationBounds = fluidSim.boundsSize;
+            if (GameObject.FindFirstObjectByType<FluidSim2D>())
+            {
+                fluidSim = GameObject.FindFirstObjectByType<FluidSim2D>().gameObject.GetComponent<FluidSim2D>();
+            }
+            else
+            {
+                this.gameObject.SetActive(false);
+                return;
+            }
+
+                simulationBounds = fluidSim.boundsSize;
             factorX = simulationBounds.x / 2 * (-1);
             factorY = simulationBounds.y / 2 * (-1);
 

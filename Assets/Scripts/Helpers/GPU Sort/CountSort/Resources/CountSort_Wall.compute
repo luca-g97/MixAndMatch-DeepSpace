@@ -1,0 +1,55 @@
+#pragma kernel ClearCounts_Wall
+#pragma kernel CalculateCounts_Wall
+#pragma kernel ScatterOutput_Wall
+#pragma kernel CopyBack_Wall
+
+RWStructuredBuffer<uint> InputItems_Wall;
+RWStructuredBuffer<uint> InputKeys_Wall;
+RWStructuredBuffer<uint> SortedItems_Wall;
+RWStructuredBuffer<uint> SortedKeys_Wall;
+
+RWStructuredBuffer<uint> Counts_Wall;
+uint numInputs;
+
+static const int GroupSize = 256;
+
+[numthreads(GroupSize, 1, 1)]
+void ClearCounts_Wall(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= numInputs) return;
+
+    Counts_Wall[id.x] = 0;
+    InputItems_Wall[id.x] = id.x;
+}
+
+[numthreads(GroupSize, 1, 1)]
+void CalculateCounts_Wall(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= numInputs) return;
+
+    uint key = InputKeys_Wall[id.x];
+    InterlockedAdd(Counts_Wall[key], 1);
+}
+
+[numthreads(GroupSize, 1, 1)]
+void ScatterOutput_Wall(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= numInputs) return;
+
+    uint key = InputKeys_Wall[id.x];
+
+	uint sortedIndex;
+    InterlockedAdd(Counts_Wall[key], 1, sortedIndex);
+
+    SortedItems_Wall[sortedIndex] = InputItems_Wall[id.x];
+    SortedKeys_Wall[sortedIndex] = key;
+}
+
+[numthreads(GroupSize, 1, 1)]
+void CopyBack_Wall(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= numInputs) return;
+
+    InputItems_Wall[id.x] = SortedItems_Wall[id.x];
+    InputKeys_Wall[id.x] = SortedKeys_Wall[id.x];
+}
