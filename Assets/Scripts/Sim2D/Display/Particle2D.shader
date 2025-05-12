@@ -146,16 +146,38 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
 
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
-                if (obstacleCount > 0) // If at least one obstacle is influencing the particle
+                if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
                 {
-                    finalColour = saturate(obstacleColorSum * additiveStrength);
-                    // 'finalColour' now holds the additively mixed color.
-                    // -----------------------
+                    // Define a small tolerance value
+                    // Adjust this based on the precision you need
+                    static const float COMPARE_EPSILON = 0.001f;
 
-                    // --- Saturation Boost (Applied *after* additive mixing) ---
-                    // Boost saturation only if multiple obstacles contributed to the sum.
-                    if (obstacleCount > 1)
+                    // Your float3 variables
+                    float3 colorA = obstacleColorSum;
+                    float3 colorB = playerColourPalette[particleType-1];
+
+                    // Calculate the absolute difference for each component
+                    float3 diff = abs(colorA - colorB);
+
+                    // Check if ALL components of the difference are less than epsilon
+                    // The comparison (diff < COMPARE_EPSILON) results in a bool3
+                    // all() returns true only if x, y, and z are all true
+                    bool approximatelyEqual = all(diff < COMPARE_EPSILON);
+
+                    if(approximatelyEqual)
                     {
+                        finalColour = saturate(obstacleColorSum * additiveStrength*2);
+
+                        // --- Saturation Boost (Applied *after* additive mixing) ---
+                        // Boost saturation only if multiple obstacles contributed to the sum.
+                        if (obstacleCount > 1)
+                        {
+                            finalColour = saturateColourFurther(finalColour);
+                        }
+                    }
+                    else
+                    {
+                        finalColour = saturate(colorB * additiveStrength);
                         finalColour = saturateColourFurther(finalColour);
                     }
                 }
