@@ -217,18 +217,7 @@ namespace Seb.Fluid2D.Simulation
 
             UpdateObstacleBuffer();
         }
-        
-        public bool AreColorsClose(Color color1, Color color2, float tolerance, bool compareAlpha = false)
-        {
-            float rDiff = color1.r - color2.r;
-            float gDiff = color1.g - color2.g;
-            float bDiff = color1.b - color2.b;
-            float aDiff = compareAlpha ? (color1.a - color2.a) : 0f;
 
-            float sqrMagnitude = (rDiff * rDiff) + (gDiff * gDiff) + (bDiff * bDiff) + (aDiff * aDiff);
-            return sqrMagnitude < tolerance * tolerance;
-        }
-        
         void Update()
         {
             if (!isPaused)
@@ -434,12 +423,12 @@ namespace Seb.Fluid2D.Simulation
                     {
                         mixableColors.Add(playerColorPalette[i]);
                     }
-                };
-                
+                }
+                ;
                 if (players.Count >= 4) { mixableColors.Add(playerColorPalette[6]); mixableColors.Add(playerColorPalette[7]); }
                 if (players.Count >= 5) { mixableColors.Add(playerColorPalette[8]); mixableColors.Add(playerColorPalette[9]); }
-                if (players.Count > 5) { mixableColors.Add(playerColorPalette[10]); mixableColors.Add(playerColorPalette[11]); };
-                
+                if (players.Count > 5) { mixableColors.Add(playerColorPalette[10]); mixableColors.Add(playerColorPalette[11]); }
+                ;
 
                 for (int i = players.Count * 2; i < maxPlayerColors * 2; i++)
                 {

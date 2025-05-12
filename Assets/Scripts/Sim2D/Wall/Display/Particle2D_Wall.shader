@@ -45,7 +45,6 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
             SamplerState linear_clamp_sampler_Wall;
             float velocityMax_Wall;          // Max velocity for normalizing speed (usually set via script)
             float _SaturationBoost;     // Factor to boost saturation on mixing (from Properties)
-            int playerCount;
             float3 mixableColors_Wall[12];
 
             // --- Structs ---
