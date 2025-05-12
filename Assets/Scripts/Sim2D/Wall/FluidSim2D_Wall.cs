@@ -82,6 +82,7 @@ namespace Seb.Fluid2D.Simulation
         public int numParticles { get; private set; }
 
         [Header("Obstacles")]
+        public List<Color> mixableColors;
         public List<GameObject> obstacles;
         public ComputeBuffer obstacleColorsBuffer;
         [Min(0)] public float areaToColorAroundObstacles = 0.1f;
@@ -100,6 +101,25 @@ namespace Seb.Fluid2D.Simulation
             [FieldOffset(20)] public int obstacleType;
             [FieldOffset(24)] public int4 obstacleColorToMix;
         }
+
+        List<Color> playerColorPalette = new List<Color> {
+            new Color(0.9f, 0f, 0.4f),    // Red Primary
+            new Color(1f, 0.9f, 0f),        // Yellow Primary
+            new Color(0.0f, 0.4f, 0.7f),      // Blue Primary
+
+            // Secondary Colors
+            new Color(0.95f, 0.55f, 0f),      // Orange
+            new Color(0.6f, 0.75f, 0.1f),    // LimeGreen
+            new Color(0.6f, 0.1f, 0.5f),    // Violet
+
+            // Tertiary Colors
+            new Color(1f, 0.75f, 0f),     // Yellow-Orange
+            new Color(0.9f, 0.35f, 0f),      // Red-Orange
+            new Color(0.9f, 0f, 0.5f),    // Red-Violet
+            new Color(0.4f, 0.3f, 0.6f),  // Blue-Violet
+            new Color(0.05f, 0.7f, 0.6f),    // Blue-LimeGreen
+            new Color(0.8f, 0.85f, 0f),      // Yellow-Green
+        };
 
         // Add vertex buffer
         ComputeBuffer vertexBuffer;
@@ -377,29 +397,6 @@ namespace Seb.Fluid2D.Simulation
             {
                 playerColors.Clear(); // Clear existing player colors
 
-                // Define the R B Y - based palette for the color circle
-                // Note: Defining this list here every time playerCountChanged is true is slightly
-                // less efficient than defining it once as a static or member variable.
-                // However, this strictly adjusts only the provided lines.
-                List<Color> playerColorPalette = new List<Color> {
-                    new Color(0.9f, 0f, 0.4f),    // Red/Magenta-like Primary
-                    new Color(1f, 1f, 0f),        // Yellow Primary
-                    new Color(0f, 0.5f, 1f),      // Blue/Azure-like Primary
-
-                    // Secondary Colors
-                    new Color(1f, 0.5f, 0f),      // Orange
-                    new Color(0.5f, 0.8f, 0f),    // Lime Green
-                    new Color(0.6f, 0f, 0.8f),    // Violet
-
-                    // Tertiary Colors
-                    new Color(1f, 0.75f, 0f),     // Yellow-Orange
-                    new Color(1f, 0.3f, 0f),      // Red-Orange
-                    new Color(0.8f, 0f, 0.8f),    // Red-Violet (Purple)
-                    new Color(0.3f, 0.3f, 0.9f),  // Blue-Violet (Indigo-like)
-                    new Color(0f, 0.7f, 0.7f),    // Blue-Green (Teal-like)
-                    new Color(0.7f, 1f, 0f),      // Yellow-Green (Chartreuse-like)
-                };
-
                 int numPaletteColors = playerColorPalette.Count;
 
                 if (numPaletteColors > 0) // Proceed only if the palette has colors
@@ -416,6 +413,26 @@ namespace Seb.Fluid2D.Simulation
                         // Assign the selected color to the specific player GameObject in the dictionary
                         playerColors[players[i]] = playerColor;
                     }
+                }
+
+                mixableColors.Clear();
+
+                if (players.Count >= 3)
+                {
+                    for (int i = 0; i < 6; i++)
+                    {
+                        mixableColors.Add(playerColorPalette[i]);
+                    }
+                }
+                ;
+                if (players.Count >= 4) { mixableColors.Add(playerColorPalette[6]); mixableColors.Add(playerColorPalette[7]); }
+                if (players.Count >= 5) { mixableColors.Add(playerColorPalette[8]); mixableColors.Add(playerColorPalette[9]); }
+                if (players.Count > 5) { mixableColors.Add(playerColorPalette[10]); mixableColors.Add(playerColorPalette[11]); }
+                ;
+
+                for (int i = players.Count * 2; i < maxPlayerColors * 2; i++)
+                {
+                    mixableColors.Add(new Color(-1, -1, -1));
                 }
             }
 

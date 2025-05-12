@@ -45,6 +45,8 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
             SamplerState linear_clamp_sampler_Wall;
             float velocityMax_Wall;          // Max velocity for normalizing speed (usually set via script)
             float _SaturationBoost;     // Factor to boost saturation on mixing (from Properties)
+            int playerCount;
+            float3 mixableColors_Wall[12];
 
             // --- Structs ---
             // Data passed from Vertex to Fragment shader
@@ -81,6 +83,19 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
             }
             // --- End Helper Functions ---
 
+            float3 saturateColourFurther(float3 colour)
+            {
+                // Get the boost factor from the material property (ensure it's >= 1.0)
+                float boostFactor = max(1.0, _SaturationBoost);
+
+                // Convert the additively mixed color to HSV
+                float3 hsv = RgbToHsv(colour);
+                // Increase the Saturation value, clamping between 0 and 1
+                hsv.y = saturate(hsv.y * boostFactor);
+                // Convert back to RGB and update finalColour
+
+                return HsvToRgb(hsv);
+            }
 
             // --- Vertex Shader ---
             // Calculates final vertex color and position for each particle instance.
@@ -95,9 +110,23 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                 // Sample the color map (gradient texture) based on normalized speed
                 // Using tex2Dlod for explicit Mip level 0 sampling
                 float3 baseColour = ColourMap_Wall.SampleLevel(linear_clamp_sampler_Wall, float2(speedT, 0.5), 0).rgb; // Assuming V=0.5 is middle of texture
+                int particleType = ParticleTypeBuffer_Wall[instanceID];
+
+                static const float COMPARE_EPSILON = 0.001f;
+                int colorsToMixCount = 0;
+                for (int i = 0; i < 12; i++)
+                {
+                    float3 diff = abs(mixableColors_Wall[i] - float3(-1, -1, -1));
+                    if(all(diff > COMPARE_EPSILON))
+                    {
+                        colorsToMixCount++;
+                    }
+                }
+
+                int particleTypeToUse = (particleType-1) % colorsToMixCount;
 
                 // 2. Accumulate color influence from nearby obstacles stored in CollisionBuffer
-                int4 obstacleIndices_Wall = CollisionBuffer_Wall[instanceID];
+                int4 obstacleIndices = CollisionBuffer_Wall[instanceID];
                 float3 obstacleColorSum = float3(0, 0, 0); // Sum of influencing obstacle colors
                 int obstacleCount = 0; // Number of influencing obstacles
 
@@ -105,41 +134,53 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                 for (int i = 0; i < 4; i++)
                 {
                     // Index >= 0 means a valid obstacle (excludes -1 for none, -2 for secondary ring etc.)
-                    if (obstacleIndices_Wall[i] >= 0)
+                    if (obstacleIndices[i] >= 0)
                     {
                         // Add the base (less saturated) color from the ObstacleColors buffer
-                        obstacleColorSum += ObstacleColors_Wall[obstacleIndices_Wall[i]].rgb;
+                        obstacleColorSum += ObstacleColors_Wall[obstacleIndices[i]].rgb;
                         obstacleCount++;
                     }
                 }
 
                 float3 finalColour = baseColour; // Start with base speed color
+                float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
 
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
-                if (obstacleCount > 0) // If at least one obstacle is influencing the particle
+                if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
                 {
-                    float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
-                    finalColour = saturate(obstacleColorSum * additiveStrength);
-                    // 'finalColour' now holds the additively mixed color.
-                    // -----------------------
+                    float3 colorA = obstacleColorSum;
+                    float3 colorB = mixableColors_Wall[particleTypeToUse].rgb;
 
-                    // --- Saturation Boost (Applied *after* additive mixing) ---
-                    // Boost saturation only if multiple obstacles contributed to the sum.
-                    if (obstacleCount > 1)
+                    // Calculate the absolute difference for each component
+                    float3 diff = abs(colorA - colorB);
+
+                    // Check if ALL components of the difference are less than epsilon
+                    // The comparison (diff < COMPARE_EPSILON) results in a bool3
+                    // all() returns true only if x, y, and z are all true
+                    bool approximatelyEqual = all(diff < COMPARE_EPSILON);
+
+                    if(approximatelyEqual)
                     {
-                        // Get the boost factor from the material property (ensure it's >= 1.0)
-                        float boostFactor = max(1.0, _SaturationBoost);
+                        finalColour = saturate(obstacleColorSum * additiveStrength*2);
 
-                        // Convert the additively mixed color to HSV
-                        float3 hsv = RgbToHsv(finalColour);
-                        // Increase the Saturation value, clamping between 0 and 1
-                        hsv.y = saturate(hsv.y * boostFactor);
-                        // Convert back to RGB and update finalColour
-                        finalColour = HsvToRgb(hsv);
+                        // --- Saturation Boost (Applied *after* additive mixing) ---
+                        // Boost saturation only if multiple obstacles contributed to the sum.
+                        if (obstacleCount > 1)
+                        {
+                            finalColour = saturateColourFurther(finalColour);
+                        }
+                    }
+                    else
+                    {
+                        finalColour = saturate(colorB * additiveStrength);
+                        finalColour = saturateColourFurther(finalColour);
                     }
                 }
-                else if (ParticleTypeBuffer_Wall[instanceID] > 0){
-                    finalColour = float3(1.0, 0.0, 1.0);
+                else if (particleType > 0)
+                {
+                    float3 playerColour = mixableColors_Wall[particleTypeToUse].rgb;
+                    finalColour = saturate(playerColour * additiveStrength);
+                    finalColour = saturateColourFurther(finalColour);
                 }
 
                 // 4. Calculate the world position and final clip space position for this vertex

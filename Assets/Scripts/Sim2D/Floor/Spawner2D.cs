@@ -7,7 +7,21 @@ public class Spawner2D : MonoBehaviour
     public enum ParticleType
     {
         Water = 0,
-        Oil = 1
+        // Primary Colors
+        OilRed = 1,
+        OilYellow = 2,
+        OilBlue = 3,
+        // Secondary Colors
+        OilOrange = 4,
+        OilLimeGreen = 5,
+        OilViolet = 6,
+        // Tertiary Colors
+        OilYellowOrange = 7,
+        OilRedOrange = 8,
+        OilRedViolet = 9,
+        OilBlueViolet = 10,
+        OilBlueGreen = 11,
+        OilYellowGreen = 12
     };
 
     //public float spawnDensity;

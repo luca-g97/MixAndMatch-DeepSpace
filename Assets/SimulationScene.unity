@@ -172,6 +172,7 @@ MonoBehaviour:
   collisionDamping: 0.5
   smoothingRadius: 0.2
   boundsSize: {x: 16, y: 8}
+  yOffset: 0
   waterTargetDensity: 1
   waterPressureMultiplier: 150
   waterNearPressureMultiplier: 225
@@ -300,7 +301,7 @@ MonoBehaviour:
   scale: 0.06
   colourMap:
     serializedVersion: 2
-    key0: {r: 0, g: 0.02996673, b: 0.16981131, a: 1}
+    key0: {r: 0, g: 0.04914438, b: 0.26415092, a: 1}
     key1: {r: 0.6273585, g: 0.8659867, b: 1, a: 1}
     key2: {r: 1, g: 1, b: 1, a: 0}
     key3: {r: 0, g: 0, b: 0, a: 0}

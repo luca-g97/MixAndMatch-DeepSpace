@@ -45,6 +45,8 @@ namespace Seb.Fluid2D.Rendering
             material.SetBuffer("ObstacleColors_Wall", sim.obstacleColorsBuffer);
             material.SetBuffer("ParticleTypeBuffer_Wall", sim.particleTypeBuffer);
 
+            material.SetColorArray("mixableColors_Wall", sim.mixableColors);
+
             ComputeHelper.CreateArgsBuffer(ref argsBuffer_Wall, mesh, sim.positionBuffer.count);
             bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
 
