@@ -138,6 +138,9 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                         finalColour = HsvToRgb(hsv);
                     }
                 }
+                else if (ParticleTypeBuffer[instanceID] > 0){
+                    finalColour = float3(1.0, 0.0, 1.0);
+                }
 
                 // 4. Calculate the world position and final clip space position for this vertex
                 // Assumes input v.vertex defines a unit quad centered at (0,0)
@@ -150,10 +153,6 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 float3 worldVertPos = centreWorld + mul(unity_ObjectToWorld, float4(v.vertex.xyz * nonZeroScale, 0)).xyz;
                 // Transform from world space to clip space for the GPU rasterizer
                 o.pos = mul(UNITY_MATRIX_VP, float4(worldVertPos, 1.0));
-
-                if(obstacleIndices[0] == -2){
-                    finalColour = float3(1.0, 0.0, 1.0);
-                }
 
                 //if(ParticleTypeBuffer[instanceID] == 0){
                 //    finalColour = float3(1.0, 0.0, 1.0);

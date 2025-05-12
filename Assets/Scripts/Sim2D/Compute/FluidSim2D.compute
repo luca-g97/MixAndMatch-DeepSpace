@@ -167,6 +167,7 @@ void HandleCollisions(uint particleIndex)
 {
     float2 pos = Positions[particleIndex];
     float2 vel = Velocities[particleIndex];
+    int particleType = ParticleTypeBuffer[particleIndex];
 
     // --- Pre-calculations (Avoid redundant calculations later) ---
     const float2 halfSize = boundsSize * 0.5;
@@ -323,7 +324,7 @@ void HandleCollisions(uint particleIndex)
         if (consideredObstacles < 4 && obstacle.obstacleType == 0)
         {
              // Use else-if to assign only one category per obstacle
-            if (minDistSq < areaToColorAroundObstaclesSq)
+            if (minDistSq < areaToColorAroundObstaclesSq && particleType > 0)
             {
                 collisionIndices[consideredObstacles++] = obstacleIdx;
             }
@@ -602,9 +603,4 @@ void UpdatePositions(uint3 id : SV_DispatchThreadID)
         return;
     Positions[id.x] += Velocities[id.x] * deltaTime;
     HandleCollisions(id.x);
-    
-    if (ParticleTypeBuffer[id.x] == 1)
-    {
-        CollisionBuffer[id.x] = int4(-2, -2, -2, -2);
-    }
 }
