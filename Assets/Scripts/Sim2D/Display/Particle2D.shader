@@ -45,6 +45,8 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
             SamplerState linear_clamp_sampler;
             float velocityMax;          // Max velocity for normalizing speed (usually set via script)
             float _SaturationBoost;     // Factor to boost saturation on mixing (from Properties)
+            int playerCount;
+            float3 mixableColors[12];
 
             // --- Structs ---
             // Data passed from Vertex to Fragment shader
@@ -52,21 +54,6 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 float4 pos : SV_POSITION;   // Clip space position (mandatory)
                 float2 uv : TEXCOORD0;      // UV coordinates of the quad (for alpha mask)
                 float3 colour : TEXCOORD1;  // Final calculated color for the particle vertex
-            };
-
-            static const float3 playerColourPalette[12] = {
-                float3(0.9, 0.0, 0.4),    // [1] OilRed (matches ParticleType = 1)
-                float3(1.0, 1.0, 0.0),    // [2] OilYellow
-                float3(0.0, 0.5, 1.0),    // [3] Blue
-                float3(1.0, 0.5, 0.0),    // [4] Orange
-                float3(0.5, 0.8, 0.0),    // [5] LimeGreen
-                float3(0.6, 0.0, 0.8),    // [6] Violet
-                float3(1.0, 0.75, 0.0),   // [7] YellowOrange
-                float3(1.0, 0.3, 0.0),    // [8] RedOrange
-                float3(0.8, 0.0, 0.8),    // [9] RedViolet
-                float3(0.3, 0.3, 0.9),    // [10] BlueViolet
-                float3(0.0, 0.7, 0.7),    // [11] BlueGreen
-                float3(0.7, 1.0, 0.0)     // [12] YellowGreen
             };
 
             // --- Helper Functions: RGB <-> HSV Conversion ---
@@ -125,6 +112,19 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 float3 baseColour = ColourMap.SampleLevel(linear_clamp_sampler, float2(speedT, 0.5), 0).rgb; // Assuming V=0.5 is middle of texture
                 int particleType = ParticleTypeBuffer[instanceID];
 
+                static const float COMPARE_EPSILON = 0.001f;
+                int colorsToMixCount = 0;
+                for (int i = 0; i < 12; i++)
+                {
+                    float3 diff = abs(mixableColors[i] - float3(-1, -1, -1));
+                    if(all(diff > COMPARE_EPSILON))
+                    {
+                        colorsToMixCount++;
+                    }
+                }
+
+                int particleTypeToUse = (particleType-1) % colorsToMixCount;
+
                 // 2. Accumulate color influence from nearby obstacles stored in CollisionBuffer
                 int4 obstacleIndices = CollisionBuffer[instanceID];
                 float3 obstacleColorSum = float3(0, 0, 0); // Sum of influencing obstacle colors
@@ -148,13 +148,8 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
                 if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
                 {
-                    // Define a small tolerance value
-                    // Adjust this based on the precision you need
-                    static const float COMPARE_EPSILON = 0.001f;
-
-                    // Your float3 variables
                     float3 colorA = obstacleColorSum;
-                    float3 colorB = playerColourPalette[particleType-1];
+                    float3 colorB = mixableColors[particleTypeToUse].rgb;
 
                     // Calculate the absolute difference for each component
                     float3 diff = abs(colorA - colorB);
@@ -183,7 +178,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 }
                 else if (particleType > 0)
                 {
-                    float3 playerColour = playerColourPalette[particleType-1];
+                    float3 playerColour = mixableColors[particleTypeToUse].rgb;
                     finalColour = saturate(playerColour * additiveStrength);
                     finalColour = saturateColourFurther(finalColour);
                 }
