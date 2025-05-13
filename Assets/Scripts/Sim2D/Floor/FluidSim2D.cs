@@ -269,7 +269,7 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel, copybackKernel);
             if (vertexBuffer != null && vertexBuffer.IsValid()) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer", updatePositionKernel);
             if (obstacleBuffer != null && obstacleBuffer.IsValid()) ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
-            if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "obstacleColorsBuffer", obstacleColorsBuffer);
+            if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid()) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", updatePositionKernel);
         }
 
         void UpdateComputeShaderDynamicParams()
@@ -383,6 +383,15 @@ namespace Seb.Fluid2D.Simulation
             // Let's assume typeData[i][0] IS the original type before removal marking (shader only sets flag).
             List<(int originalParticleType, int removingObstacleType)> removedParticleInfo = new List<(int, int)>();
 
+            Color[] obstacleColorsArray = null;
+            if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid() && obstacleColorsBuffer.count > 0)
+            {
+                // 1. Create an array of the correct type and size to hold the data.
+                obstacleColorsArray = new Color[obstacleColorsBuffer.count];
+
+                // 2. Call GetData to populate the array.
+                obstacleColorsBuffer.GetData(obstacleColorsArray);
+            }
 
             for (int i = 0; i < numParticles; i++) // Iterate up to current numParticles
             {
@@ -392,14 +401,14 @@ namespace Seb.Fluid2D.Simulation
                     int particleOriginalType = typeData[i].x; // This is the type from the buffer
                     int particleFlag = typeData[i].y;
 
-                    if (particleFlag == 1) // Removed by Player (ObstacleType 0 as per HLSL mapping)
+                    if (particleFlag >= 0 && playerColorPalette[particleOriginalType - 1] == obstacleColorsArray[particleFlag]) // Removed by Player (ObstacleType 0 as per HLSL mapping)
                     {
                         indicesToRemove.Add(i);
                         // For scoring/logging: (particle's actual type, type of obstacle that removed it)
                         removedParticleInfo.Add((particleOriginalType, 0));
                         // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
                     }
-                    else if (particleFlag == 2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
+                    else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
                     {
                         indicesToRemove.Add(i);
                         removedParticleInfo.Add((particleOriginalType, 2));
@@ -495,14 +504,14 @@ namespace Seb.Fluid2D.Simulation
                     // Assuming typeData[i].x is the original type because the shader only set the flag.
                     if (i < typeData.Length)
                     { // Additional safety for typeData access
-                        keptParticleTypesAndFlags.Add(new int2(typeData[i].x, 0));
+                        keptParticleTypesAndFlags.Add(new int2(typeData[i].x, -1));
                     }
                     else
                     {
                         // This case implies a mismatch between numParticles used for GetData for primary buffers
                         // and the length of typeData. Should not happen if readback request size was correct.
                         // Add a dummy or default if this happens, and log an error.
-                        keptParticleTypesAndFlags.Add(new int2(0, 0)); // Default particle type if data is missing
+                        keptParticleTypesAndFlags.Add(new int2(0, -1)); // Default particle type if data is missing
                         Debug.LogError($"ProcessParticleRemovals: Mismatch accessing typeData at index {i}");
                     }
                 }
@@ -919,7 +928,7 @@ namespace Seb.Fluid2D.Simulation
             { // If buffers were re-created, they need to be re-bound
                 if (vertexBuffer != null && vertexBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "VerticesBuffer", vertexBuffer);
                 if (obstacleBuffer != null && obstacleBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "ObstaclesBuffer", obstacleBuffer);
-                if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "obstacleColorsBuffer", obstacleColorsBuffer);
+                if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "ObstacleColorsBuffer", obstacleColorsBuffer);
             }
             if (compute != null) compute.SetInt("numObstacles", _gpuObstacleDataList.Count);
         }

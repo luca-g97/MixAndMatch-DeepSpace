@@ -312,15 +312,15 @@ void HandleCollisions(uint particleIndex)
         // Check for removal condition FIRST. If removed, it might not need coloring.
         // Ensure particleType is still valid (>=0) before processing for removal by this obstacle.
         // ParticleProcessFlags[particleIndex] == 0 ensures we only mark it once per frame by the first Ventil/Player it hits.
-        if (particleProcessFlag == 0 && isInside && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
+        if (particleProcessFlag == -1 && isInside && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
         {
             if (obstacle.obstacleType == 0) // Player
             {
-                ParticleTypeBuffer[particleIndex][1] = 1; // Mark for removal by Player
+                ParticleTypeBuffer[particleIndex][1] = obstacleIdx; // Mark for removal by Player
             }
             else if(obstacle.obstacleType == 2)
             {
-                ParticleTypeBuffer[particleIndex][1] = 2; // Mark for removal by Ventil
+                ParticleTypeBuffer[particleIndex][1] = -2; // Mark for removal by Ventil
             }
         }
 
@@ -329,7 +329,7 @@ void HandleCollisions(uint particleIndex)
         // Check particleType again because it might have been set to -1 by the removal logic above.
         // And ensure ParticleProcessFlags is still 0, meaning it wasn't just marked for removal by *this* obstacle.
         // (If it was marked by a *previous* obstacle in this loop, particleType would already be -1, failing the ParticleTypeBuffer[particleIndex] >=0 check for coloring)
-        if (ParticleTypeBuffer[particleIndex][1] == 0 && particleType > 0 && obstacle.obstacleType == 0) // Only color if particle is active and obstacle is a player
+        if (ParticleTypeBuffer[particleIndex][1] != -2 && particleType > 0 && obstacle.obstacleType == 0) // Only color if particle is active and obstacle is a player
         {
             if (consideredObstacles < 4)
             {
@@ -375,7 +375,7 @@ void HandleCollisions(uint particleIndex)
             }
         } // --- End Collision Response ---
     } // --- End Outer Obstacle Loop ---
-
+    
     CollisionBuffer[particleIndex] = int4(collisionIndices[0], collisionIndices[1], collisionIndices[2], collisionIndices[3]);
     Positions[particleIndex] = pos;
     Velocities[particleIndex] = vel;

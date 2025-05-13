@@ -89,7 +89,7 @@ public class Spawner2D : MonoBehaviour
                 allPoints.Add(points[i] + jitter);
                 allVelocities.Add(initialVelocity);
                 allIndices.Add(regionIndex);
-                particleTypes.Add(new int2((int)region.particleType, 0));
+                particleTypes.Add(new int2((int)region.particleType, -1));
             }
         }
         return new ParticleSpawnData
@@ -141,7 +141,7 @@ public class Spawner2D : MonoBehaviour
                     newPoints.Add(spawnPos + jitter);
                     newVelocities.Add(initialVelocity);
                     newSpawnIndices.Add(regionIndex);
-                    newParticleTypes.Add(new int2((int)region.particleType, 0));
+                    newParticleTypes.Add(new int2((int)region.particleType, -1));
                     particlesAddedThisFrame++;
                 }
             }
