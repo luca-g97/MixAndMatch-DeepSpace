@@ -217,7 +217,7 @@ namespace Seb.Fluid2D.Simulation
 
             UpdateObstacleBuffer();
         }
-        
+
         public bool AreColorsClose(Color color1, Color color2, float tolerance, bool compareAlpha = false)
         {
             float rDiff = color1.r - color2.r;
@@ -228,7 +228,7 @@ namespace Seb.Fluid2D.Simulation
             float sqrMagnitude = (rDiff * rDiff) + (gDiff * gDiff) + (bDiff * bDiff) + (aDiff * aDiff);
             return sqrMagnitude < tolerance * tolerance;
         }
-        
+
         void Update()
         {
             if (!isPaused)
@@ -434,12 +434,14 @@ namespace Seb.Fluid2D.Simulation
                     {
                         mixableColors.Add(playerColorPalette[i]);
                     }
-                };
-                
+                }
+                ;
+
                 if (players.Count >= 4) { mixableColors.Add(playerColorPalette[6]); mixableColors.Add(playerColorPalette[7]); }
                 if (players.Count >= 5) { mixableColors.Add(playerColorPalette[8]); mixableColors.Add(playerColorPalette[9]); }
-                if (players.Count > 5) { mixableColors.Add(playerColorPalette[10]); mixableColors.Add(playerColorPalette[11]); };
-                
+                if (players.Count > 5) { mixableColors.Add(playerColorPalette[10]); mixableColors.Add(playerColorPalette[11]); }
+                ;
+
 
                 for (int i = players.Count * 2; i < maxPlayerColors * 2; i++)
                 {
@@ -580,7 +582,7 @@ namespace Seb.Fluid2D.Simulation
                         // We still need a color value for the obstacleColorsList buffer.
                         // Read the *current* color back from the Line Renderer's property block.
                         lr.GetPropertyBlock(_propBlock_Wall); // Populate _propBlock with current LR values
-                                                         // Check if the property exists before getting it
+                                                              // Check if the property exists before getting it
                         if (_propBlock_Wall.HasColor("_Color"))
                         {
                             colorForBufferList = _propBlock_Wall.GetColor("_Color");
