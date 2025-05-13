@@ -182,7 +182,6 @@ void HandleCollisions(uint particleIndex)
     int collisionIndices[4] = { -1, -1, -1, -1 }; // Store indices for coloring
     int consideredObstacles = 0; // Counter for coloring indices array
 
-
     // --- 1. Boundary Collisions ---
     // Simplified, direct boundary check and response using pre-calculated halfSize.
     // Using abs() avoids branching on sign().
@@ -196,7 +195,6 @@ void HandleCollisions(uint particleIndex)
         pos.y = (halfSize.y - boundaryEpsilon) * sign(pos.y); // Push slightly off boundary
         vel.y *= -collisionDamping; // Reflect and dampen normal velocity
     }
-
 
     // --- 2. Obstacle Collisions ---
     // Loop over relevant obstacles, capped at compile-time MAX_OBSTACLES for safety.
@@ -320,23 +318,23 @@ void HandleCollisions(uint particleIndex)
         // --- Coloring Logic (using squared distances) ---
         // Updated only if space available in collisionIndices and particle is close enough.
         // Uses squared distance checks, runs independent of collision response.
-        if (isInside && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
+        /*if (isInside && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
         {
             //Remove particle
         }
-        else if (consideredObstacles < 4 && obstacle.obstacleType == 0)
+        else*/ if (consideredObstacles < 4 && obstacle.obstacleType == 0)
         {
              // Use else-if to assign only one category per obstacle
-            if (minDistSq < areaToColorAroundObstaclesSq && particleType > 0)
+            if (minDistSq < areaToColorAroundObstaclesSq && particleType >= 0)
             {
                 collisionIndices[consideredObstacles] = obstacleIdx;
                 consideredObstacles++;
             }
-            else if (minDistSq < secondaryColorDistSq)
+            /*else if (minDistSq < secondaryColorDistSq)
             {
                 collisionIndices[consideredObstacles] = -2;
                 consideredObstacles++;
-            }
+            }*/
         }
 
         // --- Collision Response --- Executes only if collision is detected.

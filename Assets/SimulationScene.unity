@@ -191,7 +191,7 @@ MonoBehaviour:
   mixableColors: []
   obstacles: []
   areaToColorAroundObstacles: 1
-  coloredAreaAroundObstaclesDivider: 0.5
+  coloredAreaAroundObstaclesDivider: 0
   maxPlayerColors: 6
   obstacleLineColor: {r: 0, g: 1, b: 0, a: 1}
   obstacleLineWidth: 0.1
