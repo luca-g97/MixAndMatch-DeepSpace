@@ -352,48 +352,65 @@ namespace Seb.Fluid2D.Simulation
 
         void UpdateObstacleBuffer()
         {
-            var players = obstacles.Where(o => o != null && o.activeInHierarchy && o.name.Contains("PharusPlayer")).ToList();
-            bool playerCountChanged = players.Count != lastPlayerCount;
+            // 1. Filter the players
+            var players = obstacles.Where(o => o != null && o.activeInHierarchy && o.name.Contains("PharusPlayer"));
 
-            if (playerCountChanged)
+            // 2. Sort the filtered players by a stable identifier (InstanceID is good)
+            //    This ensures that the order of players in 'sortedPlayers' is consistent
+            //    every time this code runs, as long as the same set of players exists.
+            List<GameObject> sortedPlayers = players.OrderBy(p => p.GetInstanceID()).ToList();
+
+            // 3. Check if the number of players has actually changed
+            bool playerCountChanged = sortedPlayers.Count != lastPlayerCount;
+
+            if (playerCountChanged) // Or if you want to re-assign colors even if count is same but players might be different
             {
-                playerColors.Clear(); // Clear existing player colors
+                playerColors.Clear(); // Clear existing player colors for re-assignment
 
                 int numPaletteColors = playerColorPalette.Count;
 
-                if (numPaletteColors > 0) // Proceed only if the palette has colors
+                // Ensure palette has colors and maxPlayerColors is a positive number
+                if (numPaletteColors > 0 && maxPlayerColors > 0)
                 {
-                    // Loop through the current list of players
-                    for (int i = 0; i < players.Count; i++)
+                    // Loop through the *sorted* list of players
+                    for (int i = 0; i < sortedPlayers.Count; i++)
                     {
-                        // Assign colors by cycling through the predefined palette using the modulo operator
-                        // This ensures colors repeat if there are more players than palette colors.
+                        GameObject currentPlayer = sortedPlayers[i];
+
+                        // Assign colors by cycling through the predefined palette.
+                        // Because 'sortedPlayers' is now stable, 'i' will correspond to the
+                        // same player relative to others in the cycle.
                         Color playerColor = playerColorPalette[i % maxPlayerColors];
 
                         playerColor.a = 1.0f; // Ensure the color is fully opaque
 
                         // Assign the selected color to the specific player GameObject in the dictionary
-                        playerColors[players[i]] = playerColor;
+                        playerColors[currentPlayer] = playerColor;
                     }
                 }
+            }
 
-                mixableColors.Clear();
+            // Update lastPlayerCount for the next frame's comparison.
+            // This should be done regardless of whether playerCountChanged was true this frame,
+            // to accurately reflect the current number of (sorted) players.
+            lastPlayerCount = sortedPlayers.Count;
 
-                if (players.Count >= 3)
+            mixableColors.Clear();
+
+            if (sortedPlayers.Count >= 3)
+            {
+                for (int i = 0; i < 6; i++)
                 {
-                    for (int i = 0; i < 6; i++)
-                    {
-                        mixableColors.Add(playerColorPalette[i]);
-                    }
-                };
-                if (players.Count >= 4) { mixableColors.Add(playerColorPalette[6]); mixableColors.Add(playerColorPalette[7]); }
-                if (players.Count >= 5) { mixableColors.Add(playerColorPalette[8]); mixableColors.Add(playerColorPalette[9]); }
-                if (players.Count > 5) { mixableColors.Add(playerColorPalette[10]); mixableColors.Add(playerColorPalette[11]); };
-
-                for (int i = players.Count * 2; i < maxPlayerColors * 2; i++)
-                {
-                    mixableColors.Add(new Color(-1, -1, -1));
+                    mixableColors.Add(playerColorPalette[i]);
                 }
+            };
+            if (sortedPlayers.Count >= 4) { mixableColors.Add(playerColorPalette[6]); mixableColors.Add(playerColorPalette[7]); }
+            if (sortedPlayers.Count >= 5) { mixableColors.Add(playerColorPalette[8]); mixableColors.Add(playerColorPalette[9]); }
+            if (sortedPlayers.Count > 5) { mixableColors.Add(playerColorPalette[10]); mixableColors.Add(playerColorPalette[11]); };
+
+            for (int i = sortedPlayers.Count * 2; i < maxPlayerColors * 2; i++)
+            {
+                mixableColors.Add(new Color(-1, -1, -1));
             }
 
             allVertices.Clear();
@@ -504,9 +521,6 @@ namespace Seb.Fluid2D.Simulation
                 Vector3[] worldPoints = points.Select(p => obstacle.transform.TransformPoint(p)).ToArray();
                 lr.SetPositions(worldPoints); // Update vertex positions
             }
-
-            // Update state for the next frame
-            lastPlayerCount = players.Count;
 
             // --- Prepare and Update Compute Buffers ---
             Vector2[] verticesArray = allVertices.Count > 0 ? allVertices.ToArray() : new Vector2[] { Vector2.zero };

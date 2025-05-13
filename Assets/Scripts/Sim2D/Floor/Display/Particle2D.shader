@@ -145,7 +145,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
 
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
-                if (obstacleCount > 0) // If at least one obstacle is influencing the particle
+                if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
                 {
                     float3 colorA = obstacleColorSum;
                     float3 colorB = mixableColors[particleTypeToUse].rgb;
@@ -171,16 +171,16 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                     float3 diff = abs(exactColor - float3(-1, -1, -1));
                     if(all(diff > COMPARE_EPSILON))
                     {
-                        finalColour = saturate(obstacleColorSum);
+                        finalColour = saturate(obstacleColorSum * (additiveStrength*1.5));
                     }
                     else if(obstacleCount > 1 && mixableColor) 
                     { 
-                        finalColour = saturate(obstacleColorSum * (additiveStrength+0.1)); 
+                        finalColour = saturate(obstacleColorSum * (additiveStrength*1.25)); 
                     }
                     else
                     {
-                        //finalColour = saturate(colorB * additiveStrength); //Comment back in to use only for oil
-                        finalColour = saturate(obstacleColorSum * additiveStrength);
+                        finalColour = saturate(colorB * additiveStrength); //Uncomment to not display other mixed colors
+                        //finalColour = saturate(obstacleColorSum * additiveStrength); //Uncomment to also allow other mixed colors
                     }
                 }
                 else if (particleType > 0)
