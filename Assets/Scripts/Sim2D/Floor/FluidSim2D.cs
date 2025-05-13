@@ -393,6 +393,16 @@ namespace Seb.Fluid2D.Simulation
                 obstacleColorsBuffer.GetData(obstacleColorsArray);
             }
 
+            int4[] collisionIndicesArray = null;
+            if (collisionBuffer != null && collisionBuffer.IsValid() && collisionBuffer.count > 0)
+            {
+                // 1. Create an array of the correct type and size to hold the data.
+                collisionIndicesArray = new int4[collisionBuffer.count];
+
+                // 2. Call GetData to populate the array.
+                collisionBuffer.GetData(collisionIndicesArray);
+            }
+
             for (int i = 0; i < numParticles; i++) // Iterate up to current numParticles
             {
                 // Assuming typeData is valid up to numParticles from the readback request
@@ -404,29 +414,17 @@ namespace Seb.Fluid2D.Simulation
                     if (particleFlag >= 0) // Removed by Player (ObstacleType 0 as per HLSL mapping)
                     {
                         Color finalColour = new Color();
-                        if (collisionBuffer != null && collisionBuffer.IsValid() && i >= 0 && i < collisionBuffer.count)
+
+                        for (int j = 0; j < 4; j++)
                         {
-                            // 1. Create a small array to hold the single int4 element.
-                            int4[] tempArray = new int4[1];
-
-                            // 2. Use GetData to read the specific element from the ComputeBuffer into the array.
-                            //    - tempArray: The C# array to receive the data.
-                            //    - 0: The starting index in the C# array (managedBufferStartIndex).
-                            //    - i: The starting index in the ComputeBuffer on the GPU (computeBufferStartIndex).
-                            //    - 1: The number of elements to read (count).
-                            collisionBuffer.GetData(tempArray, 0, i, 1);
-
-                            for (int j = 0; j < 4; j++)
+                            int obstacleIndex = collisionIndicesArray[i][j];
+                            if (obstacleIndex != -1)
                             {
-                                int obstacleIndex = tempArray[0][j];
-                                if (obstacleIndex != -1)
-                                {
-                                    finalColour += obstacleColorsArray[obstacleIndex];
-                                }
-                                else
-                                {
-                                    break;
-                                }
+                                finalColour += obstacleColorsArray[obstacleIndex];
+                            }
+                            else
+                            {
+                                break;
                             }
                         }
 
