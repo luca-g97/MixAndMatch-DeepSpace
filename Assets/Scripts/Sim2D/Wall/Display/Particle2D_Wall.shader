@@ -37,14 +37,14 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
             StructuredBuffer<float2> Velocities_Wall;    // Particle velocities (for speed color)
             StructuredBuffer<int4> CollisionBuffer_Wall; // Indices of nearby obstacles (-1/-2 if none/other)
             StructuredBuffer<float4> ObstacleColors_Wall;// Base RGBA colors of obstacles (RGB assumed less saturated)
-            StructuredBuffer<int> ParticleTypeBuffer_Wall;
+            StructuredBuffer<int2> ParticleTypeBuffer_Wall;
 
             // --- Uniforms (Set by Script or Material) ---
             float scale_Wall;                // Particle scale factor (usually set via script)
             Texture2D<float4> ColourMap_Wall;
             SamplerState linear_clamp_sampler_Wall;
             float velocityMax_Wall;          // Max velocity for normalizing speed (usually set via script)
-            float _SaturationBoost;     // Factor to boost saturation on mixing (from Properties)
+            float _SaturationBoost_Wall;     // Factor to boost saturation on mixing (from Properties)
             float3 mixableColors_Wall[12];
 
             // --- Structs ---
@@ -85,7 +85,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
             float3 saturateColourFurther(float3 colour)
             {
                 // Get the boost factor from the material property (ensure it's >= 1.0)
-                float boostFactor = max(1.0, _SaturationBoost);
+                float boostFactor = max(1.0, _SaturationBoost_Wall);
 
                 // Convert the additively mixed color to HSV
                 float3 hsv = RgbToHsv(colour);
@@ -109,7 +109,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                 // Sample the color map (gradient texture) based on normalized speed
                 // Using tex2Dlod for explicit Mip level 0 sampling
                 float3 baseColour = ColourMap_Wall.SampleLevel(linear_clamp_sampler_Wall, float2(speedT, 0.5), 0).rgb; // Assuming V=0.5 is middle of texture
-                int particleType = ParticleTypeBuffer_Wall[instanceID];
+                int particleType = ParticleTypeBuffer_Wall[instanceID][0];
 
                 static const float COMPARE_EPSILON = 0.001f;
                 int colorsToMixCount = 0;
@@ -150,15 +150,38 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                     float3 colorA = obstacleColorSum;
                     float3 colorB = mixableColors_Wall[particleTypeToUse].rgb;
 
-                    float3 diff = abs(colorA - colorB);
-                    bool approximatelyEqual = all(diff < COMPARE_EPSILON);
-
-                    if (approximatelyEqual) {
-                        finalColour = saturate(obstacleColorSum * additiveStrength * 2);
-                    } else {
-                        finalColour = saturate(colorB * additiveStrength);
+                    bool mixableColor = false;
+                    float3 exactColor = float3(-1, -1, -1);
+                    for (int i = 0; i < 12; i++)
+                    {
+                        float3 diff = abs(mixableColors_Wall[i].rgb - obstacleColorSum);
+                        if(all(diff < COMPARE_EPSILON))
+                        {
+                            mixableColor = true;
+                            if (i == particleTypeToUse)
+                            {
+                                exactColor = obstacleColorSum;    
+                            }
+                        }
                     }
-                    finalColour = saturateColourFurther(finalColour);
+
+                    //For standard usage, just take the color of the first player it interacted with
+                    //finalColour = saturate(ObstacleColors[obstacleIndices[0]].rgb * additiveStrength);
+
+                    float3 diff = abs(exactColor - float3(-1, -1, -1));
+                    if(all(diff > COMPARE_EPSILON))
+                    {
+                        finalColour = saturate(obstacleColorSum * (additiveStrength*1.5));
+                    }
+                    else if(obstacleCount > 1 && mixableColor) 
+                    { 
+                        finalColour = saturate(obstacleColorSum * (additiveStrength*1.25)); 
+                    }
+                    else
+                    {
+                        finalColour = saturate(colorB * additiveStrength); //Uncomment to not display other mixed colors
+                        //finalColour = saturate(obstacleColorSum * additiveStrength); //Uncomment to also allow other mixed colors
+                    }
                 }
                 else if (particleType > 0)
                 {
@@ -178,10 +201,6 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                 float3 worldVertPos = centreWorld + mul(unity_ObjectToWorld, float4(v.vertex.xyz * nonZeroScale, 0)).xyz;
                 // Transform from world space to clip space for the GPU rasterizer
                 o.pos = mul(UNITY_MATRIX_VP, float4(worldVertPos, 1.0));
-
-                //if(ParticleTypeBuffer[instanceID] == 0){
-                //    finalColour = float3(1.0, 0.0, 1.0);
-                //}
 
                 // 5. Assign other outputs to be interpolated for the fragment shader
                 o.uv = v.texcoord; // Pass the quad's UV coordinates
