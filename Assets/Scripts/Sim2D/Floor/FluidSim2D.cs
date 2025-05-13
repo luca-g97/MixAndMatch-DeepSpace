@@ -347,10 +347,200 @@ namespace Seb.Fluid2D.Simulation
             if (!isPaused && numParticles > 0)
             {
                 RunSimulationFrame(cappedSimDeltaTime);
+                ProcessParticleRemovals();
             }
 
             if (pauseNextFrame) { isPaused = true; pauseNextFrame = false; }
             HandleInput();
+        }
+
+        async void ProcessParticleRemovals()
+        {
+            if (numParticles == 0 || particleTypeBuffer == null || !particleTypeBuffer.IsValid()) return;
+
+            // Request data from GPU
+            // ERROR 1: sizeof(int2) is not valid C#. Use Marshal.SizeOf or UnsafeUtility.SizeOf.
+            // Assuming int2 is Unity.Mathematics.int2
+            var typesRequest = AsyncGPUReadback.Request(particleTypeBuffer, numParticles * Marshal.SizeOf(typeof(Unity.Mathematics.int2)), 0);
+
+            // await System.Threading.Tasks.Task.Yield(); // Yield to allow GPU to process - this is okay but WaitForCompletion makes it synchronous from this point.
+            // If this method is called from Update(), an async void can be okay, but be mindful of error handling.
+            typesRequest.WaitForCompletion(); // This blocks until the GPU readback is complete.
+
+            if (typesRequest.hasError)
+            {
+                Debug.LogError("GPU readback error for particle removal.");
+                return;
+            }
+
+            // GetData<int2>() is correct for a buffer of int2.
+            var typeData = typesRequest.GetData<Unity.Mathematics.int2>();
+
+            List<int> indicesToRemove = new List<int>();
+            // This list seems intended for scoring or logging. Let's clarify its purpose.
+            // It's currently storing (flag_value, hardcoded_remover_type_0_or_2)
+            // A better structure might be (originalParticleType, actualObstacleTypeThatCausedRemoval)
+            // Let's assume typeData[i][0] IS the original type before removal marking (shader only sets flag).
+            List<(int originalParticleType, int removingObstacleType)> removedParticleInfo = new List<(int, int)>();
+
+
+            for (int i = 0; i < numParticles; i++) // Iterate up to current numParticles
+            {
+                // Assuming typeData is valid up to numParticles from the readback request
+                if (i < typeData.Length) // Safety check for array bounds
+                {
+                    int particleOriginalType = typeData[i].x; // This is the type from the buffer
+                    int particleFlag = typeData[i].y;
+
+                    if (particleFlag == 1) // Removed by Player (ObstacleType 0 as per HLSL mapping)
+                    {
+                        indicesToRemove.Add(i);
+                        // For scoring/logging: (particle's actual type, type of obstacle that removed it)
+                        removedParticleInfo.Add((particleOriginalType, 0));
+                        // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
+                    }
+                    else if (particleFlag == 2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
+                    {
+                        indicesToRemove.Add(i);
+                        removedParticleInfo.Add((particleOriginalType, 2));
+                        // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Ventil (Flag 2 / ObstacleType 2).");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"ProcessParticleRemovals: Index {i} out of bounds for typeData (Length: {typeData.Length}). numParticles might be out of sync with readback size.");
+                    break;
+                }
+            }
+
+            if (indicesToRemove.Count == 0)
+            {
+                // IMPORTANT: Even if no particles are removed, flags might have been set and need resetting for the next frame
+                // if those flags don't lead to removal but some other temporary state.
+                // However, with current logic (flag 1 or 2 means remove), if indicesToRemove is empty, all flags were 0.
+                // If flags could mean something else, you'd need to reset them here by re-writing particleTypeBuffer.
+                // For now, this is fine.
+                return;
+            }
+
+            // --- Compact buffers ---
+            int oldNumParticles = numParticles; // numParticles before removal
+            int newNumParticlesCount = oldNumParticles - indicesToRemove.Count;
+
+            if (newNumParticlesCount <= 0)
+            {
+                numParticles = 0;
+                // Release and create empty-ish buffers
+                // These helpers need to be robust and correctly handle all buffers including sort targets and spatial hash.
+                ReleaseParticleBuffers(); // This should release GPU ComputeBuffers
+                CreateParticleBuffers(1); // Create with minimal capacity for GPU ComputeBuffers
+                                          // _cpuParticleTypesArray (NativeArray) is managed separately (Awake/OnDestroy) and should be fine.
+
+                if (spatialHash != null) spatialHash.Release(); // Ensure spatial hash is also handled
+                spatialHash = new SpatialHash(1);
+
+                BindComputeShaderBuffers();
+                UpdateComputeShaderDynamicParams(); // Sets numParticles = 0 in shader
+                Debug.Log("All particles removed.");
+                return;
+            }
+
+            // Fetch all current data for active particles
+            // These arrays should be sized to oldNumParticles because we're reading the entire current state
+            float2[] allPositions = new float2[oldNumParticles];
+            float2[] allPredicted = new float2[oldNumParticles];
+            float2[] allVelocities = new float2[oldNumParticles];
+            float2[] allDensities = new float2[oldNumParticles];
+            float[] allGravityScales = new float[oldNumParticles];
+            int4[] allCollisions = new int4[oldNumParticles];
+            // typeData (NativeArray<int2>) already contains the types and flags. No need to re-read particleTypeBuffer.
+
+            // Expensive GetData calls:
+            if (positionBuffer.IsValid() && positionBuffer.count >= oldNumParticles) positionBuffer.GetData(allPositions, 0, 0, oldNumParticles); else Debug.LogError("PositionBuffer invalid or too small for GetData");
+            if (predictedPositionBuffer.IsValid() && predictedPositionBuffer.count >= oldNumParticles) predictedPositionBuffer.GetData(allPredicted, 0, 0, oldNumParticles); else Debug.LogError("PredictedPositionBuffer invalid or too small for GetData");
+            if (velocityBuffer.IsValid() && velocityBuffer.count >= oldNumParticles) velocityBuffer.GetData(allVelocities, 0, 0, oldNumParticles); else Debug.LogError("VelocityBuffer invalid or too small for GetData");
+            if (densityBuffer.IsValid() && densityBuffer.count >= oldNumParticles) densityBuffer.GetData(allDensities, 0, 0, oldNumParticles); else Debug.LogError("DensityBuffer invalid or too small for GetData");
+            if (gravityScaleBuffer.IsValid() && gravityScaleBuffer.count >= oldNumParticles) gravityScaleBuffer.GetData(allGravityScales, 0, 0, oldNumParticles); else Debug.LogError("GravityScaleBuffer invalid or too small for GetData");
+            if (collisionBuffer.IsValid() && collisionBuffer.count >= oldNumParticles) collisionBuffer.GetData(allCollisions, 0, 0, oldNumParticles); else Debug.LogError("CollisionBuffer invalid or too small for GetData");
+
+
+            // Create lists for surviving particles
+            List<float2> keptPositions = new List<float2>(newNumParticlesCount);
+            List<float2> keptPredicted = new List<float2>(newNumParticlesCount);
+            List<float2> keptVelocities = new List<float2>(newNumParticlesCount);
+            List<float2> keptDensities = new List<float2>(newNumParticlesCount);
+            List<float> keptGravityScales = new List<float>(newNumParticlesCount);
+            List<int4> keptCollisions = new List<int4>(newNumParticlesCount);
+            List<int2> keptParticleTypesAndFlags = new List<int2>(newNumParticlesCount); // Store int2 (type, flag=0)
+
+            int removedIdxIter = 0; // Iterator for sorted indicesToRemove
+            for (int i = 0; i < oldNumParticles; i++)
+            {
+                bool isRemoved = false;
+                if (removedIdxIter < indicesToRemove.Count && i == indicesToRemove[removedIdxIter])
+                {
+                    isRemoved = true;
+                    removedIdxIter++;
+                }
+
+                if (!isRemoved)
+                {
+                    keptPositions.Add(allPositions[i]);
+                    keptPredicted.Add(allPredicted[i]);
+                    keptVelocities.Add(allVelocities[i]);
+                    keptDensities.Add(allDensities[i]);
+                    keptGravityScales.Add(allGravityScales[i]);
+                    keptCollisions.Add(allCollisions[i]);
+                    // Use type from typeData (which was read from particleTypeBuffer) and reset flag to 0.
+                    // Assuming typeData[i].x is the original type because the shader only set the flag.
+                    if (i < typeData.Length)
+                    { // Additional safety for typeData access
+                        keptParticleTypesAndFlags.Add(new int2(typeData[i].x, 0));
+                    }
+                    else
+                    {
+                        // This case implies a mismatch between numParticles used for GetData for primary buffers
+                        // and the length of typeData. Should not happen if readback request size was correct.
+                        // Add a dummy or default if this happens, and log an error.
+                        keptParticleTypesAndFlags.Add(new int2(0, 0)); // Default particle type if data is missing
+                        Debug.LogError($"ProcessParticleRemovals: Mismatch accessing typeData at index {i}");
+                    }
+                }
+            }
+
+            numParticles = newNumParticlesCount; // Update the global particle count
+
+            // At this point, GPU buffers are still full size (e.g., maxTotalParticles).
+            // We are just using fewer slots by setting data for 'numParticles'.
+            // This avoids frequent Release/Create of GPU buffers if they are already at max capacity.
+            // The CreateParticleBuffers(Mathf.Max(1, numParticles)) call in your original was for resizing down,
+            // which can be okay but also means reallocations. If buffers are kept at maxTotalParticles,
+            // we just need to SetData for the new 'numParticles'.
+
+            if (numParticles > 0)
+            {
+                // Check if current buffers are large enough for 'numParticles'. They should be if sized to maxTotalParticles.
+                // If you choose to resize buffers down to numParticles:
+                // ReleaseParticleBuffers(); 
+                // CreateParticleBuffers(Mathf.Max(1, numParticles)); // This assumes CreateParticleBuffers also handles SortTargets appropriately
+                // spatialHash = new SpatialHash(Mathf.Max(1, numParticles));
+                // BindComputeShaderBuffers();
+
+                // If buffers are kept at maxTotalParticles capacity (preferred for stability):
+                positionBuffer.SetData(keptPositions); // SetData will only write up to keptPositions.Count
+                predictedPositionBuffer.SetData(keptPredicted);
+                velocityBuffer.SetData(keptVelocities);
+                densityBuffer.SetData(keptDensities);
+                gravityScaleBuffer.SetData(keptGravityScales);
+                collisionBuffer.SetData(keptCollisions);
+                particleTypeBuffer.SetData(keptParticleTypesAndFlags); // Set compacted types with flags reset
+            }
+            // If numParticles is 0, no SetData needed. Dispatches will use numParticles = 0.
+
+            // Update numParticles on the compute shader
+            UpdateComputeShaderDynamicParams();
+
+            // Debug.Log($"Particles removed. New count: {numParticles}");
         }
 
         // Fallback CPU-based buffer resizing (used if Graphics.CopyBuffer is problematic)
