@@ -91,7 +91,7 @@ namespace Seb.Fluid2D.Simulation
         private MaterialPropertyBlock _propBlock;
         private Material _sharedUnlitMaterial;
 
-        [StructLayout(LayoutKind.Explicit, Size = 40)]
+        [StructLayout(LayoutKind.Explicit, Size = 24)]
         public struct ObstacleData
         {
             [FieldOffset(0)] public Vector2 centre;
@@ -99,7 +99,6 @@ namespace Seb.Fluid2D.Simulation
             [FieldOffset(12)] public int vertexCount;
             [FieldOffset(16)] public float lineWidth;
             [FieldOffset(20)] public int obstacleType;
-            [FieldOffset(24)] public int4 obstacleColorToMix;
         }
 
         List<Color> playerColorPalette = new List<Color> {
@@ -351,54 +350,6 @@ namespace Seb.Fluid2D.Simulation
             }
         }
 
-        int4 RecolorVentil()
-        {
-            int[] playersToMixArray = new int[4] { -1, -1, -1, -1 }; // Initialize with -1
-
-            // 1. Find the indices of all obstacles that are "PharusPlayer"
-            List<int> availablePlayerIndices = new List<int>();
-            for (int tempObstacle = 0; tempObstacle < obstacles.Count; tempObstacle++)
-            {
-                // Check for null before accessing name
-                if (obstacles[tempObstacle] != null && obstacles[tempObstacle].name.Contains("PharusPlayer"))
-                {
-                    availablePlayerIndices.Add(tempObstacle); // Store the index
-                }
-            }
-
-            // 2. Shuffle the list of available player indices randomly (Fisher-Yates Algorithm)
-            for (int player = availablePlayerIndices.Count - 1; player > 0; player--)
-            {
-                int j = rand.Next(player + 1); // Random index from 0 up to i (inclusive)
-                                               // Swap indices at i and j
-                int tempIndex = availablePlayerIndices[player];
-                availablePlayerIndices[player] = availablePlayerIndices[j];
-                availablePlayerIndices[j] = tempIndex;
-            }
-
-            // 3. Determine how many unique players we can actually select (max 4)
-            int countToSelect = System.Math.Min(3, availablePlayerIndices.Count / 4);
-
-            // 4. Create the result list (or array) and populate it
-            List<int> playersToMixList = new List<int>(4);
-
-            if (availablePlayerIndices.Count > 0)
-            {
-                for (int tempIndex = 0; tempIndex <= countToSelect; tempIndex++)
-                {
-                    int selectedIndex = availablePlayerIndices[tempIndex];
-                    playersToMixList.Add(selectedIndex); // Add to list
-                    playersToMixArray[tempIndex] = selectedIndex; // Assign to array slot
-                }
-
-                playersToMixArray = playersToMixArray
-                    .OrderBy(index => index == -1 ? 1 : 0) // Places -1 after valid indices (0 vs 1)
-                    .ThenBy(index => index)               // Sorts valid indices numerically
-                    .ToArray();                           // Convert back to array
-            }
-            return new int4(playersToMixArray[0], playersToMixArray[1], playersToMixArray[2], playersToMixArray[3]);
-        }
-
         void UpdateObstacleBuffer()
         {
             var players = obstacles.Where(o => o != null && o.activeInHierarchy && o.name.Contains("PharusPlayer")).ToList();
@@ -503,10 +454,6 @@ namespace Seb.Fluid2D.Simulation
                 else if (obstacle.name.Contains("Obstacle")) { obstacleType = 1; }
                 else if (obstacle.name.Contains("Ventil")) { obstacleType = 2; }
 
-                // Determine potential influencing players for Ventils (needed for ObstacleData)
-                int4 playersToMixIndices = new int4(-1, -1, -1, -1);
-                if (obstacleType == 2) { playersToMixIndices = RecolorVentil(); }
-
                 // Create Obstacle Data
                 ObstacleData currentObstacleData = new ObstacleData
                 {
@@ -515,7 +462,6 @@ namespace Seb.Fluid2D.Simulation
                     vertexCount = points.Length,
                     lineWidth = obstacleLineWidth,
                     obstacleType = obstacleType,
-                    obstacleColorToMix = playersToMixIndices
                 };
                 obstacleDataList.Add(currentObstacleData);
 
@@ -535,66 +481,16 @@ namespace Seb.Fluid2D.Simulation
                     _propBlock.SetColor("_Color", colorForBufferList);
                     lr.SetPropertyBlock(_propBlock);
                 }
-                else if (obstacleType == 2) // Ventil
+                else // Obstacle (Type 1) or Unknown (Type -1)
                 {
-                    // Only RECALCULATE the color if the player count changed
-                    if (playerCountChanged)
+                    if (obstacleType == 1)
                     {
-                        // --- Perform color mixing calculation ---
-                        Color colorSumFromPlayers = Color.clear;
-                        int influencingPlayerCount = 0;
-                        int4 currentMixIndices = playersToMixIndices; // Use indices determined above
-                        for (int j = 0; j < 4; j++)
-                        {
-                            int playerListIndex = currentMixIndices[j];
-                            if (playerListIndex >= 0 && playerListIndex < players.Count)
-                            {
-                                GameObject influencingPlayer = players[playerListIndex];
-                                if (playerColors.TryGetValue(influencingPlayer, out Color basePlayerColor))
-                                {
-                                    colorSumFromPlayers += basePlayerColor; influencingPlayerCount++;
-                                }
-                            }
-                        }
-                        Color mixedColor;
-                        if (influencingPlayerCount > 0)
-                        {
-                            float additiveStrength = 1.0f; mixedColor = colorSumFromPlayers * additiveStrength;
-                            mixedColor.r = Mathf.Clamp01(mixedColor.r); mixedColor.g = Mathf.Clamp01(mixedColor.g); mixedColor.b = Mathf.Clamp01(mixedColor.b); mixedColor.a = 1.0f;
-                            if (influencingPlayerCount > 1) { float boostFactor = 1.5f; Color.RGBToHSV(mixedColor, out float H, out float S, out float V); S = Mathf.Clamp01(S * boostFactor); mixedColor = Color.HSVToRGB(H, S, V); mixedColor.a = 1.0f; }
-                        }
-                        else { mixedColor = Color.grey; } // Default color if no influence
-                                                          // --- End recalculation ---
-
-                        colorForBufferList = mixedColor; // Use the newly calculated color for the buffer
-                                                         // Apply the new color to the LR via Property Block
-                        _propBlock.SetColor("_Color", colorForBufferList);
-                        lr.SetPropertyBlock(_propBlock);
+                        colorForBufferList = Color.white;
                     }
                     else
                     {
-                        // Player count did NOT change.
-                        // *** DO NOT apply color to the Line Renderer here. *** It retains its previous color.
-                        // We still need a color value for the obstacleColorsList buffer.
-                        // Read the *current* color back from the Line Renderer's property block.
-                        lr.GetPropertyBlock(_propBlock); // Populate _propBlock with current LR values
-                                                         // Check if the property exists before getting it
-                        if (_propBlock.HasColor("_Color"))
-                        {
-                            colorForBufferList = _propBlock.GetColor("_Color");
-                        }
-                        else
-                        {
-                            // Fallback if color wasn't set previously or property name mismatch
-                            colorForBufferList = Color.grey; // Default color for buffer if readback fails
-                            Debug.LogWarning($"Could not read _Color property from LR on {obstacle.name}. Buffer may be inaccurate.", obstacle);
-                        }
+                        colorForBufferList = Color.gray;
                     }
-                }
-                else // Obstacle (Type 1) or Unknown (Type -1)
-                {
-                    colorForBufferList = Color.white; // Default color
-                                                      // Apply color to LR using Property Block
                     _propBlock.SetColor("_Color", colorForBufferList);
                     lr.SetPropertyBlock(_propBlock);
                 }

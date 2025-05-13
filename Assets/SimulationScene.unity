@@ -191,7 +191,7 @@ MonoBehaviour:
   mixableColors: []
   obstacles: []
   areaToColorAroundObstacles: 1
-  coloredAreaAroundObstaclesDivider: 0
+  coloredAreaAroundObstaclesDivider: 0.5
   maxPlayerColors: 6
   obstacleLineColor: {r: 0, g: 1, b: 0, a: 1}
   obstacleLineWidth: 0.1
@@ -211,78 +211,78 @@ MonoBehaviour:
   initialVelocity: {x: 0, y: 0}
   jitterStr: 0.05
   spawnRegions:
-  - position: {x: 6, y: 0}
+  - position: {x: 4, y: 0}
     size: {x: 6, y: 4}
     spawnDensity: 750
     particleType: 0
     debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
-  - position: {x: -6, y: 0}
+  - position: {x: -4, y: 0}
     size: {x: 6, y: 4}
     spawnDensity: 750
     particleType: 0
     debugCol: {r: 1, g: 0.27843142, b: 0.3170616, a: 1}
-  - position: {x: -8.5, y: 0}
-    size: {x: 1, y: 1}
-    spawnDensity: 0
-    particleType: 1
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -7, y: 0}
     size: {x: 1, y: 1}
-    spawnDensity: 0
+    spawnDensity: 1000
+    particleType: 1
+    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+  - position: {x: -5.75, y: 0}
+    size: {x: 1, y: 1}
+    spawnDensity: 1000
     particleType: 2
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: -5.5, y: 0}
+  - position: {x: -4.5, y: 0}
     size: {x: 1, y: 1}
-    spawnDensity: 0
+    spawnDensity: 1000
     particleType: 3
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: -4, y: 0}
+  - position: {x: -3.25, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 4
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: -2.5, y: 0}
+  - position: {x: -2, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 5
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: -1, y: 0}
+  - position: {x: -0.75, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 6
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: 1, y: 0}
+  - position: {x: 0.75, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 7
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: 2.5, y: 0}
+  - position: {x: 2, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 8
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: 4, y: 0}
+  - position: {x: 3.25, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 9
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: 5.5, y: 0}
+  - position: {x: 4.5, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 10
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: 7, y: 0}
+  - position: {x: 5.75, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 11
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - position: {x: 8.5, y: 0}
+  - position: {x: 7, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
     particleType: 12
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   showSpawnBoundsGizmos: 1
-  spawnParticleCount: 45516
+  spawnParticleCount: 48588
 --- !u!114 &271053322
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -301,7 +301,7 @@ MonoBehaviour:
   scale: 0.06
   colourMap:
     serializedVersion: 2
-    key0: {r: 0, g: 0.04914438, b: 0.26415092, a: 1}
+    key0: {r: 0, g: 0.071455285, b: 0.4009434, a: 1}
     key1: {r: 0.6273585, g: 0.8659867, b: 1, a: 1}
     key2: {r: 1, g: 1, b: 1, a: 0}
     key3: {r: 0, g: 0, b: 0, a: 0}
@@ -423,6 +423,95 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1184858220
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 7564270855486431386, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Name
+      value: Ventil
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -3.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755077085090649403, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[0].x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755077085090649403, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[0].y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755077085090649403, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[1].x
+      value: -16
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755077085090649403, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[1].y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755077085090649403, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[2].x
+      value: -16
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755077085090649403, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[2].y
+      value: -0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755077085090649403, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[3].x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755077085090649403, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[3].y
+      value: -0.5
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
 --- !u!1001 &1621349553
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -539,17 +628,53 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1534539156138853508, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[0].x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1534539156138853508, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[0].y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1534539156138853508, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[1].x
+      value: -15.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 1534539156138853508, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[1].y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1534539156138853508, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[2].x
+      value: -15.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 1534539156138853508, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[2].y
+      value: -0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1534539156138853508, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[3].x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1534539156138853508, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_Points.m_Paths.Array.data[0].Array.data[3].y
+      value: -0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 4118164978541504360, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
       propertyPath: m_Name
       value: Obstacle
       objectReference: {fileID: 0}
     - target: {fileID: 8465265251951431075, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8465265251951431075, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -3.41
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 8465265251951431075, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -2.54
+      value: -2.5
       objectReference: {fileID: 0}
     - target: {fileID: 8465265251951431075, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
       propertyPath: m_LocalPosition.z
@@ -596,3 +721,4 @@ SceneRoots:
   - {fileID: 1621349553}
   - {fileID: 271053318}
   - {fileID: 7257038834081003737}
+  - {fileID: 1184858220}

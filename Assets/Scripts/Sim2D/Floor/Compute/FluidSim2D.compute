@@ -20,7 +20,6 @@ struct Obstacle
     int vertexCount;
     float lineWidth;
     int obstacleType;
-    int4 obstacleColorToMix;
 };
 
 StructuredBuffer<Obstacle> ObstaclesBuffer;
@@ -318,47 +317,30 @@ void HandleCollisions(uint particleIndex)
         // This comparison avoids sqrt().
         bool collisionDetected = isInside || (minDistSq < collisionPaddingSq);
 
-
         // --- Coloring Logic (using squared distances) ---
         // Updated only if space available in collisionIndices and particle is close enough.
         // Uses squared distance checks, runs independent of collision response.
-        if (consideredObstacles < 4 && obstacle.obstacleType == 0)
+        if (isInside && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
+        {
+            //Remove particle
+        }
+        else if (consideredObstacles < 4 && obstacle.obstacleType == 0)
         {
              // Use else-if to assign only one category per obstacle
             if (minDistSq < areaToColorAroundObstaclesSq && particleType > 0)
             {
-                collisionIndices[consideredObstacles++] = obstacleIdx;
+                collisionIndices[consideredObstacles] = obstacleIdx;
+                consideredObstacles++;
             }
             else if (minDistSq < secondaryColorDistSq)
             {
-                collisionIndices[consideredObstacles++] = -2;
-            }
-        }
-        
-        bool ventil = false;
-        if (collisionDetected && obstacle.obstacleType == 2)
-        {
-            int4 playersToCheck = obstacle.obstacleColorToMix;
-
-            bool matchFound = false;
-            if (obstacleIdx == playersToCheck[0]) { matchFound = true; }
-            if (obstacleIdx == playersToCheck[1]) { matchFound = true; }
-            if (obstacleIdx == playersToCheck[2]) { matchFound = true; }
-            if (obstacleIdx == playersToCheck[3]) { matchFound = true; }
-
-            if (matchFound)
-            {
-                collisionIndices[consideredObstacles++] = obstacleIdx;
-                for (int i = consideredObstacles; i < 4; i++)
-                {
-                    collisionIndices[i] = -1;
-                }
-                ventil = true;
+                collisionIndices[consideredObstacles] = -2;
+                consideredObstacles++;
             }
         }
 
         // --- Collision Response --- Executes only if collision is detected.
-        if (collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1) && !ventil)
+        if (collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1))
         {
             // CRITICAL OPTIMIZATION: Calculate sqrt(minDistSq) *only once* here, if needed.
             float actualDistance = sqrt(minDistSq);

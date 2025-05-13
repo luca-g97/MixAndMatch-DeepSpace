@@ -115,7 +115,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 int colorsToMixCount = 0;
                 for (int i = 0; i < 12; i++)
                 {
-                    float3 diff = abs(mixableColors[i] - float3(-1, -1, -1));
+                    float3 diff = abs(mixableColors[i].rgb - float3(-1, -1, -1));
                     if(all(diff > COMPARE_EPSILON))
                     {
                         colorsToMixCount++;
