@@ -75,7 +75,7 @@ public class Spawner2D : MonoBehaviour
         List<float2> allPoints = new();
         List<float2> allVelocities = new();
         List<int> allIndices = new();
-        List<int> particleTypes = new();
+        List<int2> particleTypes = new();
 
         for (int regionIndex = 0; regionIndex < spawnRegions.Length; regionIndex++)
         {
@@ -89,7 +89,7 @@ public class Spawner2D : MonoBehaviour
                 allPoints.Add(points[i] + jitter);
                 allVelocities.Add(initialVelocity);
                 allIndices.Add(regionIndex);
-                particleTypes.Add((int)region.particleType);
+                particleTypes.Add(new int2((int)region.particleType, 0));
             }
         }
         return new ParticleSpawnData
@@ -110,7 +110,7 @@ public class Spawner2D : MonoBehaviour
         List<float2> newPoints = new();
         List<float2> newVelocities = new();
         List<int> newSpawnIndices = new();
-        List<int> newParticleTypes = new();
+        List<int2> newParticleTypes = new();
         int particlesAddedThisFrame = 0;
 
         for (int regionIndex = 0; regionIndex < spawnRegions.Length; regionIndex++)
@@ -141,7 +141,7 @@ public class Spawner2D : MonoBehaviour
                     newPoints.Add(spawnPos + jitter);
                     newVelocities.Add(initialVelocity);
                     newSpawnIndices.Add(regionIndex);
-                    newParticleTypes.Add((int)region.particleType);
+                    newParticleTypes.Add(new int2((int)region.particleType, 0));
                     particlesAddedThisFrame++;
                 }
             }
@@ -204,13 +204,13 @@ public class Spawner2D : MonoBehaviour
         public float2[] positions;
         public float2[] velocities;
         public int[] spawnIndices;
-        public int[] particleTypes;
+        public int2[] particleTypes;
         public ParticleSpawnData(int num)
         {
             positions = new float2[num];
             velocities = new float2[num];
             spawnIndices = new int[num];
-            particleTypes = new int[num];
+            particleTypes = new int2[num];
         }
     }
 

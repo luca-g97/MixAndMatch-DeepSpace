@@ -55,13 +55,11 @@ namespace Seb.Fluid2D.Simulation
         public ComputeBuffer gravityScaleBuffer { get; private set; }
         public ComputeBuffer collisionBuffer { get; private set; }
         public ComputeBuffer particleTypeBuffer { get; private set; }
-        public ComputeBuffer particleProcessFlagsBuffer { get; private set; }
 
         ComputeBuffer sortTarget_Position;
         ComputeBuffer sortTarget_PredicitedPosition;
         ComputeBuffer sortTarget_Velocity;
         ComputeBuffer sortTarget_ParticleType;
-        ComputeBuffer sortTarget_ParticleProcessFlags;
 
         ComputeBuffer vertexBuffer;
         public ComputeBuffer obstacleBuffer { get; private set; }
@@ -193,24 +191,22 @@ namespace Seb.Fluid2D.Simulation
             densityBuffer = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             gravityScaleBuffer = ComputeHelper.CreateStructuredBuffer<float>(safeCapacity);
             collisionBuffer = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
-            particleTypeBuffer = ComputeHelper.CreateStructuredBuffer<int>(safeCapacity);
-            particleProcessFlagsBuffer = ComputeHelper.CreateStructuredBuffer<int>(safeCapacity);
+            particleTypeBuffer = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
 
             sortTarget_Position = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             sortTarget_PredicitedPosition = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             sortTarget_Velocity = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
-            sortTarget_ParticleType = ComputeHelper.CreateStructuredBuffer<int>(safeCapacity);
-            sortTarget_ParticleProcessFlags = ComputeHelper.CreateStructuredBuffer<int>(safeCapacity);
+            sortTarget_ParticleType = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
         }
 
         void ReleaseParticleBuffers()
         {
             ComputeHelper.Release(positionBuffer, predictedPositionBuffer, velocityBuffer, densityBuffer,
-                gravityScaleBuffer, collisionBuffer, particleTypeBuffer, particleProcessFlagsBuffer, sortTarget_Position,
-                sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType, sortTarget_ParticleProcessFlags);
+                gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_Position,
+                sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
             gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null;
-            sortTarget_Position = null; sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null; sortTarget_ParticleProcessFlags = null;
+            sortTarget_Position = null; sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
             spatialHash?.Release();
             spatialHash = null;
         }
@@ -261,8 +257,6 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "GravityScales", externalForcesKernel);
             ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", updatePositionKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", densityKernel, pressureKernel, viscosityKernel, updatePositionKernel, reorderKernel, copybackKernel, externalForcesKernel);
-            ComputeHelper.SetBuffer(compute, particleProcessFlagsBuffer, "ParticleProcessFlags", updatePositionKernel, reorderKernel, copybackKernel);
-
             if (spatialHash != null && spatialHash.SpatialIndices != null && spatialHash.SpatialOffsets != null && spatialHash.SpatialKeys != null)
             {
                 ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", spatialHashKernel, reorderKernel);
@@ -273,7 +267,6 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_ParticleProcessFlags, "SortTarget_ParticleProcessFlags", reorderKernel, copybackKernel);
             if (vertexBuffer != null && vertexBuffer.IsValid()) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer", updatePositionKernel);
             if (obstacleBuffer != null && obstacleBuffer.IsValid()) ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
             if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "obstacleColorsBuffer", obstacleColorsBuffer);
@@ -312,20 +305,18 @@ namespace Seb.Fluid2D.Simulation
             predictedPositionBuffer.SetData(spawnData.positions);
             velocityBuffer.SetData(spawnData.velocities);
             particleTypeBuffer.SetData(spawnData.particleTypes);
+
             float[] defaultGravityScales = new float[numParticles];
             int4[] defaultCollisionData = new int4[numParticles];
-            int[] defaultProcessFlags = new int[numParticles];
 
             for (int i = 0; i < numParticles; i++)
             {
                 defaultGravityScales[i] = 1f;
                 defaultCollisionData[i] = new int4(-1, -1, -1, -1);
-                defaultProcessFlags[i] = 0;
             }
 
             gravityScaleBuffer.SetData(defaultGravityScales);
             collisionBuffer.SetData(defaultCollisionData);
-            particleProcessFlagsBuffer.SetData(defaultProcessFlags);
         }
 
         void Update()
@@ -356,7 +347,6 @@ namespace Seb.Fluid2D.Simulation
             if (!isPaused && numParticles > 0)
             {
                 RunSimulationFrame(cappedSimDeltaTime);
-                ProcessParticleRemovals();
             }
 
             if (pauseNextFrame) { isPaused = true; pauseNextFrame = false; }
@@ -432,16 +422,12 @@ namespace Seb.Fluid2D.Simulation
             int4[] newCollisionData = new int4[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newCollisionData[i] = new int4(-1, -1, -1, -1);
             collisionBuffer = FallbackResizeAndAppendBuffer(collisionBuffer, oldNumParticles, newCollisionData);
 
-            int[] newProcessFlags = new int[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newProcessFlags[i] = 0;
-            particleProcessFlagsBuffer = FallbackResizeAndAppendBuffer(particleProcessFlagsBuffer, oldNumParticles, newProcessFlags);
-
             densityBuffer = FallbackResizeAndAppendBuffer(densityBuffer, oldNumParticles, new float2[newSpawnCount]);
 
             sortTarget_Position = FallbackResizeAndAppendBuffer(sortTarget_Position, oldNumParticles, new float2[newSpawnCount]);
             sortTarget_PredicitedPosition = FallbackResizeAndAppendBuffer(sortTarget_PredicitedPosition, oldNumParticles, new float2[newSpawnCount]);
             sortTarget_Velocity = FallbackResizeAndAppendBuffer(sortTarget_Velocity, oldNumParticles, new float2[newSpawnCount]);
-            sortTarget_ParticleType = FallbackResizeAndAppendBuffer(sortTarget_ParticleType, oldNumParticles, new int[newSpawnCount]);
-            sortTarget_ParticleProcessFlags = FallbackResizeAndAppendBuffer(sortTarget_ParticleProcessFlags, oldNumParticles, new int[newSpawnCount]);
+            sortTarget_ParticleType = FallbackResizeAndAppendBuffer(sortTarget_ParticleType, oldNumParticles, new int2[newSpawnCount]);
             // --- END OF USING FALLBACK ---
 
             spatialHash?.Release();
@@ -449,170 +435,6 @@ namespace Seb.Fluid2D.Simulation
 
             BindComputeShaderBuffers();
             UpdateComputeShaderDynamicParams();
-        }
-
-        async void ProcessParticleRemovals()
-        {
-            if (numParticles == 0 || particleProcessFlagsBuffer == null || !particleProcessFlagsBuffer.IsValid()) return;
-
-            // Request data from GPU
-            var flagsRequest = AsyncGPUReadback.Request(particleProcessFlagsBuffer, numParticles * sizeof(int), 0);
-            var typesRequest = AsyncGPUReadback.Request(particleTypeBuffer, numParticles * sizeof(int), 0);
-
-            await System.Threading.Tasks.Task.Yield(); // Yield to allow GPU to process
-            flagsRequest.WaitForCompletion();
-            typesRequest.WaitForCompletion();
-
-
-            if (flagsRequest.hasError || typesRequest.hasError)
-            {
-                Debug.LogError("GPU readback error for particle removal.");
-                return;
-            }
-
-            var flagsData = flagsRequest.GetData<int>();
-            var typeData = typesRequest.GetData<int>(); // These are the types *after* shader might have set to -1
-
-            List<int> indicesToRemove = new List<int>();
-            List<(int originalType, int removerType)> removedParticleInfo = new List<(int, int)>();
-
-            for (int i = 0; i < numParticles; i++)
-            {
-                if (flagsData[i] == 1) // Removed by Player
-                {
-                    indicesToRemove.Add(i);
-                    // typeData[i] here will be -1 if shader set it.
-                    // To get the *actual* original type, we'd need to read particleTypeBuffer *before* UpdatePositions potentially modifies it to -1,
-                    // OR pass the original type to the CPU through another buffer if it's changed mid-shader-step.
-                    // For now, let's assume the type we read *before* this processing step is what we need.
-                    // The challenge is that typeData[i] is read *after* the compute shader step where it might be set to -1.
-                    // A simple way: if flagsData[i] is 1 or 2, it means it *was* an active particle.
-                    // We need the particle type *before* it was set to -1 by the removal logic.
-                    // This implies we need to fetch the original particle types if they are overwritten.
-                    // Let's make a temporary array of original types from before simulation step for scoring.
-                    // This part is tricky if `particleTypeBuffer` is modified and then used for scoring.
-                    // A robust way is to have `GetOriginalParticleType(index)` if it's stable or pass it along.
-                    // For now, we will retrieve the typeData from the buffer, acknowledging it might be -1.
-                    // If you need the true original type for scoring, you'd need to fetch particleTypeBuffer *before* RunSimulationStep,
-                    // or ensure the compute shader writes the original type to a separate scoring buffer.
-
-                    // Let's refine this: We need the type from *before* it was marked -1.
-                    // The simplest for now, assuming typeData[i] holds the type *just before* it was potentially set to -1 by the collision
-                    // This means we need a copy of particle types *before* the simulation step if HandleCollisions overwrites it to -1 *and* we want the original.
-                    // Given our HLSL, ParticleTypeBuffer[particleIndex] = -1 happens *within* HandleCollisions.
-                    // So, `typeData` read *after* the step will contain -1 for removed particles.
-                    // We need another read or a persistent "original types" buffer for accurate scoring.
-
-                    // For simplicity of this example, we will assume for scoring you might need to adjust how original type is captured.
-                    // Let's log based on what the compute shader told us via flags. The actual type value might be -1 from typeData.
-                    Debug.Log($"Particle (index {i}, reported type might be -1: {typeData[i]}) marked for removal by Player (ObstacleType 0). Implement scoring here.");
-                    removedParticleInfo.Add((typeData[i], 0)); // Storing -1 as type if it was changed by shader.
-                }
-                else if (flagsData[i] == 2) // Removed by Ventil
-                {
-                    indicesToRemove.Add(i);
-                    Debug.Log($"Particle (index {i}, reported type might be -1: {typeData[i]}) marked for removal by Ventil (ObstacleType 2). Implement scoring here.");
-                    removedParticleInfo.Add((typeData[i], 2));
-                }
-            }
-
-            if (indicesToRemove.Count == 0)
-            {
-                return;
-            }
-
-            // --- Compact buffers ---
-            int oldNumParticles = numParticles;
-            int newNumParticles = oldNumParticles - indicesToRemove.Count;
-
-            if (newNumParticles <= 0) // All particles removed
-            {
-                numParticles = 0;
-                // Release and create empty-ish buffers
-                ReleaseParticleBuffers();
-                CreateParticleBuffers(1); // Create with minimal capacity
-                spatialHash = new SpatialHash(1); // Recreate spatial hash
-                BindComputeShaderBuffers(); // Rebind empty buffers
-                Debug.Log("All particles removed.");
-                return;
-            }
-
-            // Fetch all current data (this is the less efficient part but matches existing style)
-            float2[] allPositions = new float2[oldNumParticles]; positionBuffer.GetData(allPositions);
-            float2[] allPredicted = new float2[oldNumParticles]; predictedPositionBuffer.GetData(allPredicted);
-            float2[] allVelocities = new float2[oldNumParticles]; velocityBuffer.GetData(allVelocities);
-            float2[] allDensities = new float2[oldNumParticles]; densityBuffer.GetData(allDensities);
-            float[] allGravityScales = new float[oldNumParticles]; gravityScaleBuffer.GetData(allGravityScales);
-            int4[] allCollisions = new int4[oldNumParticles]; collisionBuffer.GetData(allCollisions);
-            int[] allParticleTypes = new int[oldNumParticles]; particleTypeBuffer.GetData(allParticleTypes);
-            // particleProcessFlagsBuffer is already read
-
-            // Create lists for surviving particles
-            List<float2> keptPositions = new List<float2>(newNumParticles);
-            List<float2> keptPredicted = new List<float2>(newNumParticles);
-            List<float2> keptVelocities = new List<float2>(newNumParticles);
-            List<float2> keptDensities = new List<float2>(newNumParticles);
-            List<float> keptGravityScales = new List<float>(newNumParticles);
-            List<int4> keptCollisions = new List<int4>(newNumParticles);
-            List<int> keptParticleTypes = new List<int>(newNumParticles);
-            List<int> keptProcessFlags = new List<int>(newNumParticles); // Will all be 0
-
-            int currentRemovedIndex = 0;
-            for (int i = 0; i < oldNumParticles; i++)
-            {
-                if (currentRemovedIndex < indicesToRemove.Count && i == indicesToRemove[currentRemovedIndex])
-                {
-                    currentRemovedIndex++; // This particle is removed, skip it
-                }
-                else // This particle is kept
-                {
-                    keptPositions.Add(allPositions[i]);
-                    keptPredicted.Add(allPredicted[i]);
-                    keptVelocities.Add(allVelocities[i]);
-                    keptDensities.Add(allDensities[i]);
-                    keptGravityScales.Add(allGravityScales[i]);
-                    keptCollisions.Add(allCollisions[i]);
-                    keptParticleTypes.Add(allParticleTypes[i]); // This will be -1 if it was just marked for removal by shader
-                                                                // But since it's *kept*, it shouldn't be -1 from flagsData.
-                                                                // Correct type for kept particles is allParticleTypes[i].
-                    keptProcessFlags.Add(0); // Reset flag for kept particles
-                }
-            }
-
-            // Update particle count
-            numParticles = newNumParticles;
-
-            // Release old buffers
-            ReleaseParticleBuffers(); // Also releases spatialHash
-
-            // Create new buffers with the exact new size (or maxTotalParticles if you prefer to avoid frequent small reallocs)
-            CreateParticleBuffers(Mathf.Max(1, numParticles)); // Recreates all buffers including particleProcessFlagsBuffer
-
-            // Set data for new buffers
-            if (numParticles > 0)
-            {
-                positionBuffer.SetData(keptPositions.ToArray());
-                predictedPositionBuffer.SetData(keptPredicted.ToArray());
-                velocityBuffer.SetData(keptVelocities.ToArray());
-                densityBuffer.SetData(keptDensities.ToArray());
-                gravityScaleBuffer.SetData(keptGravityScales.ToArray());
-                collisionBuffer.SetData(keptCollisions.ToArray());
-                particleTypeBuffer.SetData(keptParticleTypes.ToArray());
-                particleProcessFlagsBuffer.SetData(keptProcessFlags.ToArray()); // All zeros
-
-                // Sort targets also need to be handled if they were in use, but typically they are transient.
-                // For safety, if they were not released and recreated with new size, they should be.
-                // CreateParticleBuffers already handles creating them with the new capacity.
-            }
-
-            // Re-initialize spatial hash
-            spatialHash = new SpatialHash(Mathf.Max(1, numParticles));
-
-            // Re-bind all buffers to compute shader
-            BindComputeShaderBuffers();
-            UpdateComputeShaderDynamicParams(); // Ensure numParticles is updated in shader
-
-            Debug.Log($"Particles removed. New count: {numParticles}");
         }
 
         void RunSimulationFrame(float deltaTimeForFrame)
@@ -839,7 +661,11 @@ namespace Seb.Fluid2D.Simulation
                     obstacleType = obsType
                 });
                 currentVertexStartIndex += vertexCountForThisObstacle;
+
                 Color displayColor = obstacleLineColor;
+                if (obsType == 1) { displayColor = Color.white; }
+                else if (obsType == 2) { displayColor = Color.gray; }
+
                 if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out Color pColor)) displayColor = pColor;
                 _propBlock.SetColor("_Color", displayColor); lr.SetPropertyBlock(_propBlock);
                 _gpuObstacleColorsData.Add(displayColor);

@@ -25,8 +25,7 @@ struct Obstacle
 StructuredBuffer<Obstacle> ObstaclesBuffer;
 StructuredBuffer<float2> VerticesBuffer;
 RWStructuredBuffer<int4> CollisionBuffer;
-RWStructuredBuffer<int> ParticleTypeBuffer;
-RWStructuredBuffer<int> ParticleProcessFlags;
+RWStructuredBuffer<int2> ParticleTypeBuffer;
 
 int numObstacles;
 float areaToColorAroundObstacles;
@@ -174,7 +173,8 @@ void HandleCollisions(uint particleIndex)
 
     float2 pos = Positions[particleIndex];
     float2 vel = Velocities[particleIndex];
-    int particleType = ParticleTypeBuffer[particleIndex];
+    int particleType = ParticleTypeBuffer[particleIndex][0];
+    int particleProcessFlag = ParticleTypeBuffer[particleIndex][1];
 
     // If particle is already marked as non-participating (e.g. type -1), skip complex collision.
     // This check is vital if ParticleTypeBuffer can be set to -1 mid-step by this function.
@@ -312,18 +312,16 @@ void HandleCollisions(uint particleIndex)
         // Check for removal condition FIRST. If removed, it might not need coloring.
         // Ensure particleType is still valid (>=0) before processing for removal by this obstacle.
         // ParticleProcessFlags[particleIndex] == 0 ensures we only mark it once per frame by the first Ventil/Player it hits.
-        if (ParticleProcessFlags[particleIndex] == 0 && isInside && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
+        if (particleProcessFlag == 0 && isInside && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
         {
             if (obstacle.obstacleType == 0) // Player
             {
-                ParticleProcessFlags[particleIndex] = 1; // Mark for removal by Player
+                ParticleTypeBuffer[particleIndex][1] = 1; // Mark for removal by Player
             }
             else if(obstacle.obstacleType == 2)
             {
-                ParticleProcessFlags[particleIndex] = 2; // Mark for removal by Ventil
+                ParticleTypeBuffer[particleIndex][1] = 2; // Mark for removal by Ventil
             }
-            ParticleTypeBuffer[particleIndex] = -1; // Mark as inactive for subsequent kernels in this step
-                                                    // After this, this particle (for this obstacleIdx) won't be colored by player below.
         }
 
 
@@ -331,7 +329,7 @@ void HandleCollisions(uint particleIndex)
         // Check particleType again because it might have been set to -1 by the removal logic above.
         // And ensure ParticleProcessFlags is still 0, meaning it wasn't just marked for removal by *this* obstacle.
         // (If it was marked by a *previous* obstacle in this loop, particleType would already be -1, failing the ParticleTypeBuffer[particleIndex] >=0 check for coloring)
-        if (ParticleProcessFlags[particleIndex] == 0 && particleType > 0 && obstacle.obstacleType == 0) // Only color if particle is active and obstacle is a player
+        if (ParticleTypeBuffer[particleIndex][1] == 0 && particleType > 0 && obstacle.obstacleType == 0) // Only color if particle is active and obstacle is a player
         {
             if (consideredObstacles < 4)
             {
@@ -423,8 +421,7 @@ void UpdateSpatialHash(uint3 id : SV_DispatchThreadID)
 RWStructuredBuffer<float2> SortTarget_Positions;
 RWStructuredBuffer<float2> SortTarget_PredictedPositions;
 RWStructuredBuffer<float2> SortTarget_Velocities;
-RWStructuredBuffer<int> SortTarget_ParticleType;
-RWStructuredBuffer<int> SortTarget_ParticleProcessFlags;
+RWStructuredBuffer<int2> SortTarget_ParticleType;
 
 [numthreads(NumThreads, 1, 1)]
 void Reorder(uint3 id : SV_DispatchThreadID)
@@ -436,25 +433,23 @@ void Reorder(uint3 id : SV_DispatchThreadID)
     SortTarget_PredictedPositions[id.x] = PredictedPositions[sortedIndex];
     SortTarget_Velocities[id.x] = Velocities[sortedIndex];
     SortTarget_ParticleType[id.x] = ParticleTypeBuffer[sortedIndex];
-    SortTarget_ParticleProcessFlags[id.x] = ParticleProcessFlags[sortedIndex];
 }
 
 [numthreads(NumThreads, 1, 1)]
 void ReorderCopyback(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= numParticles)
+    if (id.x >= numParticles || ParticleTypeBuffer[id.x][0] == -1)
         return;
     Positions[id.x] = SortTarget_Positions[id.x];
     PredictedPositions[id.x] = SortTarget_PredictedPositions[id.x];
     Velocities[id.x] = SortTarget_Velocities[id.x];
     ParticleTypeBuffer[id.x] = SortTarget_ParticleType[id.x];
-    ParticleProcessFlags[id.x] = SortTarget_ParticleProcessFlags[id.x];
 }
 
 [numthreads(NumThreads, 1, 1)]
 void CalculateDensities(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= numParticles || ParticleTypeBuffer[id.x] == -1)
+    if (id.x >= numParticles || ParticleTypeBuffer[id.x][0] == -1)
         return;
     float2 pos = PredictedPositions[id.x];
     Densities[id.x] = CalculateDensity(pos);
@@ -463,12 +458,12 @@ void CalculateDensities(uint3 id : SV_DispatchThreadID)
 [numthreads(NumThreads, 1, 1)]
 void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= numParticles || ParticleTypeBuffer[id.x] == -1)
+    if (id.x >= numParticles || ParticleTypeBuffer[id.x][0] == -1)
         return;
     
-    float targetDensity = ParticleTypeBuffer[id.x] == 0 ? waterTargetDensity : oilTargetDensity;
-    float pressureMultiplier = ParticleTypeBuffer[id.x] == 0 ? waterPressureMultiplier : oilPressureMultiplier;
-    float nearPressureMultiplier = ParticleTypeBuffer[id.x] == 0 ? waterNearPressureMultiplier : oilNearPressureMultiplier;
+    float targetDensity = ParticleTypeBuffer[id.x][0] == 0 ? waterTargetDensity : oilTargetDensity;
+    float pressureMultiplier = ParticleTypeBuffer[id.x][0] == 0 ? waterPressureMultiplier : oilPressureMultiplier;
+    float nearPressureMultiplier = ParticleTypeBuffer[id.x][0] == 0 ? waterNearPressureMultiplier : oilNearPressureMultiplier;
     float density = Densities[id.x][0];
     float densityNear = Densities[id.x][1];
     float pressure = PressureFromDensity(density, targetDensity, pressureMultiplier);
@@ -506,9 +501,9 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
             float dst = sqrt(sqrDstToNeighbour);
             float2 dirToNeighbour = dst > 0 ? offsetToNeighbour / dst : float2(0, 1);
             
-            float neighbourTargetDensity = ParticleTypeBuffer[neighbourIndex] == 0 ? waterTargetDensity : oilTargetDensity;
-            float neighbourPressureMultiplier = ParticleTypeBuffer[neighbourIndex] == 0 ? waterPressureMultiplier : oilPressureMultiplier;
-            float neighbourNearPressureMultiplier = ParticleTypeBuffer[neighbourIndex] == 0 ? waterNearPressureMultiplier : oilNearPressureMultiplier;
+            float neighbourTargetDensity = ParticleTypeBuffer[neighbourIndex][0] == 0 ? waterTargetDensity : oilTargetDensity;
+            float neighbourPressureMultiplier = ParticleTypeBuffer[neighbourIndex][0] == 0 ? waterPressureMultiplier : oilPressureMultiplier;
+            float neighbourNearPressureMultiplier = ParticleTypeBuffer[neighbourIndex][0] == 0 ? waterNearPressureMultiplier : oilNearPressureMultiplier;
 
             float neighbourDensity = Densities[neighbourIndex][0];
             float neighbourNearDensity = Densities[neighbourIndex][1];
@@ -530,7 +525,7 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
 [numthreads(NumThreads, 1, 1)]
 void CalculateViscosity(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= numParticles || ParticleTypeBuffer[id.x] == -1)
+    if (id.x >= numParticles || ParticleTypeBuffer[id.x][0] == -1)
         return;
 
     float2 pos = PredictedPositions[id.x];
@@ -569,7 +564,7 @@ void CalculateViscosity(uint3 id : SV_DispatchThreadID)
         }
     }
     
-    float viscosityStrength = ParticleTypeBuffer[id.x] == 0 ? waterViscosityStrength : oilViscosityStrength;
+    float viscosityStrength = ParticleTypeBuffer[id.x][0] == 0 ? waterViscosityStrength : oilViscosityStrength;
     Velocities[id.x] += viscosityForce * viscosityStrength * deltaTime;
 }
 
