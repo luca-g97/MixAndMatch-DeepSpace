@@ -223,17 +223,17 @@ MonoBehaviour:
     debugCol: {r: 1, g: 0.27843142, b: 0.3170616, a: 1}
   - position: {x: -8.5, y: 0}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
+    spawnDensity: 0
     particleType: 1
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -7, y: 0}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
+    spawnDensity: 0
     particleType: 2
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -5.5, y: 0}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
+    spawnDensity: 0
     particleType: 3
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -4, y: 0}
@@ -282,7 +282,7 @@ MonoBehaviour:
     particleType: 12
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   showSpawnBoundsGizmos: 1
-  spawnParticleCount: 48588
+  spawnParticleCount: 45516
 --- !u!114 &271053322
 MonoBehaviour:
   m_ObjectHideFlags: 0

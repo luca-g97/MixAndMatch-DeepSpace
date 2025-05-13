@@ -32,7 +32,7 @@ namespace Seb.GPUSorting
 
             if (!freeBuffers.TryGetValue(numGroups, out ComputeBuffer groupSumBuffer))
             {
-                groupSumBuffer = ComputeHelper_Wall.CreateStructuredBuffer<uint>(numGroups);
+                groupSumBuffer = ComputeHelper.CreateStructuredBuffer<uint>(numGroups);
                 freeBuffers.Add(numGroups, groupSumBuffer);
             }
 
@@ -62,7 +62,7 @@ namespace Seb.GPUSorting
         {
             foreach (var b in freeBuffers)
             {
-                ComputeHelper_Wall.Release(b.Value);
+                ComputeHelper.Release(b.Value);
             }
         }
 

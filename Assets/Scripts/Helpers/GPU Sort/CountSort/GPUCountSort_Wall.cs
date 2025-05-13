@@ -15,11 +15,11 @@ namespace Seb.GPUSorting
 		static readonly int ID_NumInputs = Shader.PropertyToID("numInputs");
 
 		readonly Scan_Wall scan = new();
-		readonly ComputeShader cs = ComputeHelper_Wall.LoadComputeShader("CountSort_Wall");
+		readonly ComputeShader cs = ComputeHelper.LoadComputeShader("CountSort_Wall");
 
-		ComputeBuffer sortedItemsBuffer_Wall;
-		ComputeBuffer sortedValuesBuffer_Wall;
-		ComputeBuffer countsBuffer_Wall;
+		ComputeBuffer sortedItemsBuffer;
+		ComputeBuffer sortedValuesBuffer;
+		ComputeBuffer countsBuffer;
 
 		const int ClearCountsKernel = 0;
 		const int CountKernel = 1;
@@ -35,23 +35,23 @@ namespace Seb.GPUSorting
 		{
 			// ---- Init ----
 			int count = itemsBuffer.count;
-			if (ComputeHelper_Wall.CreateStructuredBuffer<uint>(ref sortedItemsBuffer_Wall, count))
+			if (ComputeHelper.CreateStructuredBuffer<uint>(ref sortedItemsBuffer, count))
 			{
-				cs.SetBuffer(ScatterOutputsKernel, ID_SortedItems, sortedItemsBuffer_Wall);
-				cs.SetBuffer(CopyBackKernel, ID_SortedItems, sortedItemsBuffer_Wall);
+				cs.SetBuffer(ScatterOutputsKernel, ID_SortedItems, sortedItemsBuffer);
+				cs.SetBuffer(CopyBackKernel, ID_SortedItems, sortedItemsBuffer);
 			}
 
-			if (ComputeHelper_Wall.CreateStructuredBuffer<uint>(ref sortedValuesBuffer_Wall, count))
+			if (ComputeHelper.CreateStructuredBuffer<uint>(ref sortedValuesBuffer, count))
 			{
-				cs.SetBuffer(ScatterOutputsKernel, ID_SortedKeys, sortedValuesBuffer_Wall);
-				cs.SetBuffer(CopyBackKernel, ID_SortedKeys, sortedValuesBuffer_Wall);
+				cs.SetBuffer(ScatterOutputsKernel, ID_SortedKeys, sortedValuesBuffer);
+				cs.SetBuffer(CopyBackKernel, ID_SortedKeys, sortedValuesBuffer);
 			}
 
-			if (ComputeHelper_Wall.CreateStructuredBuffer<uint>(ref countsBuffer_Wall, (int)maxValue + 1))
+			if (ComputeHelper.CreateStructuredBuffer<uint>(ref countsBuffer, (int)maxValue + 1))
 			{
-				cs.SetBuffer(ClearCountsKernel, ID_Counts, countsBuffer_Wall);
-				cs.SetBuffer(CountKernel, ID_Counts, countsBuffer_Wall);
-				cs.SetBuffer(ScatterOutputsKernel, ID_Counts, countsBuffer_Wall);
+				cs.SetBuffer(ClearCountsKernel, ID_Counts, countsBuffer);
+				cs.SetBuffer(CountKernel, ID_Counts, countsBuffer);
+				cs.SetBuffer(ScatterOutputsKernel, ID_Counts, countsBuffer);
 			}
 
 			cs.SetBuffer(ClearCountsKernel, ID_InputItems, itemsBuffer);
@@ -65,17 +65,17 @@ namespace Seb.GPUSorting
 			cs.SetInt(ID_NumInputs, count);
 
             // ---- Run ----
-            ComputeHelper_Wall.Dispatch(cs, count, kernelIndex: ClearCountsKernel);
-            ComputeHelper_Wall.Dispatch(cs, count, kernelIndex: CountKernel);
+            ComputeHelper.Dispatch(cs, count, kernelIndex: ClearCountsKernel);
+            ComputeHelper.Dispatch(cs, count, kernelIndex: CountKernel);
 
-			scan.Run(countsBuffer_Wall);
-            ComputeHelper_Wall.Dispatch(cs, count, kernelIndex: ScatterOutputsKernel);
-            ComputeHelper_Wall.Dispatch(cs, count, kernelIndex: CopyBackKernel);
+			scan.Run(countsBuffer);
+            ComputeHelper.Dispatch(cs, count, kernelIndex: ScatterOutputsKernel);
+            ComputeHelper.Dispatch(cs, count, kernelIndex: CopyBackKernel);
 		}
 
 		public void Release()
 		{
-            ComputeHelper_Wall.Release(sortedItemsBuffer_Wall, sortedValuesBuffer_Wall, countsBuffer_Wall);
+            ComputeHelper.Release(sortedItemsBuffer, sortedValuesBuffer, countsBuffer);
 			scan.Release();
 		}
 	}

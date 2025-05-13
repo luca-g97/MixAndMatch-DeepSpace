@@ -148,32 +148,17 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                 if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
                 {
                     float3 colorA = obstacleColorSum;
-                    float3 colorB = mixableColors_Wall[particleTypeToUse].rgb;
+                    float3 colorB = mixableColors[particleTypeToUse].rgb;
 
-                    // Calculate the absolute difference for each component
                     float3 diff = abs(colorA - colorB);
-
-                    // Check if ALL components of the difference are less than epsilon
-                    // The comparison (diff < COMPARE_EPSILON) results in a bool3
-                    // all() returns true only if x, y, and z are all true
                     bool approximatelyEqual = all(diff < COMPARE_EPSILON);
 
-                    if(approximatelyEqual)
-                    {
-                        finalColour = saturate(obstacleColorSum * additiveStrength*2);
-
-                        // --- Saturation Boost (Applied *after* additive mixing) ---
-                        // Boost saturation only if multiple obstacles contributed to the sum.
-                        if (obstacleCount > 1)
-                        {
-                            finalColour = saturateColourFurther(finalColour);
-                        }
-                    }
-                    else
-                    {
+                    if (approximatelyEqual) {
+                        finalColour = saturate(obstacleColorSum * additiveStrength * 2);
+                    } else {
                         finalColour = saturate(colorB * additiveStrength);
-                        finalColour = saturateColourFurther(finalColour);
                     }
+                    finalColour = saturateColourFurther(finalColour);
                 }
                 else if (particleType > 0)
                 {

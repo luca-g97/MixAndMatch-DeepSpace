@@ -15,7 +15,7 @@ namespace Seb.Fluid2D.Rendering
         public float velocityDisplayMax;
 
         Material material;
-        ComputeBuffer argsBuffer_Wall;
+        ComputeBuffer argsBuffer;
         Bounds bounds;
         Texture2D gradientTexture;
         bool needsUpdate = true;
@@ -30,7 +30,7 @@ namespace Seb.Fluid2D.Rendering
             if (shader != null)
             {
                 UpdateSettings();
-                Graphics.DrawMeshInstancedIndirect(mesh, 0, material, bounds, argsBuffer_Wall);
+                Graphics.DrawMeshInstancedIndirect(mesh, 0, material, bounds, argsBuffer);
             }
         }
 
@@ -47,7 +47,7 @@ namespace Seb.Fluid2D.Rendering
 
             material.SetColorArray("mixableColors_Wall", sim.mixableColors);
 
-            ComputeHelper.CreateArgsBuffer(ref argsBuffer_Wall, mesh, sim.positionBuffer.count);
+            ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.positionBuffer.count);
             bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
 
             if (needsUpdate)
@@ -102,7 +102,7 @@ namespace Seb.Fluid2D.Rendering
 
         void OnDestroy()
         {
-            ComputeHelper.Release(argsBuffer_Wall);
+            ComputeHelper.Release(argsBuffer);
         }
     }
 }

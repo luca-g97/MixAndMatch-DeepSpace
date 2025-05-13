@@ -43,14 +43,14 @@ namespace Seb.Helpers
 		public void Release()
 		{
 			gpuSort.Release();
-			ComputeHelper_Wall.Release(SpatialKeys, SpatialIndices, SpatialOffsets);
+            ComputeHelper.Release(SpatialKeys, SpatialIndices, SpatialOffsets);
 		}
 
 		void CreateBuffers(int count)
 		{
-			ComputeHelper_Wall.CreateStructuredBuffer<uint>(ref SpatialKeys, count);
-			ComputeHelper_Wall.CreateStructuredBuffer<uint>(ref SpatialIndices, count);
-			ComputeHelper_Wall.CreateStructuredBuffer<uint>(ref SpatialOffsets, count);
+            ComputeHelper.CreateStructuredBuffer<uint>(ref SpatialKeys, count);
+            ComputeHelper.CreateStructuredBuffer<uint>(ref SpatialIndices, count);
+            ComputeHelper.CreateStructuredBuffer<uint>(ref SpatialOffsets, count);
 		}
 	}
 }

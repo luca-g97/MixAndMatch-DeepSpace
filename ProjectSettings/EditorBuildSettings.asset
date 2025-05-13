@@ -12,4 +12,4 @@ EditorBuildSettings:
     path: Assets/SimulationSceneWall.unity
     guid: 5257c76f30b4a7d41b319d146a1733ca
   m_configObjects: {}
-  m_UseUCBPForAssetBundles: 0
+  m_UseUCBPForAssetBundles: 1

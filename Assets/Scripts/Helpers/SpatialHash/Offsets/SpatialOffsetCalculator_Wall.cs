@@ -23,12 +23,12 @@ namespace Seb.Helpers.Internal
 			if (needsInit)
 			{
 				cs.SetBuffer(initKernel, Offsets, offsets);
-				ComputeHelper_Wall.Dispatch(cs, sortedKeys.count, kernelIndex: initKernel);
+                ComputeHelper.Dispatch(cs, sortedKeys.count, kernelIndex: initKernel);
 			}
 
 			cs.SetBuffer(offsetsKernel, Offsets, offsets);
 			cs.SetBuffer(offsetsKernel, SortedKeys, sortedKeys);
-			ComputeHelper_Wall.Dispatch(cs, sortedKeys.count, kernelIndex: offsetsKernel);
+            ComputeHelper.Dispatch(cs, sortedKeys.count, kernelIndex: offsetsKernel);
 		}
 	}
 }

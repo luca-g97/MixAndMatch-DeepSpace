@@ -129,7 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 271053318}
   - component: {fileID: 271053326}
-  - component: {fileID: 271053325}
+  - component: {fileID: 271053327}
   - component: {fileID: 271053324}
   - component: {fileID: 271053323}
   m_Layer: 0
@@ -214,7 +214,7 @@ MonoBehaviour:
     m_NumAlphaKeys: 2
   gradientResolution: 64
   velocityDisplayMax: 10
---- !u!114 &271053325
+--- !u!114 &271053326
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -223,7 +223,50 @@ MonoBehaviour:
   m_GameObject: {fileID: 271053315}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dc52e36e5ea090a48ab3c1b5046a86a4, type: 3}
+  m_Script: {fileID: 11500000, guid: d9c945fab5bf5494dab272ab32260990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  timeScale: 0.25
+  maxTimestepFPS: 144
+  iterationsPerFrame: 3
+  gravity: -300
+  collisionDamping: 0.5
+  smoothingRadius: 0.2
+  boundsSize: {x: 16, y: 8}
+  yOffset: 12
+  waterTargetDensity: 1
+  waterPressureMultiplier: 150
+  waterNearPressureMultiplier: 225
+  waterViscosityStrength: 0.1
+  oilTargetDensity: 0.92
+  oilPressureMultiplier: 120
+  oilNearPressureMultiplier: 180
+  oilViscosityStrength: 0.4
+  interactionRadius: 5
+  interactionStrength: 50
+  mouseGravityStrength: 10
+  mouseGravityRadius: 5
+  invertMouseGravity: 1
+  compute: {fileID: 7200000, guid: 2d342f91ee800f140958be6ec301e94a, type: 3}
+  spawner2D: {fileID: 271053327}
+  mixableColors: []
+  obstacles: []
+  areaToColorAroundObstacles: 1
+  coloredAreaAroundObstaclesDivider: 0
+  maxPlayerColors: 6
+  obstacleLineColor: {r: 1, g: 1, b: 1, a: 1}
+  obstacleLineWidth: 0.1
+  lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
+--- !u!114 &271053327
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 271053315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 895837b52d5fc53409ded3589d4da696, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   initialVelocity: {x: 0, y: 0}
@@ -301,49 +344,6 @@ MonoBehaviour:
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   showSpawnBoundsGizmos: 1
   spawnParticleCount: 48588
---- !u!114 &271053326
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 271053315}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d9c945fab5bf5494dab272ab32260990, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  timeScale: 0.25
-  maxTimestepFPS: 144
-  iterationsPerFrame: 3
-  gravity: -9.81
-  collisionDamping: 0.5
-  smoothingRadius: 0.2
-  boundsSize: {x: 16, y: 8}
-  yOffset: 12
-  waterTargetDensity: 1
-  waterPressureMultiplier: 150
-  waterNearPressureMultiplier: 225
-  waterViscosityStrength: 0.1
-  oilTargetDensity: 0.92
-  oilPressureMultiplier: 120
-  oilNearPressureMultiplier: 180
-  oilViscosityStrength: 0.4
-  interactionRadius: 5
-  interactionStrength: 50
-  mouseGravityStrength: 10
-  mouseGravityRadius: 5
-  invertMouseGravity: 1
-  compute: {fileID: 7200000, guid: 2d342f91ee800f140958be6ec301e94a, type: 3}
-  spawner2D: {fileID: 271053325}
-  mixableColors: []
-  obstacles: []
-  areaToColorAroundObstacles: 1
-  coloredAreaAroundObstaclesDivider: 0
-  maxPlayerColors: 6
-  obstacleLineColor: {r: 1, g: 1, b: 1, a: 1}
-  obstacleLineWidth: 0.1
-  lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
