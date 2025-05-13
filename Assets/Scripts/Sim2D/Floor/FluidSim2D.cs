@@ -401,12 +401,42 @@ namespace Seb.Fluid2D.Simulation
                     int particleOriginalType = typeData[i].x; // This is the type from the buffer
                     int particleFlag = typeData[i].y;
 
-                    if (particleFlag >= 0 && playerColorPalette[particleOriginalType - 1] == obstacleColorsArray[particleFlag]) // Removed by Player (ObstacleType 0 as per HLSL mapping)
+                    if (particleFlag >= 0) // Removed by Player (ObstacleType 0 as per HLSL mapping)
                     {
-                        indicesToRemove.Add(i);
-                        // For scoring/logging: (particle's actual type, type of obstacle that removed it)
-                        removedParticleInfo.Add((particleOriginalType, 0));
-                        // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
+                        Color finalColour = new Color();
+                        if (collisionBuffer != null && collisionBuffer.IsValid() && i >= 0 && i < collisionBuffer.count)
+                        {
+                            // 1. Create a small array to hold the single int4 element.
+                            int4[] tempArray = new int4[1];
+
+                            // 2. Use GetData to read the specific element from the ComputeBuffer into the array.
+                            //    - tempArray: The C# array to receive the data.
+                            //    - 0: The starting index in the C# array (managedBufferStartIndex).
+                            //    - i: The starting index in the ComputeBuffer on the GPU (computeBufferStartIndex).
+                            //    - 1: The number of elements to read (count).
+                            collisionBuffer.GetData(tempArray, 0, i, 1);
+
+                            for (int j = 0; j < 4; j++)
+                            {
+                                int obstacleIndex = tempArray[0][j];
+                                if (obstacleIndex != -1)
+                                {
+                                    finalColour += obstacleColorsArray[obstacleIndex];
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (AreColorsClose(playerColorPalette[particleOriginalType - 1], finalColour, 0.01f))
+                        {
+                            indicesToRemove.Add(i);
+                            // For scoring/logging: (particle's actual type, type of obstacle that removed it)
+                            removedParticleInfo.Add((particleOriginalType, particleFlag));
+                            // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
+                        }
                     }
                     else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
                     {
