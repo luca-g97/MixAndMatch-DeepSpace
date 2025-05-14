@@ -22,6 +22,15 @@ struct Obstacle
     int obstacleType;
 };
 
+struct Current
+{
+    int vertexStart;
+    int vertexCount;
+    float maxVelocity;
+    float width;
+    float linearFactor;
+};
+
 StructuredBuffer<Obstacle> ObstaclesBuffer;
 StructuredBuffer<float2> VerticesBuffer;
 RWStructuredBuffer<int4> CollisionBuffer;
@@ -31,6 +40,10 @@ int numObstacles;
 float areaToColorAroundObstacles;
 float coloredAreaAroundObstaclesDivider;
 static const int NumThreads = 64;
+
+StructuredBuffer<Current> CurrentsBuffer;
+StructuredBuffer<float2> CurrentVerticesBuffer;
+int numCurrents;
 
 RWStructuredBuffer<float2> Positions;
 RWStructuredBuffer<float2> PredictedPositions;
@@ -418,6 +431,55 @@ void UpdateSpatialHash(uint3 id : SV_DispatchThreadID)
     SpatialKeys[id.x] = key;
 }
 
+void ApplyCurrentForces(uint particleIndex, float2 pos)
+{    
+    for (int currentIdx = 0; currentIdx < numCurrents; currentIdx++)
+    {        
+        Current current = CurrentsBuffer[currentIdx];
+        int numSegments = current.vertexCount - 1;
+        
+        if (numSegments < 1)
+            continue;
+        
+        float closestDistSq = FLT_MAX;
+        float2 closestDir = float2(0, 0);
+        float maxStrength = 0;
+        
+        for (int segIdx = 0; segIdx < numSegments; segIdx++)
+        {
+            int pointIdx = current.vertexStart + segIdx;
+            float2 a = CurrentVerticesBuffer[pointIdx];
+            float2 b = CurrentVerticesBuffer[pointIdx + 1];
+            
+            float2 ab = b - a;
+            float2 ap = pos - a;
+            float lin_factor = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0);
+            float2 closestPoint = a + lin_factor * ab;
+            float2 toClosest = pos - closestPoint;
+            float distSq = dot(toClosest, toClosest);
+            
+            if (distSq < current.width * current.width)
+            {
+                float dist = sqrt(distSq);
+                float normalizedDist = dist / current.width;
+                float strength = pow(1.0 - normalizedDist, 1.0 + current.linearFactor);
+                
+                if (strength > maxStrength)
+                {
+                    maxStrength = strength;
+                    closestDir = normalize(ab);
+                    closestDistSq = distSq;
+                }
+            }
+        }
+        
+        if (maxStrength > 0.001)
+        {
+            Velocities[particleIndex] += closestDir * current.maxVelocity * maxStrength;
+        }
+    } 
+}
+
 RWStructuredBuffer<float2> SortTarget_Positions;
 RWStructuredBuffer<float2> SortTarget_PredictedPositions;
 RWStructuredBuffer<float2> SortTarget_Velocities;
@@ -573,6 +635,9 @@ void UpdatePositions(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles)
         return;
-    Positions[id.x] += Velocities[id.x] * deltaTime;
+
+    ApplyCurrentForces(id.x, Positions[id.x]);
     HandleCollisions(id.x);
+    
+    Positions[id.x] += Velocities[id.x] * deltaTime;
 }

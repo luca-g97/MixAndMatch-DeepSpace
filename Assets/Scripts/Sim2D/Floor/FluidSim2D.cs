@@ -62,6 +62,7 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer sortTarget_ParticleType;
 
         ComputeBuffer vertexBuffer;
+
         public ComputeBuffer obstacleBuffer { get; private set; }
         public ComputeBuffer obstacleColorsBuffer { get; private set; }
 
@@ -89,6 +90,20 @@ namespace Seb.Fluid2D.Simulation
 
         private MaterialPropertyBlock _propBlock;
         private Material _sharedUnlitMaterial;
+
+        private List<Vector2> currentVertices = new List<Vector2>();
+        private ComputeBuffer currentsBuffer;
+        private ComputeBuffer currentVerticesBuffer;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct CurrentData
+        {
+            public int vertexStart;
+            public int vertexCount;
+            public float maxVelocity;
+            public float width;
+            public float linearFactor;
+        }
 
         [StructLayout(LayoutKind.Explicit, Size = 24)]
         public struct ObstacleData
@@ -679,6 +694,7 @@ namespace Seb.Fluid2D.Simulation
 
         void RunSimulationStep()
         {
+            UpdateCurrentsBuffer();
             if (numParticles == 0 || compute == null) return;
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: externalForcesKernel);
             RunSpatialHashPasses();
@@ -737,6 +753,37 @@ namespace Seb.Fluid2D.Simulation
                 UpdateComputeShaderDynamicParams();
                 Debug.Log("Simulation Reset. Particle count: " + numParticles);
             }
+        }
+
+        void UpdateCurrentsBuffer()
+        {
+            currentVertices.Clear();
+            var currents = FindObjectsOfType<Current>();
+            List<CurrentData> currentDataList = new List<CurrentData>();
+
+            foreach (var current in currents)
+            {
+                Vector2[] points = current.GetWorldPoints();
+                if (points.Length >= 2)
+                {
+                    currentDataList.Add(new CurrentData
+                    {
+                        vertexStart = currentVertices.Count,
+                        vertexCount = points.Length,
+                        maxVelocity = current.maxVelocity,
+                        width = current.width,
+                        linearFactor = current.linearFactor
+                    });
+                    currentVertices.AddRange(points);
+                }
+            }
+
+            ComputeHelper.CreateStructuredBuffer(ref currentVerticesBuffer, currentVertices);
+            ComputeHelper.CreateStructuredBuffer(ref currentsBuffer, currentDataList);
+
+            compute.SetBuffer(updatePositionKernel, "CurrentsBuffer", currentsBuffer);
+            compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer", currentVerticesBuffer);
+            compute.SetInt("numCurrents", currentDataList.Count);
         }
 
         void UpdateAutoPlayers()
@@ -857,7 +904,14 @@ namespace Seb.Fluid2D.Simulation
             foreach (GameObject obstacleGO in obstacles)
             {
                 if (!_obstacleCache.TryGetValue(obstacleGO, out CachedObstacleInfo cachedInfo)) continue;
-                if (cachedInfo.transform.hasChanged) { anyObstacleTransformChanged = true; cachedInfo.transform.hasChanged = false; }
+                try
+                {
+                    if (cachedInfo.transform.hasChanged) { anyObstacleTransformChanged = true; cachedInfo.transform.hasChanged = false; }
+                }
+                catch
+                {
+                    continue;
+                }
 
                 PolygonCollider2D polyCol = cachedInfo.polyCol; LineRenderer lr = cachedInfo.lineRend;
                 if (polyCol == null || lr == null || polyCol.points.Length < 2) continue;
@@ -963,6 +1017,7 @@ namespace Seb.Fluid2D.Simulation
 
         void OnDestroy()
         {
+            ComputeHelper.Release(currentsBuffer, currentVerticesBuffer);
             ReleaseParticleBuffers();
             ReleaseObstacleBuffers();
             if (_sharedUnlitMaterial != null && lineRendererMaterial == null)
