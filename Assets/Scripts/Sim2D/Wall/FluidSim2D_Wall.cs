@@ -123,12 +123,15 @@ namespace Seb.Fluid2D.Simulation
         }
         private Dictionary<GameObject, CachedObstacleInfo> _obstacleCache = new Dictionary<GameObject, CachedObstacleInfo>();
 
-        List<Color> playerColorPalette = new List<Color> {
+        static List<Color> playerColorPalette = new List<Color> {
             new Color(0.9f, 0f, 0.4f), new Color(1f, 0.9f, 0f), new Color(0.0f, 0.4f, 0.7f),
             new Color(0.95f, 0.55f, 0f), new Color(0.6f, 0.75f, 0.1f), new Color(0.6f, 0.1f, 0.5f),
             new Color(1f, 0.75f, 0f), new Color(0.9f, 0.35f, 0f), new Color(0.9f, 0f, 0.5f),
             new Color(0.4f, 0.3f, 0.6f), new Color(0.05f, 0.7f, 0.6f), new Color(0.8f, 0.85f, 0f),
         };
+
+        private int[] removedParticlesPerColor = new int[playerColorPalette.Count];
+        private int[] particlesReachedDestination = new int[playerColorPalette.Count];
 
         List<Vector2> _gpuVerticesData = new List<Vector2>();
         List<ObstacleData> _gpuObstacleDataList = new List<ObstacleData>();
@@ -423,7 +426,7 @@ namespace Seb.Fluid2D.Simulation
                 // Assuming typeData is valid up to numParticles from the readback request
                 if (i < typeData.Length) // Safety check for array bounds
                 {
-                    int particleOriginalType = typeData[i].x; // This is the type from the buffer
+                    int particleOriginalType = (typeData[i].x - 1) % mixableColors.Count; // This is the type from the buffer
                     int particleFlag = typeData[i].y;
 
                     if (particleFlag >= 0) // Removed by Player (ObstacleType 0 as per HLSL mapping)
@@ -445,6 +448,7 @@ namespace Seb.Fluid2D.Simulation
 
                         if (AreColorsClose(playerColorPalette[particleOriginalType - 1], finalColour, 0.01f))
                         {
+                            removedParticlesPerColor[particleOriginalType]++;
                             indicesToRemove.Add(i);
                             // For scoring/logging: (particle's actual type, type of obstacle that removed it)
                             removedParticleInfo.Add((particleOriginalType, particleFlag));
@@ -453,6 +457,7 @@ namespace Seb.Fluid2D.Simulation
                     }
                     else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
                     {
+                        particlesReachedDestination[particleOriginalType]++;
                         indicesToRemove.Add(i);
                         removedParticleInfo.Add((particleOriginalType, 2));
                         // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Ventil (Flag 2 / ObstacleType 2).");
