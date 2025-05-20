@@ -123,7 +123,14 @@ namespace Seb.Fluid2D.Simulation
         }
         private Dictionary<GameObject, CachedObstacleInfo> _obstacleCache = new Dictionary<GameObject, CachedObstacleInfo>();
 
-        static List<Color> playerColorPalette = new List<Color> {
+        public static List<Color> oilColorPalette = new List<Color> {
+            new Color(0.9f, 0f, 0.4f), new Color(1f, 0.9f, 0f), new Color(0.95f, 0.55f, 0f),
+            new Color(0.0f, 0.4f, 0.7f), new Color(0.6f, 0.75f, 0.1f), new Color(0.6f, 0.1f, 0.5f),
+            new Color(1f, 0.75f, 0f), new Color(0.9f, 0.35f, 0f), new Color(0.9f, 0f, 0.5f),
+            new Color(0.4f, 0.3f, 0.6f), new Color(0.05f, 0.7f, 0.6f), new Color(0.8f, 0.85f, 0f),
+        };
+
+        public static List<Color> playerColorPalette = new List<Color> {
             new Color(0.9f, 0f, 0.4f), new Color(1f, 0.9f, 0f), new Color(0.0f, 0.4f, 0.7f),
             new Color(0.95f, 0.55f, 0f), new Color(0.6f, 0.75f, 0.1f), new Color(0.6f, 0.1f, 0.5f),
             new Color(1f, 0.75f, 0f), new Color(0.9f, 0.35f, 0f), new Color(0.9f, 0f, 0.5f),
@@ -138,7 +145,7 @@ namespace Seb.Fluid2D.Simulation
         List<Color> _gpuObstacleColorsData = new List<Color>();
 
         Dictionary<GameObject, Color> playerColors = new Dictionary<GameObject, Color>();
-        public int maxPlayerColors = 6;
+        public int maxPlayerColors = 3;
         int lastPlayerCount = -1;
 
         [Header("Obstacle Visualization")]
@@ -794,7 +801,7 @@ namespace Seb.Fluid2D.Simulation
         void UpdateAutoPlayers()
         {
             if (!Application.isPlaying) return;
-            var allGameObjectsInScene = FindObjectsOfType<GameObject>();
+            var allGameObjectsInScene = GameObject.FindObjectsOfType<GameObject>();
             HashSet<GameObject> currentPlayersInScene = new HashSet<GameObject>();
             HashSet<GameObject> currentObstaclesInScene = new HashSet<GameObject>();
             HashSet<GameObject> currentVentilsInScene = new HashSet<GameObject>();
@@ -889,9 +896,21 @@ namespace Seb.Fluid2D.Simulation
             lastPlayerCount = sortedPlayersForColoring.Count;
 
             mixableColors.Clear();
-            int colorsToMix = Mathf.Min(sortedPlayersForColoring.Count * 2, playerColorPalette.Count);
+
+            int colorsToMix = 1;
+
+            if ((sortedPlayersForColoring.Count) == 2)
+            {
+                colorsToMix = 3;
+            }
+            else if ((sortedPlayersForColoring.Count) > 2)
+            {
+                colorsToMix = maxPlayerColors * 2;
+            }
+
+            colorsToMix = Mathf.Min(colorsToMix, playerColorPalette.Count);
             for (int i = 0; i < colorsToMix; i++) mixableColors.Add(playerColorPalette[i]);
-            for (int i = mixableColors.Count; i < maxPlayerColors * 2; i++) mixableColors.Add(new Color(-1, -1, -1, -1));
+            for (int i = mixableColors.Count; i < Mathf.Min(maxPlayerColors * 2, playerColorPalette.Count); i++) mixableColors.Add(new Color(-1, -1, -1, -1));
         }
 
         void UpdateObstacleBuffer(bool forceBufferRecreation = false)
@@ -952,7 +971,10 @@ namespace Seb.Fluid2D.Simulation
                 if (obsType == 1) { displayColor = Color.white; }
                 else if (obsType == 2) { displayColor = Color.gray; }
 
-                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out Color pColor)) displayColor = pColor;
+                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out Color pColor))
+                {
+                    displayColor = pColor;
+                }
                 _propBlock.SetColor("_Color", displayColor); lr.SetPropertyBlock(_propBlock);
                 _gpuObstacleColorsData.Add(displayColor);
                 lr.startWidth = obstacleLineWidth; lr.endWidth = obstacleLineWidth;

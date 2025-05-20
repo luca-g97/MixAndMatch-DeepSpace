@@ -254,7 +254,7 @@ MonoBehaviour:
   obstacles: []
   areaToColorAroundObstacles: 1
   coloredAreaAroundObstaclesDivider: 0
-  maxPlayerColors: 6
+  maxPlayerColors: 2
   obstacleLineColor: {r: 1, g: 1, b: 1, a: 1}
   obstacleLineWidth: 0.1
   lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
