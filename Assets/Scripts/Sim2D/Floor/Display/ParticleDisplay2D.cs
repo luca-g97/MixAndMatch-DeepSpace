@@ -45,18 +45,18 @@ namespace Seb.Fluid2D.Rendering
             material.SetBuffer("ObstacleColors", sim.obstacleColorsBuffer);
             material.SetBuffer("ParticleTypeBuffer", sim.particleTypeBuffer);
 
-            material.SetColorArray("mixableColors", sim.mixableColors);
+            material.SetColorArray("mixableColors", sim.mixableColorsForShader);
 
             int colorsToUse = 1;
-            if((sim.maxPlayerColors) == 2)
+            if ((sim.maxPlayerColors) == 2)
             {
                 colorsToUse = 3;
             }
-            else if((sim.maxPlayerColors) > 2)
+            else if ((sim.maxPlayerColors) > 2)
             {
                 colorsToUse = sim.maxPlayerColors * 2;
             }
-            
+
             material.SetInt("numberOfColors", colorsToUse);
 
             ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.positionBuffer.count);

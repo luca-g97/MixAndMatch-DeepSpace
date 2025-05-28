@@ -383,7 +383,7 @@ void HandleCollisions(uint particleIndex)
             {
                 float2 tangentVel = vel - normalAtClosestPoint * normalSpeed;
                 float2 normalVel = -normalAtClosestPoint * normalSpeed * collisionDamping;
-                float friction = 0.1f; // TODO: Make friction factor a uniform parameter.
+                float friction = 0.1f;
                 vel = tangentVel * (1.0f - friction) + normalVel;
             }
         } // --- End Collision Response ---

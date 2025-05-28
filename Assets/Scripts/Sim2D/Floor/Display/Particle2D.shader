@@ -113,17 +113,8 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 int particleType = ParticleTypeBuffer[instanceID][0];
 
                 static const float COMPARE_EPSILON = 0.001f;
-                int colorsToMixCount = 0;
-                for (int i = 0; i < numberOfColors; i++)
-                {
-                    float3 diff = abs(mixableColors[i].rgb - float3(-1, -1, -1));
-                    if(all(diff > COMPARE_EPSILON))
-                    {
-                        colorsToMixCount++;
-                    }
-                }
 
-                int particleTypeToUse = (particleType-1) % colorsToMixCount;
+                int particleTypeToUse = particleType-1;
 
                 // 2. Accumulate color influence from nearby obstacles stored in CollisionBuffer
                 int4 obstacleIndices = CollisionBuffer[instanceID];
