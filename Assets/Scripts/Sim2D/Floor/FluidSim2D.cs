@@ -125,9 +125,9 @@ namespace Seb.Fluid2D.Simulation
 
         static List<Color> playerColorPalette = new List<Color> {
             new Color(0.9f, 0f, 0.4f), new Color(1f, 0.9f, 0f), new Color(0.0f, 0.4f, 0.7f),
-            new Color(0.95f, 0.55f, 0f), new Color(0.6f, 0.75f, 0.1f), new Color(0.6f, 0.1f, 0.5f),
-            new Color(1f, 0.75f, 0f), new Color(0.9f, 0.35f, 0f), new Color(0.9f, 0f, 0.5f),
-            new Color(0.4f, 0.3f, 0.6f), new Color(0.05f, 0.7f, 0.6f), new Color(0.8f, 0.85f, 0f),
+            new Color(0.95f, 0.55f, 0f),  new Color(0.6f, 0.1f, 0.5f), new Color(0.6f, 0.75f, 0.1f),
+            new Color(0.9f, 0.35f, 0f), new Color(1f, 0.75f, 0f), new Color(0.9f, 0f, 0.5f),
+            new Color(0.4f, 0.3f, 0.6f), new Color(0.05f, 0.7f, 0.6f), new Color(0.8f, 0.85f, 0f)
         };
 
         private int[] removedParticlesPerColor = new int[playerColorPalette.Count];
@@ -137,9 +137,19 @@ namespace Seb.Fluid2D.Simulation
         List<ObstacleData> _gpuObstacleDataList = new List<ObstacleData>();
         List<Color> _gpuObstacleColorsData = new List<Color>();
 
-        Dictionary<GameObject, Color> playerColors = new Dictionary<GameObject, Color>();
+        Dictionary<GameObject, int> playerColors = new Dictionary<GameObject, int>();
         public int maxPlayerColors = 6;
         int lastPlayerCount = -1;
+
+        // 0=Red, 1=Yellow, 2=Blue, 3=Orange, 4=Violet, 5=LimeGreen, 6=RedOrange, 7=YellowOrange, 8=RedViolet, 9=BlueViolet, 10=YellowGreen, 11=BlueGreen
+        private List<int[]> mixableColorcombinations = new List<int[]> {
+                new int[] {0}, // Red
+                new int[] {0, 1, 3}, // Red, Yellow
+                new int[] {0, 1, 2, 3, 4, 5}, // Red, Yellow, Blue
+                new int[] {0, 1, 2, 3, 4, 5, 6, 7}, // Red, Yellow, Blue, Orange
+                new int[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, // Red, Yellow, Blue, Orange, Violet
+                new int[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11} // Red, Yellow, Blue, Orange, Violet, LimeGreen
+        };
 
         [Header("Obstacle Visualization")]
         public Color obstacleLineColor = Color.white;
@@ -868,30 +878,89 @@ namespace Seb.Fluid2D.Simulation
                                              .ToList();
             if (listActuallyChanged) _forceObstacleBufferUpdate = true; // Ensure if the list order/content changed, buffers update.
 
+            List<GameObject> sortedPlayersForColoring = obstacles
+                .Where(o => _obstacleCache.ContainsKey(o) && o.name.Contains("PharusPlayer"))
+                .ToList();
 
-            List<GameObject> sortedPlayersForColoring = obstacles.Where(o => _obstacleCache.ContainsKey(o) && o.name.Contains("PharusPlayer")).ToList();
             if (listActuallyChanged || sortedPlayersForColoring.Count != lastPlayerCount)
             {
-                playerColors.Clear();
+                Dictionary<GameObject, int> tempPlayerColors = new Dictionary<GameObject, int>();
+                int nextColorBaseIndexToAssign = 0; // This will be the sequential 0, 1, 2... before modulo
+
                 int numPaletteColors = playerColorPalette.Count;
-                if (numPaletteColors > 0 && maxPlayerColors > 0)
+                int colorLimit = Mathf.Min(maxPlayerColors, numPaletteColors);
+
+                // 1. Categorize players from sortedPlayersForColoring
+                List<KeyValuePair<GameObject, int>> existingPlayersWithOldColor = new List<KeyValuePair<GameObject, int>>();
+                List<GameObject> newPlayersInSortedOrder = new List<GameObject>();
+
+                foreach (GameObject player in sortedPlayersForColoring)
                 {
-                    for (int i = 0; i < sortedPlayersForColoring.Count; i++)
+                    // playerColors here refers to its state *before* this update
+                    if (playerColors.TryGetValue(player, out int oldColorIndex))
                     {
-                        GameObject currentPlayer = sortedPlayersForColoring[i];
-                        Color playerColor = playerColorPalette[i % Mathf.Min(maxPlayerColors, numPaletteColors)];
-                        playerColor.a = 1.0f;
-                        playerColors[currentPlayer] = playerColor;
+                        existingPlayersWithOldColor.Add(new KeyValuePair<GameObject, int>(player, oldColorIndex));
+                    }
+                    else
+                    {
+                        newPlayersInSortedOrder.Add(player); // Order of new players preserved from sortedPlayersForColoring
                     }
                 }
+
+                // 2. Sort existing players by their old color index
+                existingPlayersWithOldColor.Sort((a, b) => a.Value.CompareTo(b.Value));
+
+                // 3.a. Assign new colors to sorted existing players
+                foreach (var playerEntry in existingPlayersWithOldColor)
+                {
+                    GameObject player = playerEntry.Key;
+                    tempPlayerColors[player] = nextColorBaseIndexToAssign % colorLimit;
+                    nextColorBaseIndexToAssign++;
+                }
+
+                // 3.b. Assign new colors to new players
+                foreach (GameObject player in newPlayersInSortedOrder)
+                {
+                    tempPlayerColors[player] = nextColorBaseIndexToAssign % colorLimit;
+                    nextColorBaseIndexToAssign++;
+                }
+
                 _forceObstacleBufferUpdate = true;
+                playerColors = tempPlayerColors; // Update the main playerColors dictionary
             }
+            // Update lastPlayerCount based on the number of players considered for coloring
             lastPlayerCount = sortedPlayersForColoring.Count;
 
             mixableColors.Clear();
-            int colorsToMix = Mathf.Min(sortedPlayersForColoring.Count * 2, playerColorPalette.Count);
-            for (int i = 0; i < colorsToMix; i++) mixableColors.Add(playerColorPalette[i]);
-            for (int i = mixableColors.Count; i < maxPlayerColors * 2; i++) mixableColors.Add(new Color(-1, -1, -1, -1));
+
+            int mixableSetIndex = 0; // Default index
+
+            if (mixableColorcombinations.Count > 0)
+            {
+                if (maxPlayerColors > 0)
+                {
+                    mixableSetIndex = Mathf.Min(mixableColorcombinations.Count - 1, maxPlayerColors - 1, lastPlayerCount - 1); // Cap to the last available set in 'mixableColorcombinations'
+                }
+
+                int[] tempMixableColorIndices = mixableColorcombinations[mixableSetIndex >= 0 ? mixableSetIndex : 0];
+                for (int i = 0; i < tempMixableColorIndices.Length; i++)
+                {
+                    int paletteIndex = tempMixableColorIndices[i];
+                    // Ensure the paletteIndex is valid for playerColorPalette
+                    if (paletteIndex >= 0 && paletteIndex < playerColorPalette.Count)
+                    {
+                        mixableColors.Add(playerColorPalette[paletteIndex]);
+                    }
+                }
+            }
+
+
+            // Fill remaining mixableColors with a placeholder color up to the total number of colors in the palette
+            // This ensures mixableColors has a certain size if needed elsewhere, padding with invalid colors.
+            for (int i = mixableColors.Count; i < playerColorPalette.Count; i++)
+            {
+                mixableColors.Add(new Color(-1, -1, -1, -1)); // Using new Color(-1,-1,-1,-1) as a distinct invalid/placeholder
+            }
         }
 
         void UpdateObstacleBuffer(bool forceBufferRecreation = false)
@@ -952,7 +1021,7 @@ namespace Seb.Fluid2D.Simulation
                 if (obsType == 1) { displayColor = Color.white; }
                 else if (obsType == 2) { displayColor = Color.gray; }
 
-                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out Color pColor)) displayColor = pColor;
+                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = playerColorPalette[pColor];
                 _propBlock.SetColor("_Color", displayColor); lr.SetPropertyBlock(_propBlock);
                 _gpuObstacleColorsData.Add(displayColor);
                 lr.startWidth = obstacleLineWidth; lr.endWidth = obstacleLineWidth;
