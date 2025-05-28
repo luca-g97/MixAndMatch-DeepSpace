@@ -46,6 +46,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
             float velocityMax;          // Max velocity for normalizing speed (usually set via script)
             float _SaturationBoost;     // Factor to boost saturation on mixing (from Properties)
             float3 mixableColors[12];
+            int numberOfColors;
 
             // --- Structs ---
             // Data passed from Vertex to Fragment shader
@@ -113,7 +114,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
 
                 static const float COMPARE_EPSILON = 0.001f;
                 int colorsToMixCount = 0;
-                for (int i = 0; i < 12; i++)
+                for (int i = 0; i < numberOfColors; i++)
                 {
                     float3 diff = abs(mixableColors[i].rgb - float3(-1, -1, -1));
                     if(all(diff > COMPARE_EPSILON))
@@ -152,7 +153,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
 
                     bool mixableColor = false;
                     float3 exactColor = float3(-1, -1, -1);
-                    for (int i = 0; i < 12; i++)
+                    for (int i = 0; i < numberOfColors; i++)
                     {
                         float3 diff = abs(mixableColors[i].rgb - obstacleColorSum);
                         if(all(diff < COMPARE_EPSILON))
