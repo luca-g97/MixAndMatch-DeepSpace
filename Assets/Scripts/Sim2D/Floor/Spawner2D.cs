@@ -10,19 +10,12 @@ public class Spawner2D : MonoBehaviour
         Water = 0,
         OilRed = 1,
         OilYellow = 2,
+        OilBlue = 3,
         OilOrange = 4,
-<<<<<<< HEAD
         OilViolet = 5,
         OilLimeGreen = 6,
         OilRedOrange = 7,
         OilYellowOrange = 8,
-=======
-        OilBlue = 3,
-        OilLimeGreen = 5,
-        OilViolet = 6,
-        OilYellowOrange = 7,
-        OilRedOrange = 8,
->>>>>>> 4d20e7234af65ad5fcf6da52f8437c8ed0b31209
         OilRedViolet = 9,
         OilBlueViolet = 10,
         OilYellowGreen = 11,
