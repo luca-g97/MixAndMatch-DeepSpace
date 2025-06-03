@@ -56,7 +56,17 @@ MonoBehaviour:
       - rid: 1447007942302761193
       - rid: 1447007942302761194
     m_RuntimeSettings:
-      m_List: []
+      m_List:
+      - rid: 1447007942302761175
+      - rid: 1447007942302761176
+      - rid: 1447007942302761177
+      - rid: 1447007942302761178
+      - rid: 1447007942302761179
+      - rid: 1447007942302761181
+      - rid: 1447007942302761182
+      - rid: 1447007942302761186
+      - rid: 1447007942302761190
+      - rid: 1447007942302761193
   m_AssetVersion: 8
   m_ObsoleteDefaultVolumeProfile: {fileID: 0}
   m_RenderingLayerNames:
@@ -158,7 +168,7 @@ MonoBehaviour:
       type: {class: URPShaderStrippingSetting, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.Runtime}
       data:
         m_Version: 0
-        m_StripUnusedPostProcessingVariants: 0
+        m_StripUnusedPostProcessingVariants: 1
         m_StripUnusedVariants: 1
         m_StripScreenCoordOverrideVariants: 1
     - rid: 1447007942302761184

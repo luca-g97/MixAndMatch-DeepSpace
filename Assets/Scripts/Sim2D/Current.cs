@@ -19,6 +19,14 @@ public class Current : MonoBehaviour
         UpdateVisual();
     }
 
+    private void Start()
+    {
+#if !UNITY_EDITOR
+        InitializeLineRenderer();
+        UpdateVisual();
+#endif
+    }
+
     void InitializeLineRenderer()
     {
         if (!lineRenderer) lineRenderer = GetComponent<LineRenderer>();
