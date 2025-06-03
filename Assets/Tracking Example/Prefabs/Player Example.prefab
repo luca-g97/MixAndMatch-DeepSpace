@@ -148,16 +148,16 @@ PolygonCollider2D:
   m_AutoTiling: 0
   m_Points:
     m_Paths:
-    - - {x: 0.20572753, y: 0.21462287}
-      - {x: 0.056951053, y: 0.5891508}
-      - {x: 0.0061363797, y: 0.632399}
-      - {x: -0.07071, y: 0.5735265}
-      - {x: -0.1999012, y: 0.24109691}
-      - {x: -0.18427612, y: -0.39776093}
-      - {x: -0.13173394, y: -0.5264249}
-      - {x: 0.022286892, y: -0.5772722}
-      - {x: 0.137503, y: -0.52256083}
-      - {x: 0.19676913, y: -0.38835666}
+    - - {x: 0.17711312, y: 0.20508473}
+      - {x: 0.044233344, y: 0.5223838}
+      - {x: -0.012939798, y: 0.5433764}
+      - {x: -0.057992384, y: 0.5004008}
+      - {x: -0.16810739, y: 0.21248251}
+      - {x: -0.15884107, y: -0.3246353}
+      - {x: -0.08404305, y: -0.41514668}
+      - {x: 0.0032105185, y: -0.43420053}
+      - {x: 0.09935046, y: -0.41446194}
+      - {x: 0.16815451, y: -0.31205127}
   m_UseDelaunayMesh: 0
 --- !u!1 &4967671305088396478
 GameObject:
@@ -310,18 +310,6 @@ PrefabInstance:
     - target: {fileID: 4967671303439236353, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
       propertyPath: m_Name
       value: PlayerBoat
-      objectReference: {fileID: 0}
-    - target: {fileID: 4967671303439236355, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 0.33
-      objectReference: {fileID: 0}
-    - target: {fileID: 4967671303439236355, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.33
-      objectReference: {fileID: 0}
-    - target: {fileID: 4967671303439236355, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 0.33
       objectReference: {fileID: 0}
     - target: {fileID: 4967671303439236355, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
       propertyPath: m_LocalPosition.x
