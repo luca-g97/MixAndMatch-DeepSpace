@@ -1,5 +1,7 @@
+using NUnit.Framework;
 using Seb.Fluid2D.Simulation;
 using Seb.Helpers;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Seb.Fluid2D.Rendering
@@ -45,8 +47,28 @@ namespace Seb.Fluid2D.Rendering
             material.SetBuffer("ObstacleColors_Wall", sim.obstacleColorsBuffer);
             material.SetBuffer("ParticleTypeBuffer_Wall", sim.particleTypeBuffer);
 
-            material.SetColorArray("mixableColors_Wall", sim.mixableColors);
+            try
+            {
+                material.SetColorArray("mixableColors_Wall", sim.mixableColorsForShader);
+            }
+            catch
+            {
+                Debug.LogError("Cannot assign Colors! Is Pharus running?");
+                return;
+            }
+            
 
+            int colorsToUse = 1;
+            if ((sim.maxPlayerColors) == 2)
+            {
+                colorsToUse = 3;
+            }
+            else if ((sim.maxPlayerColors) > 2)
+            {
+                colorsToUse = sim.maxPlayerColors * 2;
+            }
+
+            material.SetInt("numberOfColors_Wall", colorsToUse);
             ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.positionBuffer.count);
             bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
 

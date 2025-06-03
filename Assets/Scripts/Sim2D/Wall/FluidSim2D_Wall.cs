@@ -83,7 +83,7 @@ namespace Seb.Fluid2D.Simulation
         public int numParticles { get; private set; }
 
         [Header("Obstacles")]
-        public List<Color> mixableColors = new List<Color>();
+        
         public List<GameObject> obstacles = new List<GameObject>();
         [Min(0)] public float areaToColorAroundObstacles = 1.0f;
         [Min(0)] public float coloredAreaAroundObstaclesDivider = 0.05f;
@@ -123,27 +123,29 @@ namespace Seb.Fluid2D.Simulation
         }
         private Dictionary<GameObject, CachedObstacleInfo> _obstacleCache = new Dictionary<GameObject, CachedObstacleInfo>();
 
-        static List<Color> playerColorPalette = new List<Color> {
+        public static List<Color> colorPalette = new List<Color> {
             new Color(0.9f, 0f, 0.4f), new Color(1f, 0.9f, 0f), new Color(0.0f, 0.4f, 0.7f),
-            new Color(0.95f, 0.55f, 0f), new Color(0.6f, 0.75f, 0.1f), new Color(0.6f, 0.1f, 0.5f),
-            new Color(1f, 0.75f, 0f), new Color(0.9f, 0.35f, 0f), new Color(0.9f, 0f, 0.5f),
-            new Color(0.4f, 0.3f, 0.6f), new Color(0.05f, 0.7f, 0.6f), new Color(0.8f, 0.85f, 0f),
+            new Color(0.95f, 0.55f, 0f),  new Color(0.6f, 0.1f, 0.5f), new Color(0.6f, 0.75f, 0.1f),
+            new Color(0.9f, 0.35f, 0f), new Color(1f, 0.75f, 0f), new Color(0.9f, 0f, 0.5f),
+            new Color(0.4f, 0.3f, 0.6f), new Color(0.05f, 0.7f, 0.6f), new Color(0.8f, 0.85f, 0f)
         };
 
-        private int[] removedParticlesPerColor = new int[playerColorPalette.Count];
-        private int[] particlesReachedDestination = new int[playerColorPalette.Count];
+        private int[] removedParticlesPerColor = new int[colorPalette.Count];
+        private int[] particlesReachedDestination = new int[colorPalette.Count];
 
         List<Vector2> _gpuVerticesData = new List<Vector2>();
         List<ObstacleData> _gpuObstacleDataList = new List<ObstacleData>();
         List<Color> _gpuObstacleColorsData = new List<Color>();
 
-        Dictionary<GameObject, Color> playerColors = new Dictionary<GameObject, Color>();
-        public int maxPlayerColors = 6;
-        int lastPlayerCount = -1;
+        Dictionary<GameObject, int> playerColors = new Dictionary<GameObject, int>();
+        private List<int> mixableColors = new List<int>();
+        public List<Color> mixableColorsForShader = new List<Color>();
+        [Range(0, 6)] public int maxPlayerColors = 6;
+        private int lastPlayerCount = -1;
 
         [Header("Obstacle Visualization")]
         public Color obstacleLineColor = Color.white;
-        public float obstacleLineWidth = 0.1f;
+        [Min(0)] public float obstacleLineWidth = 0.1f;
         public Material lineRendererMaterial;
 
         private float autoUpdateInterval = 0.5f;
@@ -426,42 +428,47 @@ namespace Seb.Fluid2D.Simulation
                 // Assuming typeData is valid up to numParticles from the readback request
                 if (i < typeData.Length) // Safety check for array bounds
                 {
-                    int particleOriginalType = (typeData[i].x - 1) % mixableColors.Count; // This is the type from the buffer
-                    int particleFlag = typeData[i].y;
+                    if (typeData[i].x > 0)
+					{
+						// The clamp seems to be necessary due to racing condition
+                        int particleOriginalType = Mathf.Clamp(mixableColors[typeData[i].x - 1], 0, colorPalette.Count); // This is the type from the buffer
+                        int particleFlag = typeData[i].y;
 
-                    if (particleFlag >= 0) // Removed by Player (ObstacleType 0 as per HLSL mapping)
-                    {
-                        Color finalColour = new Color();
-
-                        for (int j = 0; j < 4; j++)
+                        if (particleFlag >= 0) // Removed by Player (ObstacleType 0 as per HLSL mapping)
                         {
-                            int obstacleIndex = collisionIndicesArray[i][j];
-                            if (obstacleIndex != -1)
+                            Color finalColour = new Color();
+
+                            for (int j = 0; j < 4; j++)
                             {
-                                finalColour += obstacleColorsArray[obstacleIndex];
+                                int obstacleIndex = collisionIndicesArray[i][j];
+                                if (obstacleIndex != -1)
+                                {
+                                    finalColour += obstacleColorsArray[obstacleIndex];
+                                }
+                                else
+                                {
+                                    break;
+                                }
                             }
-                            else
+
+                            if (AreColorsClose(colorPalette[particleOriginalType], finalColour, 0.01f))
                             {
-                                break;
+                                removedParticlesPerColor[particleOriginalType]++;
+                                indicesToRemove.Add(i);
+                                // For scoring/logging: (particle's actual type, type of obstacle that removed it)
+                                removedParticleInfo.Add((particleOriginalType, particleFlag));
+                                // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
                             }
                         }
-
-                        if (AreColorsClose(playerColorPalette[particleOriginalType - 1], finalColour, 0.01f))
+                        else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
                         {
-                            removedParticlesPerColor[particleOriginalType]++;
+                            particlesReachedDestination[particleOriginalType]++;
                             indicesToRemove.Add(i);
-                            // For scoring/logging: (particle's actual type, type of obstacle that removed it)
-                            removedParticleInfo.Add((particleOriginalType, particleFlag));
-                            // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
+                            removedParticleInfo.Add((particleOriginalType, 2));
+                            // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Ventil (Flag 2 / ObstacleType 2).");
                         }
                     }
-                    else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
-                    {
-                        particlesReachedDestination[particleOriginalType]++;
-                        indicesToRemove.Add(i);
-                        removedParticleInfo.Add((particleOriginalType, 2));
-                        // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Ventil (Flag 2 / ObstacleType 2).");
-                    }
+
                 }
                 else
                 {
@@ -794,7 +801,7 @@ namespace Seb.Fluid2D.Simulation
         void UpdateAutoPlayers()
         {
             if (!Application.isPlaying) return;
-            var allGameObjectsInScene = FindObjectsOfType<GameObject>();
+            var allGameObjectsInScene = GameObject.FindObjectsOfType<GameObject>();
             HashSet<GameObject> currentPlayersInScene = new HashSet<GameObject>();
             HashSet<GameObject> currentObstaclesInScene = new HashSet<GameObject>();
             HashSet<GameObject> currentVentilsInScene = new HashSet<GameObject>();
@@ -803,12 +810,14 @@ namespace Seb.Fluid2D.Simulation
             {
                 if (!go.activeInHierarchy) continue;
                 if (go.name.Contains("PharusPlayer")) currentPlayersInScene.Add(go);
+				else if (go.name.Contains("TouchPlayer")) currentPlayersInScene.Add(go);
                 else if (go.name.Contains("Obstacle")) currentObstaclesInScene.Add(go);
                 else if (go.name.Contains("Ventil")) currentVentilsInScene.Add(go);
             }
 
             bool listActuallyChanged = false;
             List<GameObject> newMasterObstaclesList = new List<GameObject>();
+			List<int> assignedIndices = new List<int>();
 
             System.Action<HashSet<GameObject>> processSet = (set) =>
             {
@@ -868,31 +877,121 @@ namespace Seb.Fluid2D.Simulation
                                              .ToList();
             if (listActuallyChanged) _forceObstacleBufferUpdate = true; // Ensure if the list order/content changed, buffers update.
 
+            List<GameObject> sortedPlayersForColoring = obstacles
+                .Where(o => _obstacleCache.ContainsKey(o) && (o.name.Contains("PharusPlayer") || o.name.Contains("TouchPlayer")))
+                .ToList();
 
-            List<GameObject> sortedPlayersForColoring = obstacles.Where(o => _obstacleCache.ContainsKey(o) && o.name.Contains("PharusPlayer")).ToList();
             if (listActuallyChanged || sortedPlayersForColoring.Count != lastPlayerCount)
             {
-                playerColors.Clear();
-                int numPaletteColors = playerColorPalette.Count;
-                if (numPaletteColors > 0 && maxPlayerColors > 0)
+                Dictionary<GameObject, int> tempPlayerColors = new Dictionary<GameObject, int>();
+
+                int numPaletteColors = colorPalette.Count;
+                int colorLimit = Mathf.Min(maxPlayerColors, numPaletteColors);
+
+                // 1. Categorize players from sortedPlayersForColoring
+                List<KeyValuePair<GameObject, int>> existingPlayersWithOldColor = new List<KeyValuePair<GameObject, int>>();
+                List<GameObject> newPlayersInSortedOrder = new List<GameObject>();
+
+                foreach (GameObject player in sortedPlayersForColoring)
                 {
-                    for (int i = 0; i < sortedPlayersForColoring.Count; i++)
+                    // playerColors here refers to its state *before* this update
+                    if (playerColors.TryGetValue(player, out int oldColorIndex))
                     {
-                        GameObject currentPlayer = sortedPlayersForColoring[i];
-                        Color playerColor = playerColorPalette[i % Mathf.Min(maxPlayerColors, numPaletteColors)];
-                        playerColor.a = 1.0f;
-                        playerColors[currentPlayer] = playerColor;
+                        existingPlayersWithOldColor.Add(new KeyValuePair<GameObject, int>(player, oldColorIndex));
+                    }
+                    else
+                    {
+                        newPlayersInSortedOrder.Add(player); // Order of new players preserved from sortedPlayersForColoring
                     }
                 }
-                _forceObstacleBufferUpdate = true;
-            }
-            lastPlayerCount = sortedPlayersForColoring.Count;
 
+                // 2. Sort existing players by their old color index
+                existingPlayersWithOldColor.Sort((a, b) => a.Value.CompareTo(b.Value));
+
+                // 3.a. Assign new colors to sorted existing players
+                foreach (var playerEntry in existingPlayersWithOldColor)
+                {
+                    GameObject player = playerEntry.Key;
+                    int oldColorIndex = playerEntry.Value;
+                    tempPlayerColors[player] = oldColorIndex % colorLimit;
+                    assignedIndices.Add(oldColorIndex);
+                }
+
+                int nextColorIndex = lastPlayerCount;
+                // 3.b. Assign new colors to new players
+                foreach (GameObject player in newPlayersInSortedOrder)
+                {
+                    bool uniqueSlotFound = false;
+                    for (int k = 0; k < colorLimit; k++)
+                    {
+                        if (!assignedIndices.Contains(k))
+                        {
+                            tempPlayerColors[player] = k;
+                            assignedIndices.Add(k); // This unique slot is now taken
+                            uniqueSlotFound = true;
+                            break;
+                        }
+                    }
+
+                    // IF no slot was found, simply use next available color
+                    if (!uniqueSlotFound)
+                    {
+                        tempPlayerColors[player] = nextColorIndex % maxPlayerColors;
+                        nextColorIndex++;
+                	}
+                }
+                _forceObstacleBufferUpdate = true;
+				playerColors = tempPlayerColors; // Update the main playerColors dictionary
+            }
+            // Update lastPlayerCount based on the number of players considered for coloring
+            lastPlayerCount = sortedPlayersForColoring.Count;
             mixableColors.Clear();
-            int colorsToMix = Mathf.Min(sortedPlayersForColoring.Count * 2, playerColorPalette.Count);
-            for (int i = 0; i < colorsToMix; i++) mixableColors.Add(playerColorPalette[i]);
-            for (int i = mixableColors.Count; i < maxPlayerColors * 2; i++) mixableColors.Add(new Color(-1, -1, -1, -1));
-        }
+
+            assignedIndices = assignedIndices.OrderBy(i => i).ToList();
+            for (int i = 0; i < colorPalette.Count; i++)
+            {
+                if (assignedIndices.Contains(i))
+                {
+                    mixableColors.Add(i);
+                }
+                else
+                {
+                    // 0=Red, 1=Yellow, 2=Blue, 3=Orange, 4=Violet, 5=LimeGreen, 6=RedOrange, 7=YellowOrange, 8=RedViolet, 9=BlueViolet, 10=YellowGreen, 11=BlueGreen
+                    if ((i == 3 && assignedIndices.Contains(0) && assignedIndices.Contains(1) && maxPlayerColors <= 3) || //Only assign if not player
+                        (i == 4 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && maxPlayerColors <= 3) || //Only assign if not player
+                        (i == 5 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && maxPlayerColors <= 3) || //Only assign if not player
+                        (i == 6 && assignedIndices.Contains(0) && assignedIndices.Contains(3)) ||
+                        (i == 7 && assignedIndices.Contains(1) && assignedIndices.Contains(3)) ||
+                        (i == 8 && assignedIndices.Contains(0) && assignedIndices.Contains(4)) ||
+                        (i == 9 && assignedIndices.Contains(2) && assignedIndices.Contains(4)) ||
+                        (i == 10 && assignedIndices.Contains(1) && assignedIndices.Contains(5)) ||
+                        (i == 11 && assignedIndices.Contains(2) && assignedIndices.Contains(5)))
+                    {
+                        mixableColors.Add(i);
+                    }
+                    else
+                    {
+                        mixableColors.Add(-1); // Using new Color(-1,-1,-1,-1) as a distinct invalid/placeholder
+                    }
+                }
+            }
+            
+            mixableColorsForShader.Clear();
+            int currentIndex = 0;
+            if (assignedIndices.Count > 0)
+            {
+                for (int i = 0; i < colorPalette.Count; i++)
+                {
+                    if (mixableColors[i] == -1)
+                    {
+                        mixableColors[i] = assignedIndices[currentIndex];
+                        currentIndex++;
+                        currentIndex = currentIndex % assignedIndices.Count;
+                    }
+                    mixableColorsForShader.Add(colorPalette[mixableColors[i]]);
+                }
+            }
+		}
 
         void UpdateObstacleBuffer(bool forceBufferRecreation = false)
         {
@@ -938,7 +1037,7 @@ namespace Seb.Fluid2D.Simulation
                 lr.SetPositions(worldLinePoints);
 
                 int obsType = 1;
-                if (obstacleGO.name.Contains("PharusPlayer")) obsType = 0; else if (obstacleGO.name.Contains("Ventil")) obsType = 2;
+                if (obstacleGO.name.Contains("PharusPlayer") || obstacleGO.name.Contains("TouchPlayer")) obsType = 0; else if (obstacleGO.name.Contains("Ventil")) obsType = 2;
                 _gpuObstacleDataList.Add(new ObstacleData
                 {
                     centre = cachedInfo.transform.TransformPoint(polyCol.offset),
@@ -953,7 +1052,7 @@ namespace Seb.Fluid2D.Simulation
                 if (obsType == 1) { displayColor = Color.white; }
                 else if (obsType == 2) { displayColor = Color.gray; }
 
-                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out Color pColor)) displayColor = pColor;
+                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = colorPalette[pColor];
                 _propBlock_Wall.SetColor("_Color", displayColor); lr.SetPropertyBlock(_propBlock_Wall);
                 _gpuObstacleColorsData.Add(displayColor);
                 lr.startWidth = obstacleLineWidth; lr.endWidth = obstacleLineWidth;

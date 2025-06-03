@@ -343,7 +343,7 @@ void HandleCollisions_Wall(uint particleIndex)
             {
                 ParticleTypeBuffer_Wall[particleIndex][1] = obstacleIdx; // Mark for removal by Player
             }
-            else if (obstacle.obstacleType == 2)
+            else if(obstacle.obstacleType == 2)
             {
                 ParticleTypeBuffer_Wall[particleIndex][1] = -2; // Mark for removal by Ventil
             }
@@ -395,7 +395,7 @@ void HandleCollisions_Wall(uint particleIndex)
             {
                 float2 tangentVel = vel - normalAtClosestPoint * normalSpeed;
                 float2 normalVel = -normalAtClosestPoint * normalSpeed * collisionDamping_Wall;
-                float friction = 0.1f; // TODO: Make friction factor a uniform parameter.
+                float friction = 0.1f;
                 vel = tangentVel * (1.0f - friction) + normalVel;
             }
         } // --- End Collision Response ---

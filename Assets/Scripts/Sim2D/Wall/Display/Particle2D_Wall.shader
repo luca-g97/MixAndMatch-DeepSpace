@@ -46,6 +46,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
             float velocityMax_Wall;          // Max velocity for normalizing speed (usually set via script)
             float _SaturationBoost_Wall;     // Factor to boost saturation on mixing (from Properties)
             float3 mixableColors_Wall[12];
+            int numberOfColors_Wall;
 
             // --- Structs ---
             // Data passed from Vertex to Fragment shader
@@ -112,17 +113,8 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                 int particleType = ParticleTypeBuffer_Wall[instanceID][0];
 
                 static const float COMPARE_EPSILON = 0.001f;
-                int colorsToMixCount = 0;
-                for (int i = 0; i < 12; i++)
-                {
-                    float3 diff = abs(mixableColors_Wall[i].rgb - float3(-1, -1, -1));
-                    if(all(diff > COMPARE_EPSILON))
-                    {
-                        colorsToMixCount++;
-                    }
-                }
 
-                int particleTypeToUse = (particleType-1) % colorsToMixCount;
+                int particleTypeToUse = particleType-1;
 
                 // 2. Accumulate color influence from nearby obstacles stored in CollisionBuffer
                 int4 obstacleIndices = CollisionBuffer_Wall[instanceID];
@@ -152,7 +144,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
 
                     bool mixableColor = false;
                     float3 exactColor = float3(-1, -1, -1);
-                    for (int i = 0; i < 12; i++)
+                    for (int i = 0; i < numberOfColors_Wall; i++)
                     {
                         float3 diff = abs(mixableColors_Wall[i].rgb - obstacleColorSum);
                         if(all(diff < COMPARE_EPSILON))

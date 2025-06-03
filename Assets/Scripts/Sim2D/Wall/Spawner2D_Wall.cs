@@ -10,16 +10,16 @@ public class Spawner2D_Wall : MonoBehaviour
         Water = 0,
         OilRed = 1,
         OilYellow = 2,
-        OilOrange = 4,
         OilBlue = 3,
-        OilLimeGreen = 5,
-        OilViolet = 6,
-        OilYellowOrange = 7,
-        OilRedOrange = 8,
+        OilOrange = 4,
+        OilViolet = 5,
+        OilLimeGreen = 6,
+        OilRedOrange = 7,
+        OilYellowOrange = 8,
         OilRedViolet = 9,
         OilBlueViolet = 10,
-        OilBlueGreen = 11,
-        OilYellowGreen = 12
+        OilYellowGreen = 11,
+        OilBlueGreen = 12
     };
 
     public Vector2 initialVelocity;

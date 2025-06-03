@@ -45,7 +45,15 @@ namespace Seb.Fluid2D.Rendering
             material.SetBuffer("ObstacleColors", sim.obstacleColorsBuffer);
             material.SetBuffer("ParticleTypeBuffer", sim.particleTypeBuffer);
 
-            material.SetColorArray("mixableColors", sim.mixableColorsForShader);
+            try
+            {
+                material.SetColorArray("mixableColors", sim.mixableColorsForShader);
+            }
+            catch
+            {
+                Debug.LogError("Cannot assign Colors! Is Pharus running?");
+            }
+            
 
             int colorsToUse = 1;
             if ((sim.maxPlayerColors) == 2)

@@ -808,6 +808,7 @@ namespace Seb.Fluid2D.Simulation
             {
                 if (!go.activeInHierarchy) continue;
                 if (go.name.Contains("PharusPlayer")) currentPlayersInScene.Add(go);
+                else if (go.name.Contains("TouchPlayer")) currentPlayersInScene.Add(go);
                 else if (go.name.Contains("Obstacle")) currentObstaclesInScene.Add(go);
                 else if (go.name.Contains("Ventil")) currentVentilsInScene.Add(go);
             }
@@ -875,7 +876,7 @@ namespace Seb.Fluid2D.Simulation
             if (listActuallyChanged) _forceObstacleBufferUpdate = true; // Ensure if the list order/content changed, buffers update.
 
             List<GameObject> sortedPlayersForColoring = obstacles
-                .Where(o => _obstacleCache.ContainsKey(o) && o.name.Contains("PharusPlayer"))
+                .Where(o => _obstacleCache.ContainsKey(o) && (o.name.Contains("PharusPlayer") || o.name.Contains("TouchPlayer")))
                 .ToList();
 
             if (listActuallyChanged || sortedPlayersForColoring.Count != lastPlayerCount)
@@ -1034,7 +1035,7 @@ namespace Seb.Fluid2D.Simulation
                 lr.SetPositions(worldLinePoints);
 
                 int obsType = 1;
-                if (obstacleGO.name.Contains("PharusPlayer")) obsType = 0; else if (obstacleGO.name.Contains("Ventil")) obsType = 2;
+                if (obstacleGO.name.Contains("PharusPlayer") || obstacleGO.name.Contains("TouchPlayer")) obsType = 0; else if (obstacleGO.name.Contains("Ventil")) obsType = 2;
                 _gpuObstacleDataList.Add(new ObstacleData
                 {
                     centre = cachedInfo.transform.TransformPoint(polyCol.offset),
