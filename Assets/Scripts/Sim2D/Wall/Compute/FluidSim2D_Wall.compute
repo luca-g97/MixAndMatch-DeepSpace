@@ -38,6 +38,7 @@ RWStructuredBuffer<int2> ParticleTypeBuffer_Wall;
 
 int numObstacles_Wall;
 float areaToColorAroundObstacles_Wall;
+float minDistanceToRemoveParticles_Wall;
 float coloredAreaAroundObstaclesDivider_Wall;
 static const int NumThreads_Wall = 64;
 
@@ -337,13 +338,13 @@ void HandleCollisions_Wall(uint particleIndex)
         // Check for removal condition FIRST. If removed, it might not need coloring.
         // Ensure particleType is still valid (>=0) before processing for removal by this obstacle.
         // ParticleProcessFlags[particleIndex] == 0 ensures we only mark it once per frame by the first Ventil/Player it hits.
-        if (particleProcessFlag == -1 && isInside && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
+        if (particleProcessFlag == -1 && (minDistSq <= minDistanceToRemoveParticles_Wall) && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
         {
             if (obstacle.obstacleType == 0) // Player
             {
                 ParticleTypeBuffer_Wall[particleIndex][1] = obstacleIdx; // Mark for removal by Player
             }
-            else if(obstacle.obstacleType == 2)
+            else if(obstacle.obstacleType == 2 && isInside)
             {
                 ParticleTypeBuffer_Wall[particleIndex][1] = -2; // Mark for removal by Ventil
             }

@@ -1,8 +1,7 @@
-using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class PlayerColor: MonoBehaviour
+public class PlayerColor : MonoBehaviour
 {
     [SerializeField] private MeshRenderer _boatColorRenderer;
     [SerializeField] private MeshRenderer _boatLightBulbRenderer;
@@ -13,7 +12,7 @@ public class PlayerColor: MonoBehaviour
     private MaterialPropertyBlock _boatColorBlock;
     private MaterialPropertyBlock _boatLightBulbBlock;
     private MaterialPropertyBlock _volumetricSphereBlock;
-    
+
     private static readonly int _COLOR = Shader.PropertyToID("_Color");
     private static readonly int _BASE_COLOR = Shader.PropertyToID("_BaseColor");
     private static readonly int _EMISSION_COLOR = Shader.PropertyToID("_EmissionColor");
@@ -24,24 +23,29 @@ public class PlayerColor: MonoBehaviour
         _boatLightBulbBlock = new MaterialPropertyBlock();
         _volumetricSphereBlock = new MaterialPropertyBlock();
     }
-    
+
     public void UpdateColor(Color color)
     {
         // Update boat color
+        if (_boatColorBlock == null || _boatLightBulbBlock == null || _volumetricSphereBlock == null)
+        {
+            Start();
+        }
+
         _boatColorBlock.SetColor(_BASE_COLOR, color);
         _boatColorRenderer.SetPropertyBlock(_boatColorBlock);
-        
+
         // Update boat light bulb color
         _boatLightBulbBlock.SetColor(_BASE_COLOR, color);
         _boatLightBulbBlock.SetVector(_EMISSION_COLOR, color * 4f);
         _boatLightBulbRenderer.SetPropertyBlock(_boatLightBulbBlock);
-        
+
         // Light cone color
         float lightConeAlpha = _lightConeImage.color.a;
         Color newLightConeColor = color;
         newLightConeColor.a = lightConeAlpha;
         _lightConeImage.color = newLightConeColor;
-        
+
         // Update boat point light color
         _boatPointLight.color = color;
 

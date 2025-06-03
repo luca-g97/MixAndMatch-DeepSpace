@@ -145,6 +145,7 @@ public class Spawner2D : MonoBehaviour
                     particlesAddedThisFrame++;
                 }
             }
+            spawnRegions[regionIndex].particlesPerSecond = 0;
             if (currentTotalParticles + particlesAddedThisFrame >= maxTotalParticles) break;
         }
         return new ParticleSpawnData

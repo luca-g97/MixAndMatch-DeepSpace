@@ -1,5 +1,5 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
 public class TouchPlayer : MonoBehaviour
 {
@@ -29,7 +29,7 @@ public class TouchPlayer : MonoBehaviour
         if (inputWithinCamera)
         {
             Vector3 currentWorldInputPosition = floorCam.ScreenToWorldPoint(
-                new Vector3(screenPosition.x, screenPosition.y, 10.0f)
+                new Vector3(screenPosition.x, screenPosition.y, 15.0f)
             );
 
             switch (phase)
@@ -55,8 +55,8 @@ public class TouchPlayer : MonoBehaviour
                 case TouchPhase.Canceled:
                     if (trackedObjects.TryGetValue(inputId, out GameObject objectToDestroy))
                     {
-                        Destroy(objectToDestroy);
                         trackedObjects.Remove(inputId);
+                        Destroy(objectToDestroy);
                     }
                     break;
             }

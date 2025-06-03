@@ -12,6 +12,8 @@ namespace Seb.Fluid2D.Simulation
     {
         public event System.Action SimulationStepCompleted;
 
+        private Spawner2D fluidSimSpawner;
+
         [Header("Simulation Settings")]
         public float timeScale = 1;
         public float maxTimestepFPS = 60;
@@ -83,9 +85,10 @@ namespace Seb.Fluid2D.Simulation
         public int numParticles { get; private set; }
 
         [Header("Obstacles")]
-        
+
         public List<GameObject> obstacles = new List<GameObject>();
         [Min(0)] public float areaToColorAroundObstacles = 1.0f;
+        [Min(0)] public float minDistanceToRemoveParticles = 0.2f;
         [Min(0)] public float coloredAreaAroundObstaclesDivider = 0.05f;
 
         private MaterialPropertyBlock _propBlock_Wall;
@@ -156,6 +159,11 @@ namespace Seb.Fluid2D.Simulation
         {
             Debug.Log("Controls: Space = Play/Pause, R = Reset, LMB = Attract, RMB = Repel, G + Mouse = Gravity Well");
             InitSimulation();
+        }
+
+        void Awake()
+        {
+            fluidSimSpawner = GameObject.FindFirstObjectByType<Spawner2D>();
         }
 
         void InitSimulation()
@@ -264,6 +272,7 @@ namespace Seb.Fluid2D.Simulation
             }
             else { Debug.LogWarning("Smoothing radius is zero or negative."); }
             compute.SetFloat("areaToColorAroundObstacles_Wall", areaToColorAroundObstacles);
+            compute.SetFloat("minDistanceToRemoveParticles_Wall", minDistanceToRemoveParticles);
             compute.SetFloat("coloredAreaAroundObstaclesDivider_Wall", coloredAreaAroundObstaclesDivider);
         }
 
@@ -429,8 +438,8 @@ namespace Seb.Fluid2D.Simulation
                 if (i < typeData.Length) // Safety check for array bounds
                 {
                     if (typeData[i].x > 0)
-					{
-						// The clamp seems to be necessary due to racing condition
+                    {
+                        // The clamp seems to be necessary due to racing condition
                         int particleOriginalType = Mathf.Clamp(mixableColors[typeData[i].x - 1], 0, colorPalette.Count); // This is the type from the buffer
                         int particleFlag = typeData[i].y;
 
@@ -462,9 +471,14 @@ namespace Seb.Fluid2D.Simulation
                         }
                         else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
                         {
-                            particlesReachedDestination[particleOriginalType]++;
-                            indicesToRemove.Add(i);
-                            removedParticleInfo.Add((particleOriginalType, 2));
+                            if (fluidSimSpawner != null)
+                            {
+                                fluidSimSpawner.spawnRegions[particleOriginalType + 2].particlesPerSecond++;
+                                particlesReachedDestination[particleOriginalType]++;
+                                indicesToRemove.Add(i);
+                                removedParticleInfo.Add((particleOriginalType, 2));
+                            }
+
                             // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Ventil (Flag 2 / ObstacleType 2).");
                         }
                     }
@@ -810,14 +824,14 @@ namespace Seb.Fluid2D.Simulation
             {
                 if (!go.activeInHierarchy) continue;
                 if (go.name.Contains("PharusPlayer")) currentPlayersInScene.Add(go);
-				else if (go.name.Contains("TouchPlayer")) currentPlayersInScene.Add(go);
+                else if (go.name.Contains("TouchPlayer")) currentPlayersInScene.Add(go);
                 else if (go.name.Contains("Obstacle")) currentObstaclesInScene.Add(go);
                 else if (go.name.Contains("Ventil")) currentVentilsInScene.Add(go);
             }
 
             bool listActuallyChanged = false;
             List<GameObject> newMasterObstaclesList = new List<GameObject>();
-			List<int> assignedIndices = new List<int>();
+            List<int> assignedIndices = new List<int>();
 
             System.Action<HashSet<GameObject>> processSet = (set) =>
             {
@@ -938,10 +952,10 @@ namespace Seb.Fluid2D.Simulation
                     {
                         tempPlayerColors[player] = nextColorIndex % maxPlayerColors;
                         nextColorIndex++;
-                	}
+                    }
                 }
                 _forceObstacleBufferUpdate = true;
-				playerColors = tempPlayerColors; // Update the main playerColors dictionary
+                playerColors = tempPlayerColors; // Update the main playerColors dictionary
             }
             // Update lastPlayerCount based on the number of players considered for coloring
             lastPlayerCount = sortedPlayersForColoring.Count;
@@ -957,9 +971,9 @@ namespace Seb.Fluid2D.Simulation
                 else
                 {
                     // 0=Red, 1=Yellow, 2=Blue, 3=Orange, 4=Violet, 5=LimeGreen, 6=RedOrange, 7=YellowOrange, 8=RedViolet, 9=BlueViolet, 10=YellowGreen, 11=BlueGreen
-                    if ((i == 3 && assignedIndices.Contains(0) && assignedIndices.Contains(1) && maxPlayerColors <= 3) || //Only assign if not player
-                        (i == 4 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && maxPlayerColors <= 3) || //Only assign if not player
-                        (i == 5 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && maxPlayerColors <= 3) || //Only assign if not player
+                    if ((i == 3 && assignedIndices.Contains(0) && assignedIndices.Contains(1) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
+                        (i == 4 && assignedIndices.Contains(0) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
+                        (i == 5 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
                         (i == 6 && assignedIndices.Contains(0) && assignedIndices.Contains(3)) ||
                         (i == 7 && assignedIndices.Contains(1) && assignedIndices.Contains(3)) ||
                         (i == 8 && assignedIndices.Contains(0) && assignedIndices.Contains(4)) ||
@@ -975,7 +989,7 @@ namespace Seb.Fluid2D.Simulation
                     }
                 }
             }
-            
+
             mixableColorsForShader.Clear();
             int currentIndex = 0;
             if (assignedIndices.Count > 0)
@@ -991,7 +1005,7 @@ namespace Seb.Fluid2D.Simulation
                     mixableColorsForShader.Add(colorPalette[mixableColors[i]]);
                 }
             }
-		}
+        }
 
         void UpdateObstacleBuffer(bool forceBufferRecreation = false)
         {
@@ -1052,7 +1066,7 @@ namespace Seb.Fluid2D.Simulation
                 if (obsType == 1) { displayColor = Color.white; }
                 else if (obsType == 2) { displayColor = Color.gray; }
 
-                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = colorPalette[pColor];
+                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = new Color(0.0f, 0.0f, 0.0f, 0.0f); //colorPalette[pColor];
                 _propBlock_Wall.SetColor("_Color", displayColor); lr.SetPropertyBlock(_propBlock_Wall);
                 _gpuObstacleColorsData.Add(displayColor);
                 lr.startWidth = obstacleLineWidth; lr.endWidth = obstacleLineWidth;
@@ -1139,6 +1153,9 @@ namespace Seb.Fluid2D.Simulation
                 }
             }
         }
-        public bool AreColorsClose(Color color1, Color color2, float tolerance, bool compareAlpha = false) { return false; }
+        public bool AreColorsClose(Color color1, Color color2, float tolerance, bool compareAlpha = false)
+        {
+            return color1.Equals(color2);
+        }
     }
 }
