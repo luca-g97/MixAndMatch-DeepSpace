@@ -266,7 +266,7 @@ void HandleCollisions_Wall(uint particleIndex)
 
         float lineWidth = obstacle.lineWidth;
         float particleRadius = 0.1f; // TODO: Consider making this a uniform
-        float collisionPadding = particleRadius + (lineWidth * 0.5f);
+        float collisionPadding = particleRadius - (lineWidth * 0.5f);
         float collisionPaddingSq = collisionPadding * collisionPadding;
 
         int intersections = 0;

@@ -52,6 +52,7 @@ namespace Seb.Fluid2D.Rendering
             catch
             {
                 Debug.LogError("Cannot assign Colors! Is Pharus running?");
+                return;
             }
             
 

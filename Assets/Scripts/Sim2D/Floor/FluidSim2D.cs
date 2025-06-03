@@ -431,7 +431,6 @@ namespace Seb.Fluid2D.Simulation
                 {
                     if (typeData[i].x > 0)
                     {
-                        // The clamp seems to be necessary due to racing condition
                         int particleOriginalType = mixableColors[typeData[i].x - 1]; // This is the type from the buffer
                         int particleFlag = typeData[i].y;
 

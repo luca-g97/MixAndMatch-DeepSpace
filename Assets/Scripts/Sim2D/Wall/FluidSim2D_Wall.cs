@@ -439,11 +439,10 @@ namespace Seb.Fluid2D.Simulation
                 {
                     if (typeData[i].x > 0)
                     {
-                        // The clamp seems to be necessary due to racing condition
-                        int particleOriginalType = Mathf.Clamp(mixableColors[typeData[i].x - 1], 0, colorPalette.Count); // This is the type from the buffer
+                        int particleOriginalType = mixableColors[typeData[i].x - 1]; // This is the type from the buffer
                         int particleFlag = typeData[i].y;
 
-                        if (particleFlag >= 0) // Removed by Player (ObstacleType 0 as per HLSL mapping)
+                        if (particleFlag >= -1) // Removed by Player (ObstacleType 0 as per HLSL mapping)
                         {
                             Color finalColour = new Color();
 
@@ -956,53 +955,60 @@ namespace Seb.Fluid2D.Simulation
                 }
                 _forceObstacleBufferUpdate = true;
                 playerColors = tempPlayerColors; // Update the main playerColors dictionary
-            }
-            // Update lastPlayerCount based on the number of players considered for coloring
-            lastPlayerCount = sortedPlayersForColoring.Count;
-            mixableColors.Clear();
 
-            assignedIndices = assignedIndices.OrderBy(i => i).ToList();
-            for (int i = 0; i < colorPalette.Count; i++)
-            {
-                if (assignedIndices.Contains(i))
+                foreach (GameObject player in playerColors.Keys)
                 {
-                    mixableColors.Add(i);
+                    Color colorToUse = colorPalette[playerColors[player]];
+                    player.GetComponentInChildren<PlayerColor>().UpdateColor(colorToUse);
                 }
-                else
+
+                // Update lastPlayerCount based on the number of players considered for coloring
+                lastPlayerCount = sortedPlayersForColoring.Count;
+                mixableColors.Clear();
+
+                assignedIndices = assignedIndices.OrderBy(i => i).ToList();
+                for (int i = 0; i < colorPalette.Count; i++)
                 {
-                    // 0=Red, 1=Yellow, 2=Blue, 3=Orange, 4=Violet, 5=LimeGreen, 6=RedOrange, 7=YellowOrange, 8=RedViolet, 9=BlueViolet, 10=YellowGreen, 11=BlueGreen
-                    if ((i == 3 && assignedIndices.Contains(0) && assignedIndices.Contains(1) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
-                        (i == 4 && assignedIndices.Contains(0) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
-                        (i == 5 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
-                        (i == 6 && assignedIndices.Contains(0) && assignedIndices.Contains(3)) ||
-                        (i == 7 && assignedIndices.Contains(1) && assignedIndices.Contains(3)) ||
-                        (i == 8 && assignedIndices.Contains(0) && assignedIndices.Contains(4)) ||
-                        (i == 9 && assignedIndices.Contains(2) && assignedIndices.Contains(4)) ||
-                        (i == 10 && assignedIndices.Contains(1) && assignedIndices.Contains(5)) ||
-                        (i == 11 && assignedIndices.Contains(2) && assignedIndices.Contains(5)))
+                    if (assignedIndices.Contains(i))
                     {
                         mixableColors.Add(i);
                     }
                     else
                     {
-                        mixableColors.Add(-1); // Using new Color(-1,-1,-1,-1) as a distinct invalid/placeholder
+                        // 0=Red, 1=Yellow, 2=Blue, 3=Orange, 4=Violet, 5=LimeGreen, 6=RedOrange, 7=YellowOrange, 8=RedViolet, 9=BlueViolet, 10=YellowGreen, 11=BlueGreen
+                        if ((i == 3 && assignedIndices.Contains(0) && assignedIndices.Contains(1) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
+                            (i == 4 && assignedIndices.Contains(0) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
+                            (i == 5 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
+                            (i == 6 && assignedIndices.Contains(0) && assignedIndices.Contains(3)) ||
+                            (i == 7 && assignedIndices.Contains(1) && assignedIndices.Contains(3)) ||
+                            (i == 8 && assignedIndices.Contains(0) && assignedIndices.Contains(4)) ||
+                            (i == 9 && assignedIndices.Contains(2) && assignedIndices.Contains(4)) ||
+                            (i == 10 && assignedIndices.Contains(1) && assignedIndices.Contains(5)) ||
+                            (i == 11 && assignedIndices.Contains(2) && assignedIndices.Contains(5)))
+                        {
+                            mixableColors.Add(i);
+                        }
+                        else
+                        {
+                            mixableColors.Add(-1); // Using new Color(-1,-1,-1,-1) as a distinct invalid/placeholder
+                        }
                     }
                 }
-            }
 
-            mixableColorsForShader.Clear();
-            int currentIndex = 0;
-            if (assignedIndices.Count > 0)
-            {
-                for (int i = 0; i < colorPalette.Count; i++)
+                mixableColorsForShader.Clear();
+                int currentIndex = 0;
+                if (assignedIndices.Count > 0)
                 {
-                    if (mixableColors[i] == -1)
+                    for (int i = 0; i < colorPalette.Count; i++)
                     {
-                        mixableColors[i] = assignedIndices[currentIndex];
-                        currentIndex++;
-                        currentIndex = currentIndex % assignedIndices.Count;
+                        if (mixableColors[i] == -1)
+                        {
+                            mixableColors[i] = assignedIndices[currentIndex];
+                            currentIndex++;
+                            currentIndex = currentIndex % assignedIndices.Count;
+                        }
+                        mixableColorsForShader.Add(colorPalette[mixableColors[i]]);
                     }
-                    mixableColorsForShader.Add(colorPalette[mixableColors[i]]);
                 }
             }
         }
@@ -1066,7 +1072,7 @@ namespace Seb.Fluid2D.Simulation
                 if (obsType == 1) { displayColor = Color.white; }
                 else if (obsType == 2) { displayColor = Color.gray; }
 
-                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = new Color(0.0f, 0.0f, 0.0f, 0.0f); //colorPalette[pColor];
+                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = new Color(colorPalette[pColor].r, colorPalette[pColor].g, colorPalette[pColor].b, 0.0f); //colorPalette[pColor];
                 _propBlock_Wall.SetColor("_Color", displayColor); lr.SetPropertyBlock(_propBlock_Wall);
                 _gpuObstacleColorsData.Add(displayColor);
                 lr.startWidth = obstacleLineWidth; lr.endWidth = obstacleLineWidth;
@@ -1155,6 +1161,7 @@ namespace Seb.Fluid2D.Simulation
         }
         public bool AreColorsClose(Color color1, Color color2, float tolerance, bool compareAlpha = false)
         {
+			color2.a = 1.0f;
             return color1.Equals(color2);
         }
     }

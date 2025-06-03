@@ -1,7 +1,5 @@
-using NUnit.Framework;
 using Seb.Fluid2D.Simulation;
 using Seb.Helpers;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Seb.Fluid2D.Rendering
