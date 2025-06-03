@@ -1217,7 +1217,7 @@ PrefabInstance:
     - target: {fileID: 7589864757701166601, guid: 544cda7ee4b63c14c83bf2278ffe1dbc, type: 3}
       propertyPath: _playerPrefab
       value: 
-      objectReference: {fileID: 4967671303439236353, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+      objectReference: {fileID: 4967671303439236353, guid: 9722c485b1849de42bda55cccc77f2e7, type: 3}
     m_RemovedComponents:
     - {fileID: 2407190018579902424, guid: 544cda7ee4b63c14c83bf2278ffe1dbc, type: 3}
     m_RemovedGameObjects: []
@@ -1244,7 +1244,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c71a620d3977c3d42bb6b845ca11d39d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _playerPrefab: {fileID: 4967671303439236353, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+  _playerPrefab: {fileID: 4967671303439236353, guid: 9722c485b1849de42bda55cccc77f2e7, type: 3}
   _addUnknownPlayerOnUpdate: 1
   zeroAbsoluteX: 0.71
   zeroAbsoluteY: 1.98
