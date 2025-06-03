@@ -1,29 +1,17 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class AsyncLocader : MonoBehaviour
 {
-    private bool sceneLoaded = false;
-
-    void Update()
+    void Start()
     {
-        if (Input.GetKeyDown(KeyCode.L))
-        {
-            sceneLoaded = !sceneLoaded;
-            HandleSceneLoad();
-        } 
+        StartCoroutine(LoadScene());    
     }
 
-    private void HandleSceneLoad()
+    private IEnumerator LoadScene()
     {
-        if (sceneLoaded)
-        {
-            SceneManager.LoadSceneAsync(0, LoadSceneMode.Additive);
-        }
-        else
-        {
-            SceneManager.UnloadSceneAsync(0);
-        }
+        yield return new WaitForSecondsRealtime(0.1f);
+        SceneManager.LoadSceneAsync(1, LoadSceneMode.Additive);
     }
-
 }
