@@ -54,7 +54,6 @@ namespace Seb.Fluid2D.Rendering
                 Debug.LogError("Cannot assign Colors! Is Pharus running?");
                 return;
             }
-            
 
             int colorsToUse = 1;
             if ((sim.maxPlayerColors) == 2)

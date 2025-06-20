@@ -141,7 +141,8 @@ namespace Seb.Fluid2D.Simulation
         private List<int> mixableColors = new List<int>();
         public List<Color> mixableColorsForShader = new List<Color>();
         [Range(0, 6)] public int maxPlayerColors = 6;
-        private int lastPlayerCount = -1;
+        public Color colorSymbolizingNoPlayer = Color.white;
+        public int lastPlayerCount = -1;
 
         [Header("Obstacle Visualization")]
         public Color obstacleLineColor = Color.white;
@@ -424,55 +425,58 @@ namespace Seb.Fluid2D.Simulation
                 collisionBuffer.GetData(collisionIndicesArray);
             }
 
-            for (int i = 0; i < numParticles; i++) // Iterate up to current numParticles
+            if (lastPlayerCount > 0)
             {
-                // Assuming typeData is valid up to numParticles from the readback request
-                if (i < typeData.Length) // Safety check for array bounds
+                for (int i = 0; i < numParticles; i++) // Iterate up to current numParticles
                 {
-                    if (typeData[i].x > 0)
+                    // Assuming typeData is valid up to numParticles from the readback request
+                    if (i < typeData.Length) // Safety check for array bounds
                     {
-                        int particleOriginalType = mixableColors[typeData[i].x - 1]; // This is the type from the buffer
-                        int particleFlag = typeData[i].y;
-
-                        if (particleFlag >= -1) // Removed by Player (ObstacleType 0 as per HLSL mapping)
+                        if (typeData[i].x > 0)
                         {
-                            Color finalColour = new Color();
+                            int particleOriginalType = mixableColors[typeData[i].x - 1]; // This is the type from the buffer
+                            int particleFlag = typeData[i].y;
 
-                            for (int j = 0; j < 4; j++)
+                            if (particleFlag >= -1) // Removed by Player (ObstacleType 0 as per HLSL mapping)
                             {
-                                int obstacleIndex = collisionIndicesArray[i][j];
-                                if (obstacleIndex != -1)
+                                Color finalColour = new Color();
+
+                                for (int j = 0; j < 4; j++)
                                 {
-                                    finalColour += obstacleColorsArray[obstacleIndex];
+                                    int obstacleIndex = collisionIndicesArray[i][j];
+                                    if (obstacleIndex != -1)
+                                    {
+                                        finalColour += obstacleColorsArray[obstacleIndex];
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
                                 }
-                                else
+
+                                if (AreColorsClose(colorPalette[particleOriginalType], finalColour, 0.01f))
                                 {
-                                    break;
+                                    removedParticlesPerColor[particleOriginalType]++;
+                                    indicesToRemove.Add(i);
+                                    // For scoring/logging: (particle's actual type, type of obstacle that removed it)
+                                    removedParticleInfo.Add((particleOriginalType, particleFlag));
+                                    // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
                                 }
                             }
-
-                            if (AreColorsClose(colorPalette[particleOriginalType], finalColour, 0.01f))
+                            else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
                             {
-                                removedParticlesPerColor[particleOriginalType]++;
+                                particlesReachedDestination[particleOriginalType]++;
                                 indicesToRemove.Add(i);
-                                // For scoring/logging: (particle's actual type, type of obstacle that removed it)
-                                removedParticleInfo.Add((particleOriginalType, particleFlag));
-                                // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
+                                removedParticleInfo.Add((particleOriginalType, 2));
+                                // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Ventil (Flag 2 / ObstacleType 2).");
                             }
-                        }
-                        else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
-                        {
-                            particlesReachedDestination[particleOriginalType]++;
-                            indicesToRemove.Add(i);
-                            removedParticleInfo.Add((particleOriginalType, 2));
-                            // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Ventil (Flag 2 / ObstacleType 2).");
                         }
                     }
-                }
-                else
-                {
-                    Debug.LogWarning($"ProcessParticleRemovals: Index {i} out of bounds for typeData (Length: {typeData.Length}). numParticles might be out of sync with readback size.");
-                    break;
+                    else
+                    {
+                        Debug.LogWarning($"ProcessParticleRemovals: Index {i} out of bounds for typeData (Length: {typeData.Length}). numParticles might be out of sync with readback size.");
+                        break;
+                    }
                 }
             }
 
@@ -995,6 +999,13 @@ namespace Seb.Fluid2D.Simulation
                             currentIndex = currentIndex % assignedIndices.Count;
                         }
                         mixableColorsForShader.Add(colorPalette[mixableColors[i]]);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < colorPalette.Count; i++)
+                    {
+                        mixableColorsForShader.Add(colorSymbolizingNoPlayer);
                     }
                 }
             }

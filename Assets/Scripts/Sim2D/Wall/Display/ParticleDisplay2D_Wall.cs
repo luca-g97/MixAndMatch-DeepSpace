@@ -54,7 +54,7 @@ namespace Seb.Fluid2D.Rendering
                 Debug.LogError("Cannot assign Colors! Is Pharus running?");
                 return;
             }
-            
+
 
             int colorsToUse = 1;
             if ((sim.maxPlayerColors) == 2)
@@ -67,6 +67,7 @@ namespace Seb.Fluid2D.Rendering
             }
 
             material.SetInt("numberOfColors_Wall", colorsToUse);
+
             ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.positionBuffer.count);
             bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
 

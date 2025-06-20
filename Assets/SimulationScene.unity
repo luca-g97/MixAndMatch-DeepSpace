@@ -195,6 +195,8 @@ MonoBehaviour:
   coloredAreaAroundObstaclesDivider: 0
   mixableColorsForShader: []
   maxPlayerColors: 6
+  colorSymbolizingNoPlayer: {r: 0, g: 0, b: 0, a: 1}
+  lastPlayerCount: -1
   obstacleLineColor: {r: 0, g: 1, b: 0, a: 1}
   obstacleLineWidth: 0.1
   lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
@@ -218,13 +220,13 @@ MonoBehaviour:
   spawnRegions:
   - position: {x: 4, y: 0}
     size: {x: 6, y: 4}
-    spawnDensity: 0
+    spawnDensity: 250
     particlesPerSecond: 0
     particleType: 0
     debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
   - position: {x: -4, y: 0}
     size: {x: 6, y: 4}
-    spawnDensity: 0
+    spawnDensity: 250
     particlesPerSecond: 0
     particleType: 0
     debugCol: {r: 1, g: 0.27843142, b: 0.3170616, a: 1}
@@ -301,7 +303,7 @@ MonoBehaviour:
     particleType: 12
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   fluidSimulation: {fileID: 271053319}
-  initialSpawnParticleCount: 12288
+  initialSpawnParticleCount: 24448
   currentSimParticleCount_Inspector: 0
 --- !u!114 &271053322
 MonoBehaviour:

@@ -475,7 +475,7 @@ void ApplyCurrentForces(uint particleIndex, float2 pos)
             {
                 float dist = sqrt(distSq);
                 float normalizedDist = dist / current.width;
-                float strength = pow(1.0 - normalizedDist, 1.0 + current.linearFactor);
+                float strength = pow(abs(1.0 - normalizedDist), abs(1.0 + current.linearFactor));
                 
                 if (strength > maxStrength)
                 {

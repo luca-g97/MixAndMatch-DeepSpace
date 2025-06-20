@@ -243,6 +243,8 @@ MonoBehaviour:
   coloredAreaAroundObstaclesDivider: 0
   mixableColorsForShader: []
   maxPlayerColors: 6
+  colorSymbolizingNoPlayer: {r: 0, g: 0, b: 0, a: 1}
+  lastPlayerCount: -1
   obstacleLineColor: {r: 1, g: 1, b: 1, a: 1}
   obstacleLineWidth: 0.1
   lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
