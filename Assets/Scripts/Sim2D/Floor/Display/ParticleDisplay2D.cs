@@ -67,7 +67,7 @@ namespace Seb.Fluid2D.Rendering
 
             material.SetInt("numberOfColors", colorsToUse);
 
-            ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.positionBuffer.count);
+            ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.numParticles);
             bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
 
             if (needsUpdate)

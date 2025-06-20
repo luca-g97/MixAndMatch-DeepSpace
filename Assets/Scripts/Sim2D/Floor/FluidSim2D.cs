@@ -62,6 +62,7 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer sortTarget_ParticleType;
 
         ComputeBuffer vertexBuffer;
+        ComputeBuffer compactionInfoBuffer;
 
         public ComputeBuffer obstacleBuffer { get; private set; }
         public ComputeBuffer obstacleColorsBuffer { get; private set; }
@@ -76,6 +77,8 @@ namespace Seb.Fluid2D.Simulation
         const int pressureKernel = 5;
         const int viscosityKernel = 6;
         const int updatePositionKernel = 7;
+        const int resetCompactionCounterKernel = 8;
+        const int compactAndMoveKernel = 9;
 
         bool isPaused;
         Spawner2D.ParticleSpawnData initialSpawnData;
@@ -177,6 +180,7 @@ namespace Seb.Fluid2D.Simulation
 
             int initialCapacity = Mathf.Max(1, numParticles);
             CreateParticleBuffers(initialCapacity);
+            compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<uint>(1);
 
             if (numParticles > 0)
             {
@@ -224,9 +228,10 @@ namespace Seb.Fluid2D.Simulation
         {
             ComputeHelper.Release(positionBuffer, predictedPositionBuffer, velocityBuffer, densityBuffer,
                 gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_Position,
-                sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType);
+                sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType,
+                compactionInfoBuffer);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
-            gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null;
+            gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; compactionInfoBuffer = null;
             sortTarget_Position = null; sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
             spatialHash?.Release();
             spatialHash = null;
@@ -267,11 +272,27 @@ namespace Seb.Fluid2D.Simulation
             compute.SetFloat("areaToColorAroundObstacles", areaToColorAroundObstacles);
             compute.SetFloat("minDistanceToRemoveParticles", minDistanceToRemoveParticles);
             compute.SetFloat("coloredAreaAroundObstaclesDivider", coloredAreaAroundObstaclesDivider);
+
+            // Send color palette to the shader
+            if (colorPalette != null && colorPalette.Count > 0)
+            {
+                Vector4[] paletteForShader = mixableColorsForShader.Select(c => (Vector4)c).ToArray();
+
+                compute.SetVectorArray("colorPalette", paletteForShader);
+                compute.SetInt("colorPaletteSize", paletteForShader.Length);
+            }
+            else
+            {
+                // Still set the size to 0 so the shader doesn't read out of bounds.
+                compute.SetInt("colorPaletteSize", 0);
+            }
         }
 
         void BindComputeShaderBuffers()
         {
             if (compute == null) return;
+
+            // --- Bindings for MAIN SIMULATION kernels ---
             ComputeHelper.SetBuffer(compute, positionBuffer, "Positions", externalForcesKernel, updatePositionKernel, reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "PredictedPositions", externalForcesKernel, spatialHashKernel, densityKernel, pressureKernel, viscosityKernel, reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Velocities", externalForcesKernel, pressureKernel, viscosityKernel, updatePositionKernel, reorderKernel, copybackKernel);
@@ -279,19 +300,43 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "GravityScales", externalForcesKernel);
             ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", updatePositionKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", densityKernel, pressureKernel, viscosityKernel, updatePositionKernel, reorderKernel, copybackKernel, externalForcesKernel);
+
             if (spatialHash != null && spatialHash.SpatialIndices != null && spatialHash.SpatialOffsets != null && spatialHash.SpatialKeys != null)
             {
                 ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", spatialHashKernel, reorderKernel);
                 ComputeHelper.SetBuffer(compute, spatialHash.SpatialOffsets, "SpatialOffsets", spatialHashKernel, densityKernel, pressureKernel, viscosityKernel);
                 ComputeHelper.SetBuffer(compute, spatialHash.SpatialKeys, "SpatialKeys", spatialHashKernel, densityKernel, pressureKernel, viscosityKernel);
             }
+
+            // --- Bindings for REORDERING (between main sim and compaction) ---
             ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", reorderKernel, copybackKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel, copybackKernel);
+
+            // --- Bindings for OBSTACLES & CURRENTS ---
             if (vertexBuffer != null && vertexBuffer.IsValid()) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer", updatePositionKernel);
             if (obstacleBuffer != null && obstacleBuffer.IsValid()) ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
             if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid()) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", updatePositionKernel);
+
+            // Bind the atomic counter
+            ComputeHelper.SetBuffer(compute, compactionInfoBuffer, "CompactionInfoBuffer", resetCompactionCounterKernel, compactAndMoveKernel);
+
+            // Bind the main buffers to the READ-ONLY "Source_" aliases in the shader
+            ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", compactAndMoveKernel);
+
+            // Also need the obstacle colors for the removal check
+            if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid())
+                ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", compactAndMoveKernel);
+
+            // Bind the destination buffers (these ARE UAVs)
+            ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", compactAndMoveKernel);
         }
 
         void UpdateComputeShaderDynamicParams()
@@ -369,249 +414,49 @@ namespace Seb.Fluid2D.Simulation
             if (!isPaused && numParticles > 0)
             {
                 RunSimulationFrame(cappedSimDeltaTime);
-                ProcessParticleRemovals();
+                ProcessParticleRemovalsGPU();
             }
 
             if (pauseNextFrame) { isPaused = true; pauseNextFrame = false; }
             HandleInput();
         }
 
-        async void ProcessParticleRemovals()
+        void ProcessParticleRemovalsGPU()
         {
-            if (numParticles == 0 || particleTypeBuffer == null || !particleTypeBuffer.IsValid()) return;
+            if (numParticles == 0 || compute == null || !particleTypeBuffer.IsValid()) return;
 
-            // Request data from GPU
-            // ERROR 1: sizeof(int2) is not valid C#. Use Marshal.SizeOf or UnsafeUtility.SizeOf.
-            // Assuming int2 is Unity.Mathematics.int2
-            var typesRequest = AsyncGPUReadback.Request(particleTypeBuffer, numParticles * Marshal.SizeOf(typeof(Unity.Mathematics.int2)), 0);
+            // 1. Reset the atomic counter on the GPU to 0.
+            ComputeHelper.Dispatch(compute, 1, 1, 1, kernelIndex: resetCompactionCounterKernel);
 
-            // await System.Threading.Tasks.Task.Yield(); // Yield to allow GPU to process - this is okay but WaitForCompletion makes it synchronous from this point.
-            // If this method is called from Update(), an async void can be okay, but be mindful of error handling.
-            typesRequest.WaitForCompletion(); // This blocks until the GPU readback is complete.
+            // 2. Run the compaction kernel.
+            // Each thread checks its particle. If it survives, it increments the counter
+            // and copies its data to the correct slot in the SortTarget buffers.
+            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: compactAndMoveKernel);
 
-            if (typesRequest.hasError)
-            {
-                Debug.LogError("GPU readback error for particle removal.");
-                return;
-            }
+            // 3. Read back the final count of surviving particles.
+            // This is a fast, small readback of a single integer.
+            uint[] newCountData = new uint[1];
+            compactionInfoBuffer.GetData(newCountData);
+            int newNumParticles = (int)newCountData[0];
 
-            // GetData<int2>() is correct for a buffer of int2.
-            var typeData = typesRequest.GetData<Unity.Mathematics.int2>();
-
-            List<int> indicesToRemove = new List<int>();
-            // This list seems intended for scoring or logging. Let's clarify its purpose.
-            // It's currently storing (flag_value, hardcoded_remover_type_0_or_2)
-            // A better structure might be (originalParticleType, actualObstacleTypeThatCausedRemoval)
-            // Let's assume typeData[i][0] IS the original type before removal marking (shader only sets flag).
-            List<(int originalParticleType, int removingObstacleType)> removedParticleInfo = new List<(int, int)>();
-
-            Color[] obstacleColorsArray = null;
-            if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid() && obstacleColorsBuffer.count > 0)
-            {
-                // 1. Create an array of the correct type and size to hold the data.
-                obstacleColorsArray = new Color[obstacleColorsBuffer.count];
-
-                // 2. Call GetData to populate the array.
-                obstacleColorsBuffer.GetData(obstacleColorsArray);
-            }
-
-            int4[] collisionIndicesArray = null;
-            if (collisionBuffer != null && collisionBuffer.IsValid() && collisionBuffer.count > 0)
-            {
-                // 1. Create an array of the correct type and size to hold the data.
-                collisionIndicesArray = new int4[collisionBuffer.count];
-
-                // 2. Call GetData to populate the array.
-                collisionBuffer.GetData(collisionIndicesArray);
-            }
-
-            if (lastPlayerCount > 0)
-            {
-                for (int i = 0; i < numParticles; i++) // Iterate up to current numParticles
-                {
-                    // Assuming typeData is valid up to numParticles from the readback request
-                    if (i < typeData.Length) // Safety check for array bounds
-                    {
-                        if (typeData[i].x > 0)
-                        {
-                            int particleOriginalType = mixableColors[typeData[i].x - 1];
-                            int particleFlag = typeData[i].y;
-
-                            if (particleFlag >= 0) // Removed by Player
-                            {
-                                bool colorMatched = false;
-                                // Check up to 4 collision points for a color match
-                                for (int j = 0; j < 4; j++)
-                                {
-                                    int obstacleIndex = collisionIndicesArray[i][j];
-                                    if (obstacleIndex != -1)
-                                    {
-                                        // Check if this specific obstacle's color is a match
-                                        if (AreColorsClose(colorPalette[particleOriginalType], obstacleColorsArray[obstacleIndex], 0.01f))
-                                        {
-                                            colorMatched = true;
-                                            break; // Found a match, no need to check other collision points
-                                        }
-                                    }
-                                    else
-                                    {
-                                        break; // No more valid collision indices for this particle
-                                    }
-                                }
-
-                                if (colorMatched)
-                                {
-                                    removedParticlesPerColor[particleOriginalType]++;
-                                    indicesToRemove.Add(i);
-                                    removedParticleInfo.Add((particleOriginalType, particleFlag));
-                                }
-                            }
-                            else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
-                            {
-                                particlesReachedDestination[particleOriginalType]++;
-                                indicesToRemove.Add(i);
-                                removedParticleInfo.Add((particleOriginalType, 2));
-                                // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Ventil (Flag 2 / ObstacleType 2).");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"ProcessParticleRemovals: Index {i} out of bounds for typeData (Length: {typeData.Length}). numParticles might be out of sync with readback size.");
-                        break;
-                    }
-                }
-            }
-
-            if (indicesToRemove.Count == 0)
-            {
-                // IMPORTANT: Even if no particles are removed, flags might have been set and need resetting for the next frame
-                // if those flags don't lead to removal but some other temporary state.
-                // However, with current logic (flag 1 or 2 means remove), if indicesToRemove is empty, all flags were 0.
-                // If flags could mean something else, you'd need to reset them here by re-writing particleTypeBuffer.
-                // For now, this is fine.
-                return;
-            }
-
-            // --- Compact buffers ---
-            int oldNumParticles = numParticles; // numParticles before removal
-            int newNumParticlesCount = oldNumParticles - indicesToRemove.Count;
-
-            if (newNumParticlesCount <= 0)
+            // If all particles were removed
+            if (newNumParticles <= 0)
             {
                 numParticles = 0;
-                // Release and create empty-ish buffers
-                // These helpers need to be robust and correctly handle all buffers including sort targets and spatial hash.
-                ReleaseParticleBuffers(); // This should release GPU ComputeBuffers
-                CreateParticleBuffers(1); // Create with minimal capacity for GPU ComputeBuffers
-                                          // _cpuParticleTypesArray (NativeArray) is managed separately (Awake/OnDestroy) and should be fine.
-
-                if (spatialHash != null) spatialHash.Release(); // Ensure spatial hash is also handled
-                spatialHash = new SpatialHash(1);
-
-                BindComputeShaderBuffers();
-                UpdateComputeShaderDynamicParams(); // Sets numParticles = 0 in shader
+                // Optionally clear/recreate buffers if you want to free memory,
+                // but just setting the count to 0 is sufficient and fast.
                 Debug.Log("All particles removed.");
-                return;
             }
-
-            // Fetch all current data for active particles
-            // These arrays should be sized to oldNumParticles because we're reading the entire current state
-            float2[] allPositions = new float2[oldNumParticles];
-            float2[] allPredicted = new float2[oldNumParticles];
-            float2[] allVelocities = new float2[oldNumParticles];
-            float2[] allDensities = new float2[oldNumParticles];
-            float[] allGravityScales = new float[oldNumParticles];
-            int4[] allCollisions = new int4[oldNumParticles];
-            // typeData (NativeArray<int2>) already contains the types and flags. No need to re-read particleTypeBuffer.
-
-            // Expensive GetData calls:
-            if (positionBuffer.IsValid() && positionBuffer.count >= oldNumParticles) positionBuffer.GetData(allPositions, 0, 0, oldNumParticles); else Debug.LogError("PositionBuffer invalid or too small for GetData");
-            if (predictedPositionBuffer.IsValid() && predictedPositionBuffer.count >= oldNumParticles) predictedPositionBuffer.GetData(allPredicted, 0, 0, oldNumParticles); else Debug.LogError("PredictedPositionBuffer invalid or too small for GetData");
-            if (velocityBuffer.IsValid() && velocityBuffer.count >= oldNumParticles) velocityBuffer.GetData(allVelocities, 0, 0, oldNumParticles); else Debug.LogError("VelocityBuffer invalid or too small for GetData");
-            if (densityBuffer.IsValid() && densityBuffer.count >= oldNumParticles) densityBuffer.GetData(allDensities, 0, 0, oldNumParticles); else Debug.LogError("DensityBuffer invalid or too small for GetData");
-            if (gravityScaleBuffer.IsValid() && gravityScaleBuffer.count >= oldNumParticles) gravityScaleBuffer.GetData(allGravityScales, 0, 0, oldNumParticles); else Debug.LogError("GravityScaleBuffer invalid or too small for GetData");
-            if (collisionBuffer.IsValid() && collisionBuffer.count >= oldNumParticles) collisionBuffer.GetData(allCollisions, 0, 0, oldNumParticles); else Debug.LogError("CollisionBuffer invalid or too small for GetData");
-
-
-            // Create lists for surviving particles
-            List<float2> keptPositions = new List<float2>(newNumParticlesCount);
-            List<float2> keptPredicted = new List<float2>(newNumParticlesCount);
-            List<float2> keptVelocities = new List<float2>(newNumParticlesCount);
-            List<float2> keptDensities = new List<float2>(newNumParticlesCount);
-            List<float> keptGravityScales = new List<float>(newNumParticlesCount);
-            List<int4> keptCollisions = new List<int4>(newNumParticlesCount);
-            List<int2> keptParticleTypesAndFlags = new List<int2>(newNumParticlesCount); // Store int2 (type, flag=0)
-
-            indicesToRemove.Sort();
-            int removedIdxIter = 0; // Iterator for sorted indicesToRemove
-            for (int i = 0; i < oldNumParticles; i++)
+            else
             {
-                bool isRemoved = false;
-                if (removedIdxIter < indicesToRemove.Count && i == indicesToRemove[removedIdxIter])
-                {
-                    isRemoved = true;
-                    removedIdxIter++;
-                }
-
-                if (!isRemoved)
-                {
-                    keptPositions.Add(allPositions[i]);
-                    keptPredicted.Add(allPredicted[i]);
-                    keptVelocities.Add(allVelocities[i]);
-                    keptDensities.Add(allDensities[i]);
-                    keptGravityScales.Add(allGravityScales[i]);
-                    keptCollisions.Add(allCollisions[i]);
-                    // Use type from typeData (which was read from particleTypeBuffer) and reset flag to 0.
-                    // Assuming typeData[i].x is the original type because the shader only set the flag.
-                    if (i < typeData.Length)
-                    { // Additional safety for typeData access
-                        keptParticleTypesAndFlags.Add(new int2(typeData[i].x, -1));
-                    }
-                    else
-                    {
-                        // This case implies a mismatch between numParticles used for GetData for primary buffers
-                        // and the length of typeData. Should not happen if readback request size was correct.
-                        // Add a dummy or default if this happens, and log an error.
-                        keptParticleTypesAndFlags.Add(new int2(0, -1)); // Default particle type if data is missing
-                        Debug.LogError($"ProcessParticleRemovals: Mismatch accessing typeData at index {i}");
-                    }
-                }
+                numParticles = newNumParticles;
+                // 4. Copy the compacted data from SortTarget buffers back to the main buffers.
+                // We can reuse the existing copyback kernel for this.
+                ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
             }
 
-            numParticles = newNumParticlesCount; // Update the global particle count
-
-            // At this point, GPU buffers are still full size (e.g., maxTotalParticles).
-            // We are just using fewer slots by setting data for 'numParticles'.
-            // This avoids frequent Release/Create of GPU buffers if they are already at max capacity.
-            // The CreateParticleBuffers(Mathf.Max(1, numParticles)) call in your original was for resizing down,
-            // which can be okay but also means reallocations. If buffers are kept at maxTotalParticles,
-            // we just need to SetData for the new 'numParticles'.
-
-            if (numParticles > 0)
-            {
-                // Check if current buffers are large enough for 'numParticles'. They should be if sized to maxTotalParticles.
-                // If you choose to resize buffers down to numParticles:
-                // ReleaseParticleBuffers(); 
-                // CreateParticleBuffers(Mathf.Max(1, numParticles)); // This assumes CreateParticleBuffers also handles SortTargets appropriately
-                // spatialHash = new SpatialHash(Mathf.Max(1, numParticles));
-                // BindComputeShaderBuffers();
-
-                // If buffers are kept at maxTotalParticles capacity (preferred for stability):
-                positionBuffer.SetData(keptPositions); // SetData will only write up to keptPositions.Count
-                predictedPositionBuffer.SetData(keptPredicted);
-                velocityBuffer.SetData(keptVelocities);
-                densityBuffer.SetData(keptDensities);
-                gravityScaleBuffer.SetData(keptGravityScales);
-                collisionBuffer.SetData(keptCollisions);
-                particleTypeBuffer.SetData(keptParticleTypesAndFlags); // Set compacted types with flags reset
-            }
-            // If numParticles is 0, no SetData needed. Dispatches will use numParticles = 0.
-
-            // Update numParticles on the compute shader
+            // 5. Update the particle count on the shader for the next frame.
             UpdateComputeShaderDynamicParams();
-
-            // Debug.Log($"Particles removed. New count: {numParticles}");
         }
 
         // Fallback CPU-based buffer resizing (used if Graphics.CopyBuffer is problematic)
@@ -1073,7 +918,7 @@ namespace Seb.Fluid2D.Simulation
                 if (obsType == 1) { displayColor = Color.white; }
                 else if (obsType == 2) { displayColor = Color.gray; }
 
-                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = new Color(colorPalette[pColor].r, colorPalette[pColor].g, colorPalette[pColor].b, 0.0f); //colorPalette[pColor];
+                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = new Color(colorPalette[pColor].r, colorPalette[pColor].g, colorPalette[pColor].b, 1.0f); //colorPalette[pColor];
                 _propBlock.SetColor("_Color", displayColor); lr.SetPropertyBlock(_propBlock);
                 _gpuObstacleColorsData.Add(displayColor);
                 lr.startWidth = obstacleLineWidth; lr.endWidth = obstacleLineWidth;
@@ -1158,23 +1003,6 @@ namespace Seb.Fluid2D.Simulation
                     var lr = obstacleGO.GetComponent<LineRenderer>();
                     if (lr != null) Destroy(lr);
                 }
-            }
-        }
-
-        public bool AreColorsClose(Color color1, Color color2, float tolerance, bool compareAlpha = false)
-        {
-            if (compareAlpha)
-            {
-                // Compare R, G, B, and A channels.
-                // Vector4.Distance calculates the Euclidean distance between the two points.
-                return Vector4.Distance(color1, color2) < tolerance;
-            }
-            else
-            {
-                // Compare only R, G, and B by creating Vector3s.
-                Vector3 rgb1 = new Vector3(color1.r, color1.g, color1.b);
-                Vector3 rgb2 = new Vector3(color2.r, color2.g, color2.b);
-                return Vector3.Distance(rgb1, rgb2) < tolerance;
             }
         }
     }

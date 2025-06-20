@@ -6,6 +6,8 @@
 #pragma kernel CalculatePressureForce
 #pragma kernel CalculateViscosity
 #pragma kernel UpdatePositions
+#pragma kernel ResetCompactionCounter
+#pragma kernel CompactAndMoveParticles
 
 #include "./FluidMaths2D.hlsl"
 #include "./SpatialHash.hlsl"
@@ -31,10 +33,41 @@ struct Current
     float linearFactor;
 };
 
-StructuredBuffer<Obstacle> ObstaclesBuffer;
-StructuredBuffer<float2> VerticesBuffer;
+// Buffers used across many kernels (can be RW)
+RWStructuredBuffer<float2> Positions;
+RWStructuredBuffer<float2> PredictedPositions;
+RWStructuredBuffer<float2> Velocities;
+RWStructuredBuffer<float2> Densities;
 RWStructuredBuffer<int4> CollisionBuffer;
 RWStructuredBuffer<int2> ParticleTypeBuffer;
+RWStructuredBuffer<uint> SpatialKeys;
+RWStructuredBuffer<uint> SpatialOffsets;
+
+// Buffers that are read-only in most contexts
+StructuredBuffer<float> GravityScales;
+StructuredBuffer<uint> SortedIndices;
+StructuredBuffer<Obstacle> ObstaclesBuffer;
+StructuredBuffer<float2> VerticesBuffer;
+StructuredBuffer<Current> CurrentsBuffer;
+StructuredBuffer<float2> CurrentVerticesBuffer;
+
+// --- Buffers for Compaction Kernel ---
+// NOTE: These are the destinations, so they MUST be RW (UAVs)
+RWStructuredBuffer<float2> SortTarget_Positions;
+RWStructuredBuffer<float2> SortTarget_PredictedPositions;
+RWStructuredBuffer<float2> SortTarget_Velocities;
+RWStructuredBuffer<int2> SortTarget_ParticleType;
+
+// This is the atomic counter, it MUST be RW (UAV)
+RWStructuredBuffer<uint> CompactionInfoBuffer;
+
+// This is read-only for the compaction kernel, so it is NOT a UAV
+StructuredBuffer<float4> ObstacleColorsBuffer;
+
+StructuredBuffer<float2> Source_Positions;
+StructuredBuffer<float2> Source_PredictedPositions;
+StructuredBuffer<float2> Source_Velocities;
+StructuredBuffer<int2> Source_ParticleType;
 
 int numObstacles;
 float areaToColorAroundObstacles;
@@ -42,19 +75,9 @@ float coloredAreaAroundObstaclesDivider;
 float minDistanceToRemoveParticles;
 static const int NumThreads = 64;
 
-StructuredBuffer<Current> CurrentsBuffer;
-StructuredBuffer<float2> CurrentVerticesBuffer;
+float4 colorPalette[12];
+int colorPaletteSize;
 int numCurrents;
-
-RWStructuredBuffer<float2> Positions;
-RWStructuredBuffer<float2> PredictedPositions;
-RWStructuredBuffer<float2> Velocities;
-RWStructuredBuffer<float2> Densities;
-StructuredBuffer<float> GravityScales;
-
-RWStructuredBuffer<uint> SpatialKeys;
-RWStructuredBuffer<uint> SpatialOffsets;
-StructuredBuffer<uint> SortedIndices;
 
 const uint numParticles;
 const float gravity;
@@ -481,11 +504,6 @@ void ApplyCurrentForces(uint particleIndex, float2 pos)
     } 
 }
 
-RWStructuredBuffer<float2> SortTarget_Positions;
-RWStructuredBuffer<float2> SortTarget_PredictedPositions;
-RWStructuredBuffer<float2> SortTarget_Velocities;
-RWStructuredBuffer<int2> SortTarget_ParticleType;
-
 [numthreads(NumThreads, 1, 1)]
 void Reorder(uint3 id : SV_DispatchThreadID)
 {
@@ -501,8 +519,9 @@ void Reorder(uint3 id : SV_DispatchThreadID)
 [numthreads(NumThreads, 1, 1)]
 void ReorderCopyback(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= numParticles || ParticleTypeBuffer[id.x][0] == -1)
+    if (id.x >= numParticles)
         return;
+
     Positions[id.x] = SortTarget_Positions[id.x];
     PredictedPositions[id.x] = SortTarget_PredictedPositions[id.x];
     Velocities[id.x] = SortTarget_Velocities[id.x];
@@ -523,10 +542,11 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles || ParticleTypeBuffer[id.x][0] == -1)
         return;
-    
+
     float targetDensity = ParticleTypeBuffer[id.x][0] == 0 ? waterTargetDensity : oilTargetDensity;
     float pressureMultiplier = ParticleTypeBuffer[id.x][0] == 0 ? waterPressureMultiplier : oilPressureMultiplier;
     float nearPressureMultiplier = ParticleTypeBuffer[id.x][0] == 0 ? waterNearPressureMultiplier : oilNearPressureMultiplier;
+
     float density = Densities[id.x][0];
     float densityNear = Densities[id.x][1];
     float pressure = PressureFromDensity(density, targetDensity, pressureMultiplier);
@@ -538,7 +558,7 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
     float sqrRadius = smoothingRadius * smoothingRadius;
 
     for (int i = 0; i < 9; i++)
-    {        
+    {
         uint hash = HashCell2D(originCell + offsets2D[i]);
         uint key = KeyFromHash(hash, numParticles);
         uint currIndex = SpatialOffsets[key];
@@ -550,6 +570,7 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
 
             if (neighbourIndex == id.x)
                 continue;
+
             uint neighbourKey = SpatialKeys[neighbourIndex];
             if (neighbourKey != key)
                 break;
@@ -561,16 +582,27 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
             if (sqrDstToNeighbour > sqrRadius)
                 continue;
 
+            // --- SAFETY CHECKS FOR NEIGHBOUR DENSITY ---
+            float neighbourDensity = Densities[neighbourIndex][0];
+            if (neighbourDensity < 0.0001)
+            {
+                continue;
+            }
+            float neighbourNearDensity = Densities[neighbourIndex][1];
+            if (neighbourNearDensity < 0.0001)
+            {
+                continue;
+            }
+            // ------------------------------------------
+
             float dst = sqrt(sqrDstToNeighbour);
             float2 dirToNeighbour = dst > 0 ? offsetToNeighbour / dst : float2(0, 1);
-            
+
             float neighbourTargetDensity = ParticleTypeBuffer[neighbourIndex][0] == 0 ? waterTargetDensity : oilTargetDensity;
             float neighbourPressureMultiplier = ParticleTypeBuffer[neighbourIndex][0] == 0 ? waterPressureMultiplier : oilPressureMultiplier;
             float neighbourNearPressureMultiplier = ParticleTypeBuffer[neighbourIndex][0] == 0 ? waterNearPressureMultiplier : oilNearPressureMultiplier;
-
-            float neighbourDensity = Densities[neighbourIndex][0];
-            float neighbourNearDensity = Densities[neighbourIndex][1];
-            float neighbourPressure = PressureFromDensity(neighbourDensity, neighbourTargetDensity-density, neighbourPressureMultiplier);
+            
+            float neighbourPressure = PressureFromDensity(neighbourDensity, neighbourTargetDensity - density, neighbourPressureMultiplier);
             float neighbourNearPressure = NearPressureFromDensity(neighbourNearDensity, neighbourNearPressureMultiplier);
 
             float sharedPressure = (pressure + neighbourPressure) * 0.5;
@@ -581,6 +613,13 @@ void CalculatePressureForce(uint3 id : SV_DispatchThreadID)
         }
     }
 
+    // --- SAFETY CHECK FOR OWN DENSITY ---
+    if (density < 0.0001)
+    {
+        return; // Particle is isolated, no pressure force to apply.
+    }
+    // ------------------------------------
+
     float2 acceleration = pressureForce / density;
     Velocities[id.x] += acceleration * deltaTime;
 }
@@ -590,6 +629,14 @@ void CalculateViscosity(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles || ParticleTypeBuffer[id.x][0] == -1)
         return;
+        
+    // --- SAFETY CHECK ---
+    // If a particle's density is effectively zero, it has no neighbours to create viscosity with.
+    if (Densities[id.x][0] < 0.0001)
+    {
+        return;
+    }
+    // --------------------
 
     float2 pos = PredictedPositions[id.x];
     int2 originCell = GetCell2D(pos, smoothingRadius);
@@ -610,6 +657,7 @@ void CalculateViscosity(uint3 id : SV_DispatchThreadID)
 
             if (neighbourIndex == id.x)
                 continue;
+                
             uint neighbourKey = SpatialKeys[neighbourIndex];
             if (neighbourKey != key)
                 break;
@@ -641,4 +689,64 @@ void UpdatePositions(uint3 id : SV_DispatchThreadID)
     HandleCollisions(id.x);
     
     Positions[id.x] += Velocities[id.x] * deltaTime;
+}
+
+[numthreads(1, 1, 1)]
+void ResetCompactionCounter(uint3 id : SV_DispatchThreadID)
+{
+    CompactionInfoBuffer[0] = 0;
+}
+
+[numthreads(NumThreads, 1, 1)]
+void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles)
+        return;
+
+    int particleTypeIndex = Source_ParticleType[id.x].x;
+    int removalFlag = Source_ParticleType[id.x].y;
+
+    bool shouldKeep = true;
+
+    if (removalFlag == -2) // Removed by Ventil
+    {
+        shouldKeep = false;
+    }
+    else if (removalFlag >= 0) // Potentially removed by Player
+    {
+        int obstacleIndex = removalFlag;
+
+        // Logic: If type > 0, it's a colored particle.
+        // We assume type 1 maps to palette[0], type 2 to palette[1], etc.
+        if (particleTypeIndex > 0)
+        {
+            int paletteIndex = particleTypeIndex - 1;
+
+            // Final check: Are the particle's type and the obstacle that flagged it valid?
+            if (paletteIndex >= 0 && paletteIndex < colorPaletteSize && obstacleIndex < numObstacles)
+            {
+                float4 particleColor = colorPalette[paletteIndex];
+                float4 obstacleColor = ObstacleColorsBuffer[obstacleIndex];
+                
+                // Compare the colors
+                if (distance(particleColor.rgb, obstacleColor.rgb) < 0.01)
+                {
+                    shouldKeep = false;
+                }
+            }
+        }
+    }
+
+    // Compaction Step...
+    if (shouldKeep)
+    {
+        uint newIndex;
+        InterlockedAdd(CompactionInfoBuffer[0], 1, newIndex);
+        SortTarget_Positions[newIndex] = Source_Positions[id.x];
+        SortTarget_PredictedPositions[newIndex] = Source_PredictedPositions[id.x];
+        SortTarget_Velocities[newIndex] = Source_Velocities[id.x];
+        int2 currentParticleTypeInfo = Source_ParticleType[id.x];
+        currentParticleTypeInfo.y = -1;
+        SortTarget_ParticleType[newIndex] = currentParticleTypeInfo;
+    }
 }
