@@ -441,33 +441,36 @@ namespace Seb.Fluid2D.Simulation
                     {
                         if (typeData[i].x > 0)
                         {
-                            int particleOriginalType = mixableColors[typeData[i].x - 1]; // This is the type from the buffer
+                            int particleOriginalType = mixableColors[typeData[i].x - 1];
                             int particleFlag = typeData[i].y;
 
-                            if (particleFlag >= -1) // Removed by Player (ObstacleType 0 as per HLSL mapping)
+                            if (particleFlag >= 0) // Removed by Player
                             {
-                                Color finalColour = new Color();
-
+                                bool colorMatched = false;
+                                // Check up to 4 collision points for a color match
                                 for (int j = 0; j < 4; j++)
                                 {
                                     int obstacleIndex = collisionIndicesArray[i][j];
                                     if (obstacleIndex != -1)
                                     {
-                                        finalColour += obstacleColorsArray[obstacleIndex];
+                                        // Check if this specific obstacle's color is a match
+                                        if (AreColorsClose(colorPalette[particleOriginalType], obstacleColorsArray[obstacleIndex], 0.01f))
+                                        {
+                                            colorMatched = true;
+                                            break; // Found a match, no need to check other collision points
+                                        }
                                     }
                                     else
                                     {
-                                        break;
+                                        break; // No more valid collision indices for this particle
                                     }
                                 }
 
-                                if (AreColorsClose(colorPalette[particleOriginalType], finalColour, 0.01f))
+                                if (colorMatched)
                                 {
                                     removedParticlesPerColor[particleOriginalType]++;
                                     indicesToRemove.Add(i);
-                                    // For scoring/logging: (particle's actual type, type of obstacle that removed it)
                                     removedParticleInfo.Add((particleOriginalType, particleFlag));
-                                    // Debug.Log($"Particle (index {i}, type: {particleOriginalType}) marked for removal by Player (Flag 1 / ObstacleType 0).");
                                 }
                             }
                             else if (particleFlag == -2) // Removed by Ventil (ObstacleType 2 as per HLSL mapping)
@@ -553,6 +556,7 @@ namespace Seb.Fluid2D.Simulation
             List<int4> keptCollisions = new List<int4>(newNumParticlesCount);
             List<int2> keptParticleTypesAndFlags = new List<int2>(newNumParticlesCount); // Store int2 (type, flag=0)
 
+            indicesToRemove.Sort();
             int removedIdxIter = 0; // Iterator for sorted indicesToRemove
             for (int i = 0; i < oldNumParticles; i++)
             {
@@ -1171,8 +1175,19 @@ namespace Seb.Fluid2D.Simulation
         }
         public bool AreColorsClose(Color color1, Color color2, float tolerance, bool compareAlpha = false)
         {
-            color2.a = 1.0f;
-            return color1.Equals(color2);
+            if (compareAlpha)
+            {
+                // Compare R, G, B, and A channels.
+                // Vector4.Distance calculates the Euclidean distance between the two points.
+                return Vector4.Distance(color1, color2) < tolerance;
+            }
+            else
+            {
+                // Compare only R, G, and B by creating Vector3s.
+                Vector3 rgb1 = new Vector3(color1.r, color1.g, color1.b);
+                Vector3 rgb2 = new Vector3(color2.r, color2.g, color2.b);
+                return Vector3.Distance(rgb1, rgb2) < tolerance;
+            }
         }
     }
 }
