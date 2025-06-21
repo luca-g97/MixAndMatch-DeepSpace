@@ -174,22 +174,21 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                         }
                     }
 
-                    //For standard usage, just take the color of the first player it interacted with
-                    //finalColour = saturate(ObstacleColors[obstacleIndices[0]].rgb * additiveStrength);
+                    float3 actualObstacleColor = obstacleColorSum / obstacleCount;
 
                     float3 diff = abs(exactColor - float3(-1, -1, -1));
                     if(all(diff > COMPARE_EPSILON))
                     {
-                        finalColour = saturate(obstacleColorSum * (additiveStrength*1.5));
+                        finalColour = saturate(actualObstacleColor * (additiveStrength*1.5));
                     }
                     else if(obstacleCount > 1 && mixableColor) 
                     { 
-                        finalColour = saturate(obstacleColorSum * (additiveStrength*1.25)); 
+                        finalColour = saturate(actualObstacleColor * (additiveStrength*1.25)); 
                     }
                     else
                     {
                         finalColour = saturate(colorB * additiveStrength); //Uncomment to not display other mixed colors
-                        //finalColour = saturate(obstacleColorSum * additiveStrength); //Uncomment to also allow other mixed colors
+                        //finalColour = saturate(actualObstacleColor * additiveStrength); //Uncomment to also allow other mixed colors
                     }
                 }
                 else if (particleType > 0)

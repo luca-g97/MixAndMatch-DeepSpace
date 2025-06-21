@@ -706,26 +706,23 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
 
     int particleTypeIndex = Source_ParticleType[id.x].x;
     int removalFlag = Source_ParticleType[id.x].y;
-
     bool shouldKeep = true;
 
-    if (removalFlag <= -2) // Removed by Ventil
+    if (removalFlag <= -2) // Ventil removal
     {
-        // Convert removeFlag back to its actual object index
-        int actualObstacleIndex = (removalFlag + 2) * -1;
         shouldKeep = false;
     }
-    else if (removalFlag >= 0) // Potentially removed by Player
+    else if (removalFlag >= 0) // Player flagged this particle
     {
         if (particleTypeIndex > 0)
         {
-            // --- Step 1: Get the particle's target color from the master palette. ---
-            int particleTargetPaletteIndex = particleTypeIndex - 1;
-            float3 particleTargetColor = mixableColors[particleTargetPaletteIndex].rgb;
+            // --- Step 1: Get the particle's CURRENT VISUAL color from mixableColors ---
+            int particleColorIndex = particleTypeIndex - 1;
+            float3 particleVisualColor = mixableColors[particleColorIndex].rgb;
 
-            // --- Step 2: Find the UNIQUE colors of all nearby players. ---
+            // --- Step 2: Get the UNIQUE BASE colors of all nearby players ---
             int4 nearbyObstacleIndices = Source_Collision[id.x];
-            float3 uniqueColors[4]; // Max 4 unique colors from neighbors
+            float3 uniqueColors[4];
             int uniqueColorCount = 0;
 
             for (int i = 0; i < 4; i++)
@@ -735,8 +732,6 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
                 {
                     float3 obsColor = ObstacleColorsBuffer[obsIndex].rgb;
                     bool alreadyFound = false;
-                    
-                    // Check if we've already added this exact color
                     for (int j = 0; j < uniqueColorCount; j++)
                     {
                         if (distance(obsColor, uniqueColors[j]) < 0.001)
@@ -745,7 +740,6 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
                             break;
                         }
                     }
-                    // If it's a new, unique color, add it to our list.
                     if (!alreadyFound && uniqueColorCount < 4)
                     {
                         uniqueColors[uniqueColorCount] = obsColor;
@@ -754,7 +748,7 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
                 }
             }
 
-            // --- Step 3: Sum the unique colors to get the resulting blend. ---
+            // --- Step 3: AVERAGE the unique base colors to get the resulting blend ---
             if (uniqueColorCount > 0)
             {
                 float3 blendedColorSum = float3(0, 0, 0);
@@ -762,10 +756,10 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
                 {
                     blendedColorSum += uniqueColors[i];
                 }
+                float3 blendedColorAverage = blendedColorSum / uniqueColorCount;
 
-                // --- Step 4: Compare the blend to the particle's target color. ---
-                // This checks if the perfect mix has been achieved.
-                if (distance(blendedColorSum, particleTargetColor) < 0.01)
+                // --- Step 4: Compare the blend of base colors to the particle's current visual color ---
+                if (distance(blendedColorAverage, particleVisualColor) < 0.02)
                 {
                     shouldKeep = false;
                 }

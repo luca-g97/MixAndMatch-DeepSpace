@@ -443,7 +443,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4118164978541504360, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8465265251951431075, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1040,7 +1040,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7564270855486431386, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1522,6 +1522,10 @@ PrefabInstance:
     - target: {fileID: 4118164978541504360, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
       propertyPath: m_Name
       value: Obstacle
+      objectReference: {fileID: 0}
+    - target: {fileID: 4118164978541504360, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8465265251951431075, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
       propertyPath: m_LocalScale.x
