@@ -64,6 +64,7 @@ namespace Seb.Fluid2D.Simulation
 
         ComputeBuffer vertexBuffer;
         ComputeBuffer compactionInfoBuffer;
+        ComputeBuffer collisionBufferCopy;
 
         public ComputeBuffer obstacleBuffer { get; private set; }
         public ComputeBuffer obstacleColorsBuffer { get; private set; }
@@ -80,6 +81,7 @@ namespace Seb.Fluid2D.Simulation
         const int updatePositionKernel = 7;
         const int resetCompactionCounterKernel = 8;
         const int compactAndMoveKernel = 9;
+        const int copyCollisionKernel = 10;
 
         bool isPaused;
         Spawner2D.ParticleSpawnData initialSpawnData;
@@ -241,6 +243,8 @@ namespace Seb.Fluid2D.Simulation
             sortTarget_Velocity = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             sortTarget_ParticleType = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
             sortTarget_Collision = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
+
+            collisionBufferCopy = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
         }
 
         void ReleaseParticleBuffers()
@@ -248,11 +252,11 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.Release(positionBuffer, predictedPositionBuffer, velocityBuffer, densityBuffer,
                 gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_Position,
                 sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType,
-                compactionInfoBuffer, sortTarget_Collision);
+                compactionInfoBuffer, sortTarget_Collision, collisionBufferCopy);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
             gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; sortTarget_Position = null;
             sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
-            compactionInfoBuffer = null; sortTarget_Collision = null;
+            compactionInfoBuffer = null; sortTarget_Collision = null; collisionBufferCopy = null;
             spatialHash?.Release();
             spatialHash = null;
         }
@@ -366,7 +370,7 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", compactAndMoveKernel);
-            ComputeHelper.SetBuffer(compute, collisionBuffer, "Source_Collision", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, collisionBufferCopy, "Source_Collision", compactAndMoveKernel);
             if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", compactAndMoveKernel);
             // Set RW write targets
             ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", compactAndMoveKernel);
@@ -460,16 +464,24 @@ namespace Seb.Fluid2D.Simulation
 
             if (Time.time >= nextAutoUpdateTime)
             {
-                UpdateAutoPlayers();
                 nextAutoUpdateTime = Time.time + autoUpdateInterval;
             }
 
+            UpdateAutoPlayers();
             UpdateObstacleBuffer(_forceObstacleBufferUpdate);
             _forceObstacleBufferUpdate = false;
 
             if (!isPaused && numParticles > 0)
             {
                 RunSimulationFrame(cappedSimDeltaTime);
+                // This still forces the GPU to finish all writes to collisionBuffer
+                // and eliminates the Read-After-Write hazard.
+                if (collisionBuffer != null && collisionBufferCopy != null && collisionBuffer.count == collisionBufferCopy.count && numParticles > 0)
+                {
+                    compute.SetBuffer(copyCollisionKernel, "OriginalCollisionBuffer_Source", collisionBuffer);
+                    compute.SetBuffer(copyCollisionKernel, "CopiedCollisionBuffer_Destination", collisionBufferCopy);
+                    ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copyCollisionKernel);
+                }
                 ProcessParticleRemovalsGPU();
             }
 
@@ -583,6 +595,7 @@ namespace Seb.Fluid2D.Simulation
 
             int4[] newCollisionData = new int4[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newCollisionData[i] = new int4(-1, -1, -1, -1);
             collisionBuffer = FallbackResizeAndAppendBuffer(collisionBuffer, oldNumParticles, newCollisionData);
+            collisionBufferCopy = FallbackResizeAndAppendBuffer(collisionBufferCopy, oldNumParticles, new int4[newSpawnCount]);
 
             densityBuffer = FallbackResizeAndAppendBuffer(densityBuffer, oldNumParticles, new float2[newSpawnCount]);
 
@@ -629,8 +642,7 @@ namespace Seb.Fluid2D.Simulation
         {
             if (numParticles == 0 || spatialHash == null || compute == null) return;
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: spatialHashKernel);
-            spatialHash.Run(); // Assuming SebLague's SpatialHash.Run() is appropriate.
-                               // If it requires particle count for its internal sort/dispatch, it might be: spatialHash.Run(numParticles);
+            spatialHash.Run();
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: reorderKernel);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
         }
@@ -1044,7 +1056,12 @@ namespace Seb.Fluid2D.Simulation
             { // If buffers were re-created, they need to be re-bound
                 if (vertexBuffer != null && vertexBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "VerticesBuffer", vertexBuffer);
                 if (obstacleBuffer != null && obstacleBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "ObstaclesBuffer", obstacleBuffer);
-                if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "ObstacleColorsBuffer", obstacleColorsBuffer);
+                if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid())
+                {
+                    // This buffer is read by two different kernels, so we must update the binding for both.
+                    compute.SetBuffer(updatePositionKernel, "ObstacleColorsBuffer", obstacleColorsBuffer);
+                    compute.SetBuffer(compactAndMoveKernel, "ObstacleColorsBuffer", obstacleColorsBuffer);
+                }
             }
             if (compute != null) compute.SetInt("numObstacles", _gpuObstacleDataList.Count);
         }

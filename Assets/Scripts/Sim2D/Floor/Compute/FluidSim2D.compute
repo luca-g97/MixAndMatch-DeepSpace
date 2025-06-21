@@ -8,6 +8,7 @@
 #pragma kernel UpdatePositions
 #pragma kernel ResetCompactionCounter
 #pragma kernel CompactAndMoveParticles
+#pragma kernel CopyCollisionBuffer
 
 #include "./FluidMaths2D.hlsl"
 #include "./SpatialHash.hlsl"
@@ -42,6 +43,7 @@ RWStructuredBuffer<int4> CollisionBuffer;
 RWStructuredBuffer<int2> ParticleTypeBuffer;
 RWStructuredBuffer<uint> SpatialKeys;
 RWStructuredBuffer<uint> SpatialOffsets;
+RWStructuredBuffer<int4> CopiedCollisionBuffer_Destination;
 
 // Buffers that are read-only in most contexts
 StructuredBuffer<float> GravityScales;
@@ -50,6 +52,7 @@ StructuredBuffer<Obstacle> ObstaclesBuffer;
 StructuredBuffer<float2> VerticesBuffer;
 StructuredBuffer<Current> CurrentsBuffer;
 StructuredBuffer<float2> CurrentVerticesBuffer;
+StructuredBuffer<int4> OriginalCollisionBuffer_Source;
 
 // --- Buffers for Compaction Kernel ---
 // NOTE: These are the destinations, so they MUST be RW (UAVs)
@@ -363,6 +366,9 @@ void HandleCollisions(uint particleIndex)
                 if (particleProcessFlag == -1 && minDistSq <= minDistanceToRemoveParticlesSq)
                 {
                     ParticleTypeBuffer[particleIndex][1] = obstacleIdx;
+                    // Add a break here to stop checking against other players for removal flagging.
+                    // The highlighting logic above will have already accumulated all nearby players for the color blend.
+                    break;
                 }
             }
             // --- Ventil Obstacle Interaction (type 2) ---
@@ -781,4 +787,16 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
         currentParticleTypeInfo.y = -1;
         SortTarget_ParticleType[newIndex] = currentParticleTypeInfo;
     }
+}
+
+[numthreads(64, 1, 1)]
+void CopyCollisionBuffer(uint3 id : SV_DispatchThreadID)
+{
+    // Use the existing global 'numParticles' constant for the check.
+    if (id.x >= numParticles)
+    {
+        return;
+    }
+    
+    CopiedCollisionBuffer_Destination[id.x] = OriginalCollisionBuffer_Source[id.x];
 }
