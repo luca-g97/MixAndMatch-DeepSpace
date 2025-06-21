@@ -65,7 +65,7 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer sortTarget_Collision;
 
         ComputeBuffer vertexBuffer;
-        ComputeBuffer compactionInfoBuffer_Wall;
+        ComputeBuffer compactionInfoBuffer;
         ComputeBuffer collisionBufferCopy;
         
         public ComputeBuffer obstacleBuffer { get; private set; }
@@ -204,7 +204,7 @@ namespace Seb.Fluid2D.Simulation
 
             int initialCapacity = Mathf.Max(1, numParticles);
             CreateParticleBuffers(initialCapacity);
-            compactionInfoBuffer_Wall = ComputeHelper.CreateStructuredBuffer<uint>(1);
+			compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<uint>(1);
 
             if (numParticles > 0)
             {
@@ -259,11 +259,11 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.Release(positionBuffer, predictedPositionBuffer, velocityBuffer, densityBuffer,
                 gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_Position,
                 sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType,
-                compactionInfoBuffer_Wall, sortTarget_Collision, collisionBufferCopy);
+                compactionInfoBuffer, sortTarget_Collision, collisionBufferCopy);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
             gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; sortTarget_Position = null;
             sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
-            compactionInfoBuffer_Wall = null; sortTarget_Collision = null; collisionBufferCopy = null;
+            compactionInfoBuffer = null; sortTarget_Collision = null; collisionBufferCopy = null;
             spatialHash?.Release();
             spatialHash = null;
         }
@@ -370,7 +370,7 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer_Wall", copybackKernel);
 
             // --- KERNEL GROUP 3: PARTICLE REMOVAL / COMPACTION ---
-            ComputeHelper.SetBuffer(compute, compactionInfoBuffer_Wall, "CompactionInfoBuffer_Wall", resetCompactionCounterKernel, compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, compactionInfoBuffer, "CompactionInfoBuffer_Wall", resetCompactionCounterKernel, compactAndMoveKernel);
             // Set read-only sources
             ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions_Wall", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions_Wall", compactAndMoveKernel);
@@ -511,7 +511,7 @@ namespace Seb.Fluid2D.Simulation
             // 3. Read back the final count of surviving particles.
             // This is a fast, small readback of a single integer.
             uint[] newCountData = new uint[1];
-            compactionInfoBuffer_Wall.GetData(newCountData);
+            compactionInfoBuffer.GetData(newCountData);
             int newNumParticles = (int)newCountData[0];
 
             // If all particles were removed
@@ -1090,6 +1090,7 @@ namespace Seb.Fluid2D.Simulation
                     var lr = obstacleGO.GetComponent<LineRenderer>();
                     if (lr != null) Destroy(lr);
                 }
+
             }
         }
     }

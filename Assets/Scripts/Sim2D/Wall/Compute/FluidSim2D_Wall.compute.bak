@@ -346,7 +346,7 @@ void HandleCollisions_Wall(uint particleIndex)
             }
         } // --- End Inner Vertex Loop ---
 
-		bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
+bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
         
         // --- THIS IS THE CORRECTED LOGIC BLOCK ---
         // It handles highlighting and removal flagging independently to prevent conflicts.

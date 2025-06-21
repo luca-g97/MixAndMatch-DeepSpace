@@ -195,7 +195,7 @@ MonoBehaviour:
   coloredAreaAroundObstaclesDivider: 0
   mixableColorsForShader: []
   maxPlayerColors: 6
-  colorSymbolizingNoPlayer: {r: 0, g: 0, b: 0, a: 1}
+  colorSymbolizingNoPlayer: {r: 0.5882353, g: 0.29411766, b: 0, a: 1}
   lastPlayerCount: -1
   obstacleLineColor: {r: 0, g: 1, b: 0, a: 1}
   obstacleLineWidth: 0.1
@@ -1281,7 +1281,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1815557434
 MonoBehaviour:
   m_ObjectHideFlags: 0
