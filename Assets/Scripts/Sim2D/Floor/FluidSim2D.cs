@@ -702,8 +702,11 @@ namespace Seb.Fluid2D.Simulation
             if (currentDataList.Count > 0)
             {
                 // Resize buffers if needed (this helper likely handles this)
-                ComputeHelper.CreateStructuredBuffer(ref currentsBuffer, currentDataList);
                 ComputeHelper.CreateStructuredBuffer(ref currentVerticesBuffer, currentVertices);
+                ComputeHelper.CreateStructuredBuffer(ref currentsBuffer, currentDataList);
+
+                compute.SetBuffer(updatePositionKernel, "CurrentsBuffer", currentsBuffer);
+                compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer", currentVerticesBuffer);
             }
 
             // Always set the count. If zero, the shader will simply not run the currents loop.
