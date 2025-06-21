@@ -57,6 +57,7 @@ RWStructuredBuffer<float2> SortTarget_Positions;
 RWStructuredBuffer<float2> SortTarget_PredictedPositions;
 RWStructuredBuffer<float2> SortTarget_Velocities;
 RWStructuredBuffer<int2> SortTarget_ParticleType;
+RWStructuredBuffer<int4> SortTarget_Collision;
 
 // This is the atomic counter, it MUST be RW (UAV)
 RWStructuredBuffer<uint> CompactionInfoBuffer;
@@ -68,16 +69,26 @@ StructuredBuffer<float2> Source_Positions;
 StructuredBuffer<float2> Source_PredictedPositions;
 StructuredBuffer<float2> Source_Velocities;
 StructuredBuffer<int2> Source_ParticleType;
+StructuredBuffer<int4> Source_Collision;
+
+// Aliases for the REORDERCOPYBACK kernel's source data
+StructuredBuffer<float2> CopySource_Positions;
+StructuredBuffer<float2> CopySource_PredictedPositions;
+StructuredBuffer<float2> CopySource_Velocities;
+StructuredBuffer<int2> CopySource_ParticleType;
+StructuredBuffer<int4> CopySource_Collision;
 
 int numObstacles;
 float areaToColorAroundObstacles;
 float coloredAreaAroundObstaclesDivider;
 float minDistanceToRemoveParticles;
 static const int NumThreads = 64;
+int numCurrents;
 
+float4 mixableColors[12];
+int mixableColorsSize;
 float4 colorPalette[12];
 int colorPaletteSize;
-int numCurrents;
 
 const uint numParticles;
 const float gravity;
@@ -200,6 +211,8 @@ float2 ExternalForces(float2 pos, float2 velocity, float gravityScale)
 
 // Optimized HandleCollisions - Focused on reducing expensive operations (sqrt, normalization)
 // and minimizing work inside the inner vertex loop after performance degradation was observed.
+// Optimized HandleCollisions - Focused on reducing expensive operations (sqrt, normalization)
+// and minimizing work inside the inner vertex loop after performance degradation was observed.
 void HandleCollisions(uint particleIndex)
 {
     // Initialize Process Flag for this particle for this collision step IF it's not already marked for removal globally.
@@ -240,12 +253,11 @@ void HandleCollisions(uint particleIndex)
         return;
     }
 
-
     // --- Pre-calculations (Avoid redundant calculations later) ---
     const float2 halfSize = boundsSize * 0.5;
     const float boundaryEpsilon = 0.001f; // Small offset for boundary push-off
-
     float areaToColorAroundObstaclesSq = areaToColorAroundObstacles * areaToColorAroundObstacles;
+    float minDistanceToRemoveParticlesSq = minDistanceToRemoveParticles * minDistanceToRemoveParticles;
     float secondaryColorDist = areaToColorAroundObstacles + coloredAreaAroundObstaclesDivider;
     float secondaryColorDistSq = secondaryColorDist * secondaryColorDist;
 
@@ -269,72 +281,49 @@ void HandleCollisions(uint particleIndex)
     for (int obstacleIdx = 0; obstacleIdx < numObstacles && obstacleIdx < MAX_OBSTACLES; obstacleIdx++)
     {
         Obstacle obstacle = ObstaclesBuffer[obstacleIdx];
-        int vertexStart = obstacle.vertexStart;
-        int vertexCount = obstacle.vertexCount;
-
-        if (vertexCount < 2)
+        if (obstacle.vertexCount < 2)
             continue;
 
-        float lineWidth = obstacle.lineWidth;
-        float particleRadius = 0.1f; // TODO: Consider making this a uniform
-        float collisionPadding = particleRadius - (lineWidth * 0.5f); //(lineWidth * 0.5f);
-        float collisionPaddingSq = collisionPadding * collisionPadding;
-
+        // Find closest point on obstacle polygon
         int intersections = 0;
         float minDistSq = FLT_MAX;
         float2 normalAtClosestPoint = float2(0, 0);
 
         [loop]
-        for (int j = 0; j < vertexCount; j++)
+        for (int j = 0; j < obstacle.vertexCount; j++)
         {
-            int nextJ = uint(j + 1) % uint(vertexCount);
-            float2 a = VerticesBuffer[vertexStart + j];
-            float2 b = VerticesBuffer[vertexStart + nextJ];
+            int nextJ = (uint) (j + 1) % (uint) obstacle.vertexCount;
+            float2 a = VerticesBuffer[obstacle.vertexStart + j];
+            float2 b = VerticesBuffer[obstacle.vertexStart + nextJ];
             float2 edge = b - a;
             float2 vecToA = pos - a;
 
             float edgeLengthSq = dot(edge, edge);
-            float2 pointOnEdge;
-            if (edgeLengthSq > 1e-6f)
-            {
-                float t = clamp(dot(vecToA, edge) / edgeLengthSq, 0.0, 1.0);
-                pointOnEdge = a + t * edge;
-            }
-            else
-            {
-                pointOnEdge = a;
-            }
-
-            float2 offsetToEdgePoint = pos - pointOnEdge;
-            float distSq = dot(offsetToEdgePoint, offsetToEdgePoint);
+            float2 pointOnEdge = a + clamp(dot(vecToA, edge) / max(edgeLengthSq, 1e-6f), 0.0, 1.0) * edge;
+            
+            float2 offsetToPoint = pos - pointOnEdge;
+            float distSq = dot(offsetToPoint, offsetToPoint);
 
             if (distSq < minDistSq)
             {
                 minDistSq = distSq;
                 if (distSq > 1e-6f)
                 {
-                    normalAtClosestPoint = normalize(offsetToEdgePoint);
+                    normalAtClosestPoint = normalize(pos - pointOnEdge);
                 }
                 else
                 {
-                    if (edgeLengthSq > 1e-6f)
-                    {
-                        float2 edgeDir = normalize(edge);
-                        normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x));
-                    }
-                    else
-                    {
-                        normalAtClosestPoint = float2(0, 1);
-                    }
+                    float2 edgeDir = normalize(edge);
+                    normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x));
                 }
             }
 
-            if (vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
+            // Check for point-in-polygon using raycast
+            if (obstacle.vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
             {
                 if (abs(b.y - a.y) > 1e-6f)
                 {
-                    float intersectX = a.x + (b.x - a.x) * (pos.y - a.y) / (b.y - a.y);
-                    if (pos.x < intersectX)
+                    if (pos.x < a.x + (b.x - a.x) * (pos.y - a.y) / (b.y - a.y))
                     {
                         intersections++;
                     }
@@ -342,50 +331,53 @@ void HandleCollisions(uint particleIndex)
             }
         } // --- End Inner Vertex Loop ---
 
-        bool isInside = (vertexCount >= 3) && ((uint(intersections) % 2) != 0);
-        bool collisionDetected = isInside || (minDistSq < collisionPaddingSq);
-
-        // --- Particle Removal and Coloring Logic ---
-        // Check for removal condition FIRST. If removed, it might not need coloring.
-        // Ensure particleType is still valid (>=0) before processing for removal by this obstacle.
-        // ParticleProcessFlags[particleIndex] == 0 ensures we only mark it once per frame by the first Ventil/Player it hits.
-        if (particleProcessFlag == -1 && (minDistSq <= minDistanceToRemoveParticles) && particleType > 0 && (obstacle.obstacleType == 0 || obstacle.obstacleType == 2))
+        bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
+        
+        // --- THIS IS THE CORRECTED LOGIC BLOCK ---
+        // It handles highlighting and removal flagging independently to prevent conflicts.
+        
+        // Check only for colored particles
+        if (particleType > 0)
         {
-            if (obstacle.obstacleType == 0) // Player
+            // --- Player Obstacle Interaction (type 0) ---
+            if (obstacle.obstacleType == 0)
             {
-                ParticleTypeBuffer[particleIndex][1] = obstacleIdx; // Mark for removal by Player
-            }
-            else if(obstacle.obstacleType == 2 && isInside) //Only remove on collision
-            {
-                ParticleTypeBuffer[particleIndex][1] = -2; // Mark for removal by Ventil
-            }
-        }
-
-
-        // Coloring Logic (only if not marked for removal by this obstacle pass or is not a Player obstacle)
-        // Check particleType again because it might have been set to -1 by the removal logic above.
-        // And ensure ParticleProcessFlags is still 0, meaning it wasn't just marked for removal by *this* obstacle.
-        // (If it was marked by a *previous* obstacle in this loop, particleType would already be -1, failing the ParticleTypeBuffer[particleIndex] >=0 check for coloring)
-        if (ParticleTypeBuffer[particleIndex][1] != -2 && particleType > 0 && obstacle.obstacleType == 0) // Only color if particle is active and obstacle is a player
-        {
-            if (consideredObstacles < 4)
-            {
-                if (minDistSq < areaToColorAroundObstaclesSq)
+                // HIGHLIGHTING LOGIC: Always check if the particle is close enough to a player to be highlighted.
+                // This populates the 'collisionIndices' that the renderer uses.
+                if (consideredObstacles < 4)
                 {
-                    collisionIndices[consideredObstacles] = obstacleIdx;
-                    consideredObstacles++;
+                    if (minDistSq < areaToColorAroundObstaclesSq)
+                    {
+                        collisionIndices[consideredObstacles] = obstacleIdx;
+                        consideredObstacles++;
+                    }
+                    else if (minDistSq < secondaryColorDistSq)
+                    {
+                        collisionIndices[consideredObstacles] = -2; // Special marker for secondary color
+                        consideredObstacles++;
+                    }
                 }
-                else if (minDistSq < secondaryColorDistSq)
+
+                // REMOVAL LOGIC: Independently, check if the particle is close enough to be flagged for removal.
+                // This writes to ParticleTypeBuffer.y and does not affect highlighting.
+                if (particleProcessFlag == -1 && minDistSq <= minDistanceToRemoveParticlesSq)
                 {
-                    collisionIndices[consideredObstacles] = -2; // Special marker for secondary color
-                    consideredObstacles++;
+                    ParticleTypeBuffer[particleIndex][1] = obstacleIdx;
                 }
             }
+            // --- Ventil Obstacle Interaction (type 2) ---
+            else if (obstacle.obstacleType == 2 && particleProcessFlag == -1 && isInside)
+            {
+                ParticleTypeBuffer[particleIndex][1] = -obstacleIdx - 2; // Mark for removal by Ventil
+            }
         }
-
 
         // --- Collision Response (only for physical obstacles: type 0 Player, type 1 Static Obstacle) ---
         // And only if particle is still considered active (ParticleTypeBuffer[particleIndex] >= 0)
+        float particleRadius = 0.1f;
+        float collisionPadding = particleRadius - (obstacle.lineWidth * 0.5f);
+        bool collisionDetected = isInside || (minDistSq < collisionPadding * collisionPadding);
+
         if (particleType >= 0 && collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1))
         {
             float actualDistance = sqrt(minDistSq);
@@ -398,9 +390,7 @@ void HandleCollisions(uint particleIndex)
             {
                 penetrationDepth = collisionPadding - actualDistance;
             }
-            penetrationDepth += 0.001f;
-
-            pos += normalAtClosestPoint * penetrationDepth;
+            pos += normalAtClosestPoint * (penetrationDepth + 0.001f);
 
             float normalSpeed = dot(vel, normalAtClosestPoint);
             if (normalSpeed < 0)
@@ -413,6 +403,8 @@ void HandleCollisions(uint particleIndex)
         } // --- End Collision Response ---
     } // --- End Outer Obstacle Loop ---
     
+    // --- Final Writes ---
+    // This now contains the correct highlighting data, which will be sorted and compacted.
     CollisionBuffer[particleIndex] = int4(collisionIndices[0], collisionIndices[1], collisionIndices[2], collisionIndices[3]);
     Positions[particleIndex] = pos;
     Velocities[particleIndex] = vel;
@@ -509,11 +501,17 @@ void Reorder(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles)
         return;
+    
+    // The index of the particle we need to move into this slot
     uint sortedIndex = SortedIndices[id.x];
-    SortTarget_Positions[id.x] = Positions[sortedIndex];
-    SortTarget_PredictedPositions[id.x] = PredictedPositions[sortedIndex];
-    SortTarget_Velocities[id.x] = Velocities[sortedIndex];
-    SortTarget_ParticleType[id.x] = ParticleTypeBuffer[sortedIndex];
+
+    // Write to the RW "SortTarget" buffers
+    // Read from the read-only "Source" aliases (which point to the main buffers)
+    SortTarget_Positions[id.x] = Source_Positions[sortedIndex];
+    SortTarget_PredictedPositions[id.x] = Source_PredictedPositions[sortedIndex];
+    SortTarget_Velocities[id.x] = Source_Velocities[sortedIndex];
+    SortTarget_ParticleType[id.x] = Source_ParticleType[sortedIndex];
+    SortTarget_Collision[id.x] = Source_Collision[sortedIndex];
 }
 
 [numthreads(NumThreads, 1, 1)]
@@ -522,10 +520,13 @@ void ReorderCopyback(uint3 id : SV_DispatchThreadID)
     if (id.x >= numParticles)
         return;
 
-    Positions[id.x] = SortTarget_Positions[id.x];
-    PredictedPositions[id.x] = SortTarget_PredictedPositions[id.x];
-    Velocities[id.x] = SortTarget_Velocities[id.x];
-    ParticleTypeBuffer[id.x] = SortTarget_ParticleType[id.x];
+    // Write to the RW main buffers
+    // Read from the read-only "CopySource" aliases (which point to the SortTarget buffers)
+    Positions[id.x] = CopySource_Positions[id.x];
+    PredictedPositions[id.x] = CopySource_PredictedPositions[id.x];
+    Velocities[id.x] = CopySource_Velocities[id.x];
+    ParticleTypeBuffer[id.x] = CopySource_ParticleType[id.x];
+    CollisionBuffer[id.x] = CopySource_Collision[id.x];
 }
 
 [numthreads(NumThreads, 1, 1)]
@@ -708,28 +709,63 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
 
     bool shouldKeep = true;
 
-    if (removalFlag == -2) // Removed by Ventil
+    if (removalFlag <= -2) // Removed by Ventil
     {
+        // Convert removeFlag back to its actual object index
+        int actualObstacleIndex = (removalFlag + 2) * -1;
         shouldKeep = false;
     }
     else if (removalFlag >= 0) // Potentially removed by Player
     {
-        int obstacleIndex = removalFlag;
-
-        // Logic: If type > 0, it's a colored particle.
-        // We assume type 1 maps to palette[0], type 2 to palette[1], etc.
         if (particleTypeIndex > 0)
         {
-            int paletteIndex = particleTypeIndex - 1;
+            // --- Step 1: Get the particle's target color from the master palette. ---
+            int particleTargetPaletteIndex = particleTypeIndex - 1;
+            float3 particleTargetColor = mixableColors[particleTargetPaletteIndex].rgb;
 
-            // Final check: Are the particle's type and the obstacle that flagged it valid?
-            if (paletteIndex >= 0 && paletteIndex < colorPaletteSize && obstacleIndex < numObstacles)
+            // --- Step 2: Find the UNIQUE colors of all nearby players. ---
+            int4 nearbyObstacleIndices = Source_Collision[id.x];
+            float3 uniqueColors[4]; // Max 4 unique colors from neighbors
+            int uniqueColorCount = 0;
+
+            for (int i = 0; i < 4; i++)
             {
-                float4 particleColor = colorPalette[paletteIndex];
-                float4 obstacleColor = ObstacleColorsBuffer[obstacleIndex];
-                
-                // Compare the colors
-                if (distance(particleColor.rgb, obstacleColor.rgb) < 0.01)
+                int obsIndex = nearbyObstacleIndices[i];
+                if (obsIndex >= 0)
+                {
+                    float3 obsColor = ObstacleColorsBuffer[obsIndex].rgb;
+                    bool alreadyFound = false;
+                    
+                    // Check if we've already added this exact color
+                    for (int j = 0; j < uniqueColorCount; j++)
+                    {
+                        if (distance(obsColor, uniqueColors[j]) < 0.001)
+                        {
+                            alreadyFound = true;
+                            break;
+                        }
+                    }
+                    // If it's a new, unique color, add it to our list.
+                    if (!alreadyFound && uniqueColorCount < 4)
+                    {
+                        uniqueColors[uniqueColorCount] = obsColor;
+                        uniqueColorCount++;
+                    }
+                }
+            }
+
+            // --- Step 3: Sum the unique colors to get the resulting blend. ---
+            if (uniqueColorCount > 0)
+            {
+                float3 blendedColorSum = float3(0, 0, 0);
+                for (int i = 0; i < uniqueColorCount; i++)
+                {
+                    blendedColorSum += uniqueColors[i];
+                }
+
+                // --- Step 4: Compare the blend to the particle's target color. ---
+                // This checks if the perfect mix has been achieved.
+                if (distance(blendedColorSum, particleTargetColor) < 0.01)
                 {
                     shouldKeep = false;
                 }
@@ -745,6 +781,8 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
         SortTarget_Positions[newIndex] = Source_Positions[id.x];
         SortTarget_PredictedPositions[newIndex] = Source_PredictedPositions[id.x];
         SortTarget_Velocities[newIndex] = Source_Velocities[id.x];
+        SortTarget_Collision[newIndex] = Source_Collision[id.x];
+        
         int2 currentParticleTypeInfo = Source_ParticleType[id.x];
         currentParticleTypeInfo.y = -1;
         SortTarget_ParticleType[newIndex] = currentParticleTypeInfo;

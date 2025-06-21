@@ -60,6 +60,7 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer sortTarget_PredicitedPosition;
         ComputeBuffer sortTarget_Velocity;
         ComputeBuffer sortTarget_ParticleType;
+        ComputeBuffer sortTarget_Collision;
 
         ComputeBuffer vertexBuffer;
         ComputeBuffer compactionInfoBuffer;
@@ -198,6 +199,10 @@ namespace Seb.Fluid2D.Simulation
                     _sharedUnlitMaterial = new Material(Shader.Find("Legacy Shaders/Particles/Alpha Blended Premultiply"));
             }
 
+            // Initialize current buffers with a minimal size to ensure they always exist.
+            currentsBuffer = ComputeHelper.CreateStructuredBuffer<CurrentData>(1);
+            currentVerticesBuffer = ComputeHelper.CreateStructuredBuffer<Vector2>(1);
+
             UpdateAutoPlayers();
             UpdateObstacleBuffer(true); // Force initial creation/update
             SetupComputeShaderPersistent();
@@ -222,6 +227,7 @@ namespace Seb.Fluid2D.Simulation
             sortTarget_PredicitedPosition = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             sortTarget_Velocity = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             sortTarget_ParticleType = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
+            sortTarget_Collision = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
         }
 
         void ReleaseParticleBuffers()
@@ -229,10 +235,11 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.Release(positionBuffer, predictedPositionBuffer, velocityBuffer, densityBuffer,
                 gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_Position,
                 sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType,
-                compactionInfoBuffer);
+                compactionInfoBuffer, sortTarget_Collision);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
-            gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; compactionInfoBuffer = null;
-            sortTarget_Position = null; sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
+            gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; sortTarget_Position = null;
+            sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
+            compactionInfoBuffer = null; sortTarget_Collision = null;
             spatialHash?.Release();
             spatialHash = null;
         }
@@ -273,17 +280,15 @@ namespace Seb.Fluid2D.Simulation
             compute.SetFloat("minDistanceToRemoveParticles", minDistanceToRemoveParticles);
             compute.SetFloat("coloredAreaAroundObstaclesDivider", coloredAreaAroundObstaclesDivider);
 
-            // Send color palette to the shader
+            // The Compute Shader needs the MASTER palette for its removal logic.
             if (colorPalette != null && colorPalette.Count > 0)
             {
-                Vector4[] paletteForShader = mixableColorsForShader.Select(c => (Vector4)c).ToArray();
-
+                Vector4[] paletteForShader = colorPalette.Select(c => (Vector4)c).ToArray();
                 compute.SetVectorArray("colorPalette", paletteForShader);
                 compute.SetInt("colorPaletteSize", paletteForShader.Length);
             }
             else
             {
-                // Still set the size to 0 so the shader doesn't read out of bounds.
                 compute.SetInt("colorPaletteSize", 0);
             }
         }
@@ -292,51 +297,77 @@ namespace Seb.Fluid2D.Simulation
         {
             if (compute == null) return;
 
-            // --- Bindings for MAIN SIMULATION kernels ---
-            ComputeHelper.SetBuffer(compute, positionBuffer, "Positions", externalForcesKernel, updatePositionKernel, reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "PredictedPositions", externalForcesKernel, spatialHashKernel, densityKernel, pressureKernel, viscosityKernel, reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, velocityBuffer, "Velocities", externalForcesKernel, pressureKernel, viscosityKernel, updatePositionKernel, reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, densityBuffer, "Densities", densityKernel, pressureKernel, viscosityKernel);
-            ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "GravityScales", externalForcesKernel);
-            ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", updatePositionKernel);
-            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", densityKernel, pressureKernel, viscosityKernel, updatePositionKernel, reorderKernel, copybackKernel, externalForcesKernel);
-
-            if (spatialHash != null && spatialHash.SpatialIndices != null && spatialHash.SpatialOffsets != null && spatialHash.SpatialKeys != null)
+            // --- KERNEL GROUP 1: MAIN SIMULATION ---
+            // These kernels read and write to the main particle buffers.
+            int[] mainSimKernels = { externalForcesKernel, spatialHashKernel, densityKernel, pressureKernel, viscosityKernel, updatePositionKernel };
+            foreach (var kernel in mainSimKernels)
             {
-                ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", spatialHashKernel, reorderKernel);
-                ComputeHelper.SetBuffer(compute, spatialHash.SpatialOffsets, "SpatialOffsets", spatialHashKernel, densityKernel, pressureKernel, viscosityKernel);
-                ComputeHelper.SetBuffer(compute, spatialHash.SpatialKeys, "SpatialKeys", spatialHashKernel, densityKernel, pressureKernel, viscosityKernel);
+                ComputeHelper.SetBuffer(compute, positionBuffer, "Positions", kernel);
+                ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "PredictedPositions", kernel);
+                ComputeHelper.SetBuffer(compute, velocityBuffer, "Velocities", kernel);
+                ComputeHelper.SetBuffer(compute, densityBuffer, "Densities", kernel);
+                ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "GravityScales", kernel);
+                ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", kernel);
+                ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", kernel);
+
+                if (spatialHash != null)
+                {
+                    ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", kernel);
+                    ComputeHelper.SetBuffer(compute, spatialHash.SpatialOffsets, "SpatialOffsets", kernel);
+                    ComputeHelper.SetBuffer(compute, spatialHash.SpatialKeys, "SpatialKeys", kernel);
+                }
             }
 
-            // --- Bindings for REORDERING (between main sim and compaction) ---
-            ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", reorderKernel, copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel, copybackKernel);
+            // --- KERNEL GROUP 2: SPATIAL HASH REORDERING ---
+            // Reorder: Reads main buffers (via Source aliases), writes to SortTarget buffers
+            ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions", reorderKernel);
+            ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", reorderKernel);
+            ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", reorderKernel);
+            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", reorderKernel);
+            ComputeHelper.SetBuffer(compute, collisionBuffer, "Source_Collision", reorderKernel);
+            ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", reorderKernel);
+            // Set RW write targets
+            ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", reorderKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", reorderKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", reorderKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_Collision, "SortTarget_Collision", reorderKernel);
 
-            // --- Bindings for OBSTACLES & CURRENTS ---
-            if (vertexBuffer != null && vertexBuffer.IsValid()) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer", updatePositionKernel);
-            if (obstacleBuffer != null && obstacleBuffer.IsValid()) ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
-            if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid()) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", updatePositionKernel);
+            // Copyback: Reads SortTarget buffers (via CopySource aliases), writes to main buffers
+            ComputeHelper.SetBuffer(compute, sortTarget_Position, "CopySource_Positions", copybackKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "CopySource_PredictedPositions", copybackKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "CopySource_Velocities", copybackKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "CopySource_ParticleType", copybackKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_Collision, "CopySource_Collision", copybackKernel);
+            // Set RW write targets
+            ComputeHelper.SetBuffer(compute, positionBuffer, "Positions", copybackKernel);
+            ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "PredictedPositions", copybackKernel);
+            ComputeHelper.SetBuffer(compute, velocityBuffer, "Velocities", copybackKernel);
+            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", copybackKernel);
+            ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", copybackKernel);
 
-            // Bind the atomic counter
+            // --- KERNEL GROUP 3: PARTICLE REMOVAL / COMPACTION ---
             ComputeHelper.SetBuffer(compute, compactionInfoBuffer, "CompactionInfoBuffer", resetCompactionCounterKernel, compactAndMoveKernel);
-
-            // Bind the main buffers to the READ-ONLY "Source_" aliases in the shader
+            // Set read-only sources
             ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", compactAndMoveKernel);
-
-            // Also need the obstacle colors for the removal check
-            if (obstacleColorsBuffer != null && obstacleColorsBuffer.IsValid())
-                ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", compactAndMoveKernel);
-
-            // Bind the destination buffers (these ARE UAVs)
+            ComputeHelper.SetBuffer(compute, collisionBuffer, "Source_Collision", compactAndMoveKernel);
+            if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", compactAndMoveKernel);
+            // Set RW write targets
             ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_Collision, "SortTarget_Collision", compactAndMoveKernel);
+
+            // --- KERNEL GROUP 4: OBSTACLES & MISC ---
+            if (vertexBuffer != null) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer", updatePositionKernel);
+            if (obstacleBuffer != null) ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
+            if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", updatePositionKernel);
+            if (currentsBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentsBuffer", currentsBuffer);
+            if (currentVerticesBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer", currentVerticesBuffer);
         }
 
         void UpdateComputeShaderDynamicParams()
@@ -358,6 +389,18 @@ namespace Seb.Fluid2D.Simulation
             compute.SetVector("mousePosition", mousePos);
             compute.SetInt("gKeyPressed", Input.GetKey(KeyCode.G) ? 1 : 0);
             compute.SetInt("numObstacles", _gpuObstacleDataList.Count);
+
+            // Send the dynamic list of mixable colors to the shader every frame.
+            if (mixableColorsForShader != null && mixableColorsForShader.Count > 0)
+            {
+                Vector4[] mixableColorsShader = mixableColorsForShader.Select(c => (Vector4)c).ToArray();
+                compute.SetVectorArray("mixableColors", mixableColorsShader);
+                compute.SetInt("mixableColorsSize", mixableColorsShader.Length);
+            }
+            else
+            {
+                compute.SetInt("mixableColorsSize", 0);
+            }
         }
 
         void SetInitialBufferData(Spawner2D.ParticleSpawnData spawnData)
@@ -642,11 +685,15 @@ namespace Seb.Fluid2D.Simulation
                 }
             }
 
-            ComputeHelper.CreateStructuredBuffer(ref currentVerticesBuffer, currentVertices);
-            ComputeHelper.CreateStructuredBuffer(ref currentsBuffer, currentDataList);
+            // If there are currents, update the data in the existing buffers.
+            if (currentDataList.Count > 0)
+            {
+                // Resize buffers if needed (this helper likely handles this)
+                ComputeHelper.CreateStructuredBuffer(ref currentsBuffer, currentDataList);
+                ComputeHelper.CreateStructuredBuffer(ref currentVerticesBuffer, currentVertices);
+            }
 
-            compute.SetBuffer(updatePositionKernel, "CurrentsBuffer", currentsBuffer);
-            compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer", currentVerticesBuffer);
+            // Always set the count. If zero, the shader will simply not run the currents loop.
             compute.SetInt("numCurrents", currentDataList.Count);
         }
 

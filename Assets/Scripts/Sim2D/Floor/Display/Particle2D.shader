@@ -120,16 +120,32 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 int4 obstacleIndices = CollisionBuffer[instanceID];
                 float3 obstacleColorSum = float3(0, 0, 0); // Sum of influencing obstacle colors
                 int obstacleCount = 0; // Number of influencing obstacles
+                float3 uniqueColors[4]; // Max 4 unique colors from neighbors
 
-                // Iterate through the potential obstacle indices (up to 4)
                 for (int i = 0; i < 4; i++)
                 {
-                    // Index >= 0 means a valid obstacle (excludes -1 for none, -2 for secondary ring etc.)
-                    if (obstacleIndices[i] >= 0)
+                    int obsIndex = obstacleIndices[i];
+                    if (obsIndex >= 0)
                     {
-                        // Add the base (less saturated) color from the ObstacleColors buffer
-                        obstacleColorSum += ObstacleColors[obstacleIndices[i]].rgb;
-                        obstacleCount++;
+                        float3 obsColor = ObstacleColors[obsIndex].rgb;
+                        bool alreadyFound = false;
+                    
+                        // Check if we've already added this exact color
+                        for (int j = 0; j < obstacleCount; j++)
+                        {
+                            if (distance(obsColor, uniqueColors[j]) < 0.001)
+                            {
+                                alreadyFound = true;
+                                break;
+                            }
+                        }
+                        // If it's a new, unique color, add it to our list.
+                        if (!alreadyFound && obstacleCount < 4)
+                        {
+                            uniqueColors[obstacleCount] = obsColor;
+                            obstacleColorSum += obsColor;
+                            obstacleCount++;
+                        }
                     }
                 }
 
@@ -152,7 +168,8 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                             mixableColor = true;
                             if (i == particleTypeToUse)
                             {
-                                exactColor = obstacleColorSum;    
+                                exactColor = obstacleColorSum; 
+                                break;
                             }
                         }
                     }
