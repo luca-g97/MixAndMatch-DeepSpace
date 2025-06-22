@@ -222,6 +222,7 @@ MonoBehaviour:
   boundsSize: {x: 16, y: 8}
   yOffset: 12
   maxTotalParticles: 100000
+  targetNormalSpawner: {fileID: 0}
   waterTargetDensity: 1
   waterPressureMultiplier: 150
   waterNearPressureMultiplier: 225
@@ -281,73 +282,73 @@ MonoBehaviour:
   - position: {x: -7, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 1
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -5.75, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 2
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -4.5, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 3
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -3.25, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 4
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -2, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 5
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -0.75, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 6
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 0.75, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 7
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 2, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 8
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 3.25, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 9
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 4.5, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 10
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 5.75, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 11
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 7, y: 12}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 0
+    particlesPerSecond: 100
     particleType: 12
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   fluidSimulation: {fileID: 271053326}

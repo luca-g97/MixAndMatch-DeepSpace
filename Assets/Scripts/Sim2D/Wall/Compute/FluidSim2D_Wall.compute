@@ -16,6 +16,14 @@
 #define FLT_MAX 3.402823466e+38
 #define MAX_OBSTACLES 256
 
+// --- Structs ---
+struct VentilatedParticleData
+{
+    float2 pos;
+    float2 vel;
+    int2 type;
+};
+
 struct Obstacle
 {
     float2 centre;
@@ -34,7 +42,7 @@ struct Current
     float linearFactor;
 };
 
-// Buffers used across many kernels (can be RW)
+// --- Buffers ---
 RWStructuredBuffer<float2> Positions_Wall;
 RWStructuredBuffer<float2> PredictedPositions_Wall;
 RWStructuredBuffer<float2> Velocities_Wall;
@@ -45,7 +53,6 @@ RWStructuredBuffer<uint> SpatialKeys_Wall;
 RWStructuredBuffer<uint> SpatialOffsets_Wall;
 RWStructuredBuffer<int4> CopiedCollisionBuffer_Destination_Wall;
 
-// Buffers that are read-only in most contexts
 StructuredBuffer<float> GravityScales_Wall;
 StructuredBuffer<uint> SortedIndices_Wall;
 StructuredBuffer<Obstacle> ObstaclesBuffer_Wall;
@@ -54,18 +61,12 @@ StructuredBuffer<Current> CurrentsBuffer_Wall;
 StructuredBuffer<float2> CurrentVerticesBuffer_Wall;
 StructuredBuffer<int4> OriginalCollisionBuffer_Source_Wall;
 
-// --- Buffers for Compaction Kernel ---
-// NOTE: These are the destinations, so they MUST be RW (UAVs)
 RWStructuredBuffer<float2> SortTarget_Positions_Wall;
 RWStructuredBuffer<float2> SortTarget_PredictedPositions_Wall;
 RWStructuredBuffer<float2> SortTarget_Velocities_Wall;
 RWStructuredBuffer<int2> SortTarget_ParticleType_Wall;
 RWStructuredBuffer<int4> SortTarget_Collision_Wall;
-
-// This is the atomic counter, it MUST be RW (UAV)
 RWStructuredBuffer<uint> CompactionInfoBuffer_Wall;
-
-// This is read-only for the compaction kernel, so it is NOT a UAV
 StructuredBuffer<float4> ObstacleColorsBuffer_Wall;
 
 StructuredBuffer<float2> Source_Positions_Wall;
@@ -74,13 +75,16 @@ StructuredBuffer<float2> Source_Velocities_Wall;
 StructuredBuffer<int2> Source_ParticleType_Wall;
 StructuredBuffer<int4> Source_Collision_Wall;
 
-// Aliases for the REORDERCOPYBACK kernel's source data
 StructuredBuffer<float2> CopySource_Positions_Wall;
 StructuredBuffer<float2> CopySource_PredictedPositions_Wall;
 StructuredBuffer<float2> CopySource_Velocities_Wall;
 StructuredBuffer<int2> CopySource_ParticleType_Wall;
 StructuredBuffer<int4> CopySource_Collision_Wall;
 
+RWStructuredBuffer<VentilatedParticleData> VentilatedParticlesBuffer_Wall;
+RWStructuredBuffer<uint> VentilatedParticleCount_Wall;
+
+// --- Global Variables ---
 int numObstacles_Wall;
 float areaToColorAroundObstacles_Wall;
 float coloredAreaAroundObstaclesDivider_Wall;
@@ -120,6 +124,7 @@ const int invertMouseGravity_Wall;
 const float2 mousePosition_Wall;
 const int gKeyPressed_Wall;
 
+// --- Helper Functions ---
 float DensityKernel_Wall(float dst, float radius)
 {
     return SpikyKernelPow2_Wall(dst, radius);
@@ -147,35 +152,28 @@ float2 CalculateDensity_Wall(float2 pos)
     float sqrRadius = smoothingRadius_Wall * smoothingRadius_Wall;
     float density = 0;
     float nearDensity = 0;
-
     for (int i = 0; i < 9; i++)
     {
         uint hash = HashCell2D_Wall(originCell + offsets2D_Wall[i]);
         uint key = KeyFromHash_Wall(hash, numParticles_Wall);
         uint currIndex = SpatialOffsets_Wall[key];
-
         while (currIndex < numParticles_Wall)
         {
             uint neighbourIndex = currIndex;
             currIndex++;
-
             uint neighbourKey = SpatialKeys_Wall[neighbourIndex];
             if (neighbourKey != key)
                 break;
-
             float2 neighbourPos = PredictedPositions_Wall[neighbourIndex];
             float2 offsetToNeighbour = neighbourPos - pos;
             float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
-
             if (sqrDstToNeighbour > sqrRadius)
                 continue;
-
             float dst = sqrt(sqrDstToNeighbour);
             density += DensityKernel_Wall(dst, smoothingRadius_Wall);
             nearDensity += NearDensityKernel_Wall(dst, smoothingRadius_Wall);
         }
     }
-
     return float2(density, nearDensity);
 }
 
@@ -188,10 +186,9 @@ float NearPressureFromDensity_Wall(float nearDensity, float nearPressureMultipli
     return nearPressureMultiplier * nearDensity;
 }
 
-float2 ExternalForces_Wall(float2 pos, float2 velocity, float gravityScale)
+float2 ExternalForces_Func_Wall(float2 pos, float2 velocity, float gravityScale)
 {
     float2 gravityAccel = float2(0, gravity_Wall * gravityScale);
-
     if (interactionInputStrength_Wall != 0)
     {
         float2 inputPointOffset = interactionInputPoint_Wall - pos;
@@ -202,41 +199,23 @@ float2 ExternalForces_Wall(float2 pos, float2 velocity, float gravityScale)
             float edgeT = (dst / interactionInputRadius_Wall);
             float centreT = 1 - edgeT;
             float2 dirToCentre = inputPointOffset / max(dst, 0.0001);
-
             float2 interactionForce = dirToCentre * interactionInputStrength_Wall * centreT;
             gravityAccel += interactionForce;
             gravityAccel -= velocity * centreT * 0.5;
         }
     }
-
     return gravityAccel;
 }
 
-// Optimized HandleCollisions - Focused on reducing expensive operations (sqrt, normalization)
-// and minimizing work inside the inner vertex loop after performance degradation was observed.
 void HandleCollisions_Wall(uint particleIndex)
 {
-    // Initialize Process Flag for this particle for this collision step IF it's not already marked for removal globally.
-    // This ensures that if a particle wasn't marked in a previous step, it starts fresh for this obstacle interaction.
-    // However, if already marked by a previous obstacle in *this same HandleCollisions pass*, we don't want to reset.
-    // The CPU will handle resetting flags globally after processing removals.
-    // So, we only write to ParticleProcessFlags[particleIndex] upon detection.
-
     float2 pos = Positions_Wall[particleIndex];
     float2 vel = Velocities_Wall[particleIndex];
     int particleType = ParticleTypeBuffer_Wall[particleIndex][0];
     int particleProcessFlag = ParticleTypeBuffer_Wall[particleIndex][1];
 
-    // If particle is already marked as non-participating (e.g. type -1), skip complex collision.
-    // This check is vital if ParticleTypeBuffer can be set to -1 mid-step by this function.
     if (particleType < 0)
     {
-        // Still perform boundary collisions for "dead" particles if desired, or just return.
-        // For now, let's assume "dead" particles don't interact further.
-        // However, boundary checks might still be useful to prevent them flying off to infinity
-        // before CPU collects them. For simplicity in this change, we'll let them be.
-        // The main boundary collision happens *after* this loop for all particles.
-        // Re-applying boundary for already "removed" particles:
         const float2 halfSizeMinimal = boundsSize_Wall * 0.5;
         const float boundaryEpsilonMinimal = 0.001f;
         if (abs(pos.x) >= halfSizeMinimal.x)
@@ -251,19 +230,16 @@ void HandleCollisions_Wall(uint particleIndex)
         }
         if (pos.y <= -halfSizeMinimal.y + yOffset_Wall)
         {
-            pos.y = (-halfSizeMinimal.y - boundaryEpsilonMinimal) * sign(pos.y) + yOffset_Wall; // Push slightly off boundary
-            vel.y *= -collisionDamping_Wall; // Reflect and dampen normal velocity
+            pos.y = (-halfSizeMinimal.y - boundaryEpsilonMinimal) * sign(pos.y) + yOffset_Wall;
+            vel.y *= -collisionDamping_Wall;
         }
-
-        Positions_Wall[particleIndex] = pos; // Write back potentially adjusted position/velocity
+        Positions_Wall[particleIndex] = pos;
         Velocities_Wall[particleIndex] = vel;
         return;
     }
 
-
-    // --- Pre-calculations (Avoid redundant calculations later) ---
     const float2 halfSize = boundsSize_Wall * 0.5;
-    const float boundaryEpsilon = 0.001f; // Small offset for boundary push-off
+    const float boundaryEpsilon = 0.001f;
     float areaToColorAroundObstaclesSq = areaToColorAroundObstacles_Wall * areaToColorAroundObstacles_Wall;
     float minDistanceToRemoveParticlesSq = minDistanceToRemoveParticles_Wall * minDistanceToRemoveParticles_Wall;
     float secondaryColorDist = areaToColorAroundObstacles_Wall + coloredAreaAroundObstaclesDivider_Wall;
@@ -272,7 +248,6 @@ void HandleCollisions_Wall(uint particleIndex)
     int collisionIndices[4] = { -1, -1, -1, -1 };
     int consideredObstacles = 0;
 
-    // --- 1. Boundary Collisions ---
     if (abs(pos.x) >= halfSize.x)
     {
         pos.x = (halfSize.x - boundaryEpsilon) * sign(pos.x);
@@ -289,36 +264,27 @@ void HandleCollisions_Wall(uint particleIndex)
         vel.y *= -collisionDamping_Wall;
     }
 
-
-    // --- 2. Obstacle Collisions ---
     [loop]
     for (int obstacleIdx = 0; obstacleIdx < numObstacles_Wall && obstacleIdx < MAX_OBSTACLES; obstacleIdx++)
     {
         Obstacle obstacle = ObstaclesBuffer_Wall[obstacleIdx];
         if (obstacle.vertexCount < 2)
             continue;
-
-		// Find closest point on obstacle polygon
-
         int intersections = 0;
         float minDistSq = FLT_MAX;
         float2 normalAtClosestPoint = float2(0, 0);
-
         [loop]
         for (int j = 0; j < obstacle.vertexCount; j++)
         {
-            int nextJ = uint(j + 1) % (uint) obstacle.vertexCount;
+            int nextJ = (uint) (j + 1) % (uint) obstacle.vertexCount;
             float2 a = VerticesBuffer_Wall[obstacle.vertexStart + j];
             float2 b = VerticesBuffer_Wall[obstacle.vertexStart + nextJ];
             float2 edge = b - a;
             float2 vecToA = pos - a;
-
             float edgeLengthSq = dot(edge, edge);
             float2 pointOnEdge = a + clamp(dot(vecToA, edge) / max(edgeLengthSq, 1e-6f), 0.0, 1.0) * edge;
-            
             float2 offsetToPoint = pos - pointOnEdge;
             float distSq = dot(offsetToPoint, offsetToPoint);
-
             if (distSq < minDistSq)
             {
                 minDistSq = distSq;
@@ -332,8 +298,6 @@ void HandleCollisions_Wall(uint particleIndex)
                     normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x));
                 }
             }
-
-            // Check for point-in-polygon using raycast
             if (obstacle.vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
             {
                 if (abs(b.y - a.y) > 1e-6f)
@@ -344,21 +308,12 @@ void HandleCollisions_Wall(uint particleIndex)
                     }
                 }
             }
-        } // --- End Inner Vertex Loop ---
-
-		bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
-        
-        // --- THIS IS THE CORRECTED LOGIC BLOCK ---
-        // It handles highlighting and removal flagging independently to prevent conflicts.
-        
-        // Check only for colored particles
+        }
+        bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
         if (particleType > 0)
         {
-            // --- Player Obstacle Interaction (type 0) ---
             if (obstacle.obstacleType == 0)
             {
-                // HIGHLIGHTING LOGIC: Always check if the particle is close enough to a player to be highlighted.
-                // This populates the 'collisionIndices' that the renderer uses.
                 if (consideredObstacles < 4)
                 {
                     if (minDistSq < areaToColorAroundObstaclesSq)
@@ -368,48 +323,29 @@ void HandleCollisions_Wall(uint particleIndex)
                     }
                     else if (minDistSq < secondaryColorDistSq)
                     {
-                        collisionIndices[consideredObstacles] = -2; // Special marker for secondary color
+                        collisionIndices[consideredObstacles] = -2;
                         consideredObstacles++;
                     }
                 }
-
-                // REMOVAL LOGIC: Independently, check if the particle is close enough to be flagged for removal.
-                // This writes to ParticleTypeBuffer.y and does not affect highlighting.
                 if (particleProcessFlag == -1 && minDistSq <= minDistanceToRemoveParticlesSq)
                 {
                     ParticleTypeBuffer_Wall[particleIndex][1] = obstacleIdx;
-                    // Add a break here to stop checking against other players for removal flagging.
-                    // The highlighting logic above will have already accumulated all nearby players for the color blend.
                     break;
                 }
             }
-            // --- Ventil Obstacle Interaction (type 2) ---
             else if (obstacle.obstacleType == 2 && particleProcessFlag == -1 && isInside)
             {
-                ParticleTypeBuffer_Wall[particleIndex][1] = -obstacleIdx - 2; // Mark for removal by Ventil
+                ParticleTypeBuffer_Wall[particleIndex][1] = -obstacleIdx - 2;
             }
         }
-
-
-        // --- Collision Response (only for physical obstacles: type 0 Player, type 1 Static Obstacle) ---
-        // And only if particle is still considered active (ParticleTypeBuffer[particleIndex] >= 0)
-		float particleRadius = 0.1f;
+        float particleRadius = 0.1f;
         float collisionPadding = particleRadius - (obstacle.lineWidth * 0.5f);
         bool collisionDetected = isInside || (minDistSq < collisionPadding * collisionPadding);
         if (particleType >= 0 && collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1))
         {
             float actualDistance = sqrt(minDistSq);
-            float penetrationDepth;
-            if (isInside)
-            {
-                penetrationDepth = actualDistance + collisionPadding;
-            }
-            else
-            {
-                penetrationDepth = collisionPadding - actualDistance;
-            }
+            float penetrationDepth = isInside ? (actualDistance + collisionPadding) : (collisionPadding - actualDistance);
             pos += normalAtClosestPoint * (penetrationDepth + 0.001f);
-
             float normalSpeed = dot(vel, normalAtClosestPoint);
             if (normalSpeed < 0)
             {
@@ -418,25 +354,64 @@ void HandleCollisions_Wall(uint particleIndex)
                 float friction = 0.1f;
                 vel = tangentVel * (1.0f - friction) + normalVel;
             }
-        } // --- End Collision Response ---
-    } // --- End Outer Obstacle Loop ---
-    
+        }
+    }
     CollisionBuffer_Wall[particleIndex] = int4(collisionIndices[0], collisionIndices[1], collisionIndices[2], collisionIndices[3]);
     Positions_Wall[particleIndex] = pos;
     Velocities_Wall[particleIndex] = vel;
 }
 
+void ApplyCurrentForces_Wall(uint particleIndex, float2 pos)
+{
+    for (int currentIdx = 0; currentIdx < numCurrents_Wall; currentIdx++)
+    {
+        Current current = CurrentsBuffer_Wall[currentIdx];
+        int numSegments = current.vertexCount - 1;
+        if (numSegments < 1)
+            continue;
+        float maxStrength = 0;
+        float2 closestDir = float2(0, 0);
+        for (int segIdx = 0; segIdx < numSegments; segIdx++)
+        {
+            int pointIdx = current.vertexStart + segIdx;
+            float2 a = CurrentVerticesBuffer_Wall[pointIdx];
+            float2 b = CurrentVerticesBuffer_Wall[pointIdx + 1];
+            float2 ab = b - a;
+            float2 ap = pos - a;
+            float lin_factor = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0);
+            float2 closestPoint = a + lin_factor * ab;
+            float2 toClosest = pos - closestPoint;
+            float distSq = dot(toClosest, toClosest);
+            if (distSq < current.width * current.width)
+            {
+                float dist = sqrt(distSq);
+                float normalizedDist = dist / current.width;
+                float strength = pow(abs(1.0 - normalizedDist), abs(1.0 + current.linearFactor));
+                if (strength > maxStrength)
+                {
+                    maxStrength = strength;
+                    closestDir = normalize(ab);
+                }
+            }
+        }
+        if (maxStrength > 0.001)
+        {
+            Velocities_Wall[particleIndex] += closestDir * current.maxVelocity * maxStrength;
+        }
+    }
+}
+
+
+// --- Kernel Entry Points ---
 [numthreads(NumThreads_Wall, 1, 1)]
 void ExternalForces_Wall(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles_Wall)
         return;
-
     float gravityScale = GravityScales_Wall[id.x];
     float2 pos = Positions_Wall[id.x];
     float2 toMouse = mousePosition_Wall - pos;
     float mouseDist = length(toMouse);
-
     if (mouseDist < mouseGravityRadius_Wall && mouseDist > 0 && gKeyPressed_Wall)
     {
         float2 mouseDir = toMouse / mouseDist;
@@ -446,8 +421,7 @@ void ExternalForces_Wall(uint3 id : SV_DispatchThreadID)
             mouseInfluence *= -1;
         gravityScale += mouseInfluence;
     }
-
-    Velocities_Wall[id.x] += ExternalForces_Wall(pos, Velocities_Wall[id.x], gravityScale) * deltaTime_Wall;
+    Velocities_Wall[id.x] += ExternalForces_Func_Wall(pos, Velocities_Wall[id.x], gravityScale) * deltaTime_Wall;
     PredictedPositions_Wall[id.x] = pos + Velocities_Wall[id.x] * (1 / 120.0);
 }
 
@@ -463,66 +437,12 @@ void UpdateSpatialHash_Wall(uint3 id : SV_DispatchThreadID)
     SpatialKeys_Wall[id.x] = key;
 }
 
-void ApplyCurrentForces_Wall(uint particleIndex, float2 pos)
-{
-    for (int currentIdx = 0; currentIdx < numCurrents_Wall; currentIdx++)
-    {
-        Current current = CurrentsBuffer_Wall[currentIdx];
-        int numSegments = current.vertexCount - 1;
-        
-        if (numSegments < 1)
-            continue;
-        
-        float closestDistSq = FLT_MAX;
-        float2 closestDir = float2(0, 0);
-        float maxStrength = 0;
-        
-        for (int segIdx = 0; segIdx < numSegments; segIdx++)
-        {
-            int pointIdx = current.vertexStart + segIdx;
-            float2 a = CurrentVerticesBuffer_Wall[pointIdx];
-            float2 b = CurrentVerticesBuffer_Wall[pointIdx + 1];
-            
-            float2 ab = b - a;
-            float2 ap = pos - a;
-            float lin_factor = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0);
-            float2 closestPoint = a + lin_factor * ab;
-            float2 toClosest = pos - closestPoint;
-            float distSq = dot(toClosest, toClosest);
-            
-            if (distSq < current.width * current.width)
-            {
-                float dist = sqrt(distSq);
-                float normalizedDist = dist / current.width;
-                float strength = pow(abs(1.0 - normalizedDist), abs(1.0 + current.linearFactor));
-                
-                if (strength > maxStrength)
-                {
-                    maxStrength = strength;
-                    closestDir = normalize(ab);
-                    closestDistSq = distSq;
-                }
-            }
-        }
-        
-        if (maxStrength > 0.001)
-        {
-            Velocities_Wall[particleIndex] += closestDir * current.maxVelocity * maxStrength;
-        }
-    }
-}
-
 [numthreads(NumThreads_Wall, 1, 1)]
 void Reorder_Wall(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles_Wall)
         return;
-    
-    // The index of the particle we need to move into this slot
     uint sortedIndex = SortedIndices_Wall[id.x];
-
-    // Write to the RW "SortTarget" buffers
-    // Read from the read-only "Source" aliases (which point to the main buffers)
     SortTarget_Positions_Wall[id.x] = Source_Positions_Wall[sortedIndex];
     SortTarget_PredictedPositions_Wall[id.x] = Source_PredictedPositions_Wall[sortedIndex];
     SortTarget_Velocities_Wall[id.x] = Source_Velocities_Wall[sortedIndex];
@@ -535,9 +455,6 @@ void ReorderCopyback_Wall(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles_Wall)
         return;
-
-    // Write to the RW main buffers
-    // Read from the read-only "CopySource" aliases (which point to the SortTarget buffers)
     Positions_Wall[id.x] = CopySource_Positions_Wall[id.x];
     PredictedPositions_Wall[id.x] = CopySource_PredictedPositions_Wall[id.x];
     Velocities_Wall[id.x] = CopySource_Velocities_Wall[id.x];
@@ -559,83 +476,57 @@ void CalculatePressureForce_Wall(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles_Wall || ParticleTypeBuffer_Wall[id.x][0] == -1)
         return;
-    
     float targetDensity = ParticleTypeBuffer_Wall[id.x][0] == 0 ? waterTargetDensity_Wall : oilTargetDensity_Wall;
     float pressureMultiplier = ParticleTypeBuffer_Wall[id.x][0] == 0 ? waterPressureMultiplier_Wall : oilPressureMultiplier_Wall;
     float nearPressureMultiplier = ParticleTypeBuffer_Wall[id.x][0] == 0 ? waterNearPressureMultiplier_Wall : oilNearPressureMultiplier_Wall;
-    
     float density = Densities_Wall[id.x][0];
     float densityNear = Densities_Wall[id.x][1];
     float pressure = PressureFromDensity_Wall(density, targetDensity, pressureMultiplier);
     float nearPressure = NearPressureFromDensity_Wall(densityNear, nearPressureMultiplier);
     float2 pressureForce = 0;
-
     float2 pos = PredictedPositions_Wall[id.x];
     int2 originCell = GetCell2D_Wall(pos, smoothingRadius_Wall);
     float sqrRadius = smoothingRadius_Wall * smoothingRadius_Wall;
-
     for (int i = 0; i < 9; i++)
     {
         uint hash = HashCell2D_Wall(originCell + offsets2D_Wall[i]);
         uint key = KeyFromHash_Wall(hash, numParticles_Wall);
         uint currIndex = SpatialOffsets_Wall[key];
-
         while (currIndex < numParticles_Wall)
         {
             uint neighbourIndex = currIndex;
             currIndex++;
-
             if (neighbourIndex == id.x)
                 continue;
             uint neighbourKey = SpatialKeys_Wall[neighbourIndex];
             if (neighbourKey != key)
                 break;
-
             float2 neighbourPos = PredictedPositions_Wall[neighbourIndex];
             float2 offsetToNeighbour = neighbourPos - pos;
             float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
-
             if (sqrDstToNeighbour > sqrRadius)
                 continue;
-                
-            // --- SAFETY CHECKS FOR NEIGHBOUR DENSITY ---
             float neighbourDensity = Densities_Wall[neighbourIndex][0];
             if (neighbourDensity < 0.0001)
-            {
                 continue;
-            }
             float neighbourNearDensity = Densities_Wall[neighbourIndex][1];
             if (neighbourNearDensity < 0.0001)
-            {
                 continue;
-            }
-            // ------------------------------------------
-            
             float dst = sqrt(sqrDstToNeighbour);
             float2 dirToNeighbour = dst > 0 ? offsetToNeighbour / dst : float2(0, 1);
-            
             float neighbourTargetDensity = ParticleTypeBuffer_Wall[neighbourIndex][0] == 0 ? waterTargetDensity_Wall : oilTargetDensity_Wall;
             float neighbourPressureMultiplier = ParticleTypeBuffer_Wall[neighbourIndex][0] == 0 ? waterPressureMultiplier_Wall : oilPressureMultiplier_Wall;
             float neighbourNearPressureMultiplier = ParticleTypeBuffer_Wall[neighbourIndex][0] == 0 ? waterNearPressureMultiplier_Wall : oilNearPressureMultiplier_Wall;
-
             float neighbourPressure = PressureFromDensity_Wall(neighbourDensity, neighbourTargetDensity - density, neighbourPressureMultiplier);
             float neighbourNearPressure = NearPressureFromDensity_Wall(neighbourNearDensity, neighbourNearPressureMultiplier);
-
             float sharedPressure = (pressure + neighbourPressure) * 0.5;
             float sharedNearPressure = (nearPressure + neighbourNearPressure) * 0.5;
-
             pressureForce += dirToNeighbour * DensityDerivative_Wall(dst, smoothingRadius_Wall) * sharedPressure / neighbourDensity;
             pressureForce += dirToNeighbour * NearDensityDerivative_Wall(dst, smoothingRadius_Wall) * sharedNearPressure / neighbourNearDensity;
         }
     }
-
-    // --- SAFETY CHECK FOR OWN DENSITY ---
     if (density < 0.0001)
-    {
-        return; // Particle is isolated, no pressure force to apply.
-    }
-    // ------------------------------------
-    
+        return;
     float2 acceleration = pressureForce / density;
     Velocities_Wall[id.x] += acceleration * deltaTime_Wall;
 }
@@ -645,51 +536,37 @@ void CalculateViscosity_Wall(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles_Wall || ParticleTypeBuffer_Wall[id.x][0] == -1)
         return;
-    // --- SAFETY CHECK ---
-    // If a particle's density is effectively zero, it has no neighbours to create viscosity with.
     if (Densities_Wall[id.x][0] < 0.0001)
-    {
         return;
-    }
-    // --------------------
-    
     float2 pos = PredictedPositions_Wall[id.x];
     int2 originCell = GetCell2D_Wall(pos, smoothingRadius_Wall);
     float sqrRadius = smoothingRadius_Wall * smoothingRadius_Wall;
     float2 viscosityForce = 0;
     float2 velocity = Velocities_Wall[id.x];
-
     for (int i = 0; i < 9; i++)
     {
         uint hash = HashCell2D_Wall(originCell + offsets2D_Wall[i]);
         uint key = KeyFromHash_Wall(hash, numParticles_Wall);
         uint currIndex = SpatialOffsets_Wall[key];
-
         while (currIndex < numParticles_Wall)
         {
             uint neighbourIndex = currIndex;
             currIndex++;
-
             if (neighbourIndex == id.x)
                 continue;
-                
             uint neighbourKey = SpatialKeys_Wall[neighbourIndex];
             if (neighbourKey != key)
                 break;
-
             float2 neighbourPos = PredictedPositions_Wall[neighbourIndex];
             float2 offsetToNeighbour = neighbourPos - pos;
             float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
-
             if (sqrDstToNeighbour > sqrRadius)
                 continue;
-
             float dst = sqrt(sqrDstToNeighbour);
             float2 neighbourVelocity = Velocities_Wall[neighbourIndex];
             viscosityForce += (neighbourVelocity - velocity) * ViscosityKernel_Wall(dst, smoothingRadius_Wall);
         }
     }
-    
     float viscosityStrength = ParticleTypeBuffer_Wall[id.x][0] == 0 ? waterViscosityStrength_Wall : oilViscosityStrength_Wall;
     Velocities_Wall[id.x] += viscosityForce * viscosityStrength * deltaTime_Wall;
 }
@@ -699,10 +576,8 @@ void UpdatePositions_Wall(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles_Wall)
         return;
-    
     ApplyCurrentForces_Wall(id.x, Positions_Wall[id.x]);
     HandleCollisions_Wall(id.x);
-    
     Positions_Wall[id.x] += Velocities_Wall[id.x] * deltaTime_Wall;
 }
 
@@ -717,7 +592,6 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles_Wall)
         return;
-
     int particleTypeIndex = Source_ParticleType_Wall[id.x].x;
     int removalFlag = Source_ParticleType_Wall[id.x].y;
     bool shouldKeep = true;
@@ -725,20 +599,30 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
     if (removalFlag <= -2) // Ventil removal
     {
         shouldKeep = false;
+        
+        uint spawnIndex;
+        InterlockedAdd(VentilatedParticleCount_Wall[0], 1, spawnIndex);
+
+        if (spawnIndex < numParticles_Wall)
+        {
+            VentilatedParticleData data;
+            data.pos = Source_Positions_Wall[id.x];
+            data.vel = Source_Velocities_Wall[id.x];
+            data.type = Source_ParticleType_Wall[id.x];
+            data.type.y = -1;
+            
+            VentilatedParticlesBuffer_Wall[spawnIndex] = data;
+        }
     }
     else if (removalFlag >= 0) // Player flagged this particle
     {
         if (particleTypeIndex > 0)
         {
-            // --- Step 1: Get the particle's CURRENT VISUAL color from mixableColors ---
             int particleColorIndex = particleTypeIndex - 1;
             float3 particleVisualColor = mixableColors_Wall[particleColorIndex].rgb;
-
-            // --- Step 2: Get the UNIQUE BASE colors of all nearby players ---
             int4 nearbyObstacleIndices = Source_Collision_Wall[id.x];
             float3 uniqueColors[4];
             int uniqueColorCount = 0;
-
             for (int i = 0; i < 4; i++)
             {
                 int obsIndex = nearbyObstacleIndices[i];
@@ -761,8 +645,6 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
                     }
                 }
             }
-
-            // --- Step 3: AVERAGE the unique base colors to get the resulting blend ---
             if (uniqueColorCount > 0)
             {
                 float3 blendedColorSum = float3(0, 0, 0);
@@ -771,8 +653,6 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
                     blendedColorSum += uniqueColors[i];
                 }
                 float3 blendedColorAverage = blendedColorSum / uniqueColorCount;
-
-                // --- Step 4: Compare the blend of base colors to the particle's current visual color ---
                 if (distance(blendedColorAverage, particleVisualColor) < 0.02)
                 {
                     shouldKeep = false;
@@ -781,7 +661,6 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
         }
     }
 
-    // Compaction Step...
     if (shouldKeep)
     {
         uint newIndex;
@@ -790,7 +669,6 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
         SortTarget_PredictedPositions_Wall[newIndex] = Source_PredictedPositions_Wall[id.x];
         SortTarget_Velocities_Wall[newIndex] = Source_Velocities_Wall[id.x];
         SortTarget_Collision_Wall[newIndex] = Source_Collision_Wall[id.x];
-        
         int2 currentParticleTypeInfo = Source_ParticleType_Wall[id.x];
         currentParticleTypeInfo.y = -1;
         SortTarget_ParticleType_Wall[newIndex] = currentParticleTypeInfo;
@@ -800,11 +678,7 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
 [numthreads(64, 1, 1)]
 void CopyCollisionBuffer_Wall(uint3 id : SV_DispatchThreadID)
 {
-    // Use the existing global 'numParticles' constant for the check.
     if (id.x >= numParticles_Wall)
-    {
         return;
-    }
-    
     CopiedCollisionBuffer_Destination_Wall[id.x] = OriginalCollisionBuffer_Source_Wall[id.x];
 }

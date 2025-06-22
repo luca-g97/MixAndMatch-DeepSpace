@@ -136,7 +136,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 2147483647
   m_IsActive: 1
 --- !u!4 &271053318
 Transform:
@@ -186,7 +186,7 @@ MonoBehaviour:
   interactionStrength: 50
   mouseGravityStrength: 10
   mouseGravityRadius: 5
-  invertMouseGravity: 1
+  invertMouseGravity: 0
   compute: {fileID: 7200000, guid: 1c77ce8de78fddb419ed2d15cae41af0, type: 3}
   spawner2D: {fileID: 271053320}
   obstacles: []

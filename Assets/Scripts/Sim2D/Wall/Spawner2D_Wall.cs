@@ -46,6 +46,15 @@ public class Spawner2D_Wall : MonoBehaviour
 
     private Unity.Mathematics.Random _continuousSpawnRng;
 
+    private Queue<ParticleSpawnData> valveSpawnQueue = new Queue<ParticleSpawnData>();
+
+    public void EnqueueValvedParticles(ParticleSpawnData data)
+    {
+        if (data.positions != null && data.positions.Length > 0)
+        {
+            valveSpawnQueue.Enqueue(data);
+        }
+    }
     void Awake()
     {
         _continuousSpawnRng = new Unity.Mathematics.Random((uint)System.Environment.TickCount + (uint)GetInstanceID().GetHashCode());
@@ -103,6 +112,10 @@ public class Spawner2D_Wall : MonoBehaviour
 
     public ParticleSpawnData GetNewlySpawnedParticles(float deltaTime, int currentTotalParticles, int maxTotalParticles)
     {
+        if (valveSpawnQueue.Count > 0)
+        {
+            return valveSpawnQueue.Dequeue();
+        }
         if (!allowContinuousSpawning || currentTotalParticles >= maxTotalParticles)
         {
             return new ParticleSpawnData(0);

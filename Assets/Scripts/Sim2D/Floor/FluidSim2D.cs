@@ -453,7 +453,7 @@ namespace Seb.Fluid2D.Simulation
             float maxAllowedSimDeltaTime = (maxTimestepFPS > 0) ? (1f / maxTimestepFPS) : float.PositiveInfinity;
             float cappedSimDeltaTime = Mathf.Min(currentFrameTime, maxAllowedSimDeltaTime);
 
-            if (spawner2D != null && spawner2D.allowContinuousSpawning && numParticles < maxTotalParticles)
+            if (spawner2D != null && numParticles < maxTotalParticles)
             {
                 Spawner2D.ParticleSpawnData newParticleInfo = spawner2D.GetNewlySpawnedParticles(currentFrameTime, numParticles, maxTotalParticles);
                 if (newParticleInfo.positions != null && newParticleInfo.positions.Length > 0)
@@ -919,8 +919,7 @@ namespace Seb.Fluid2D.Simulation
                         if (mixableColors[i] == -1)
                         {
                             mixableColors[i] = assignedIndices[currentIndex];
-                            currentIndex++;
-                            currentIndex = currentIndex % assignedIndices.Count;
+                            currentIndex = (currentIndex + 1) % assignedIndices.Count;
                         }
                         mixableColorsForShader.Add(colorPalette[mixableColors[i]]);
                     }
