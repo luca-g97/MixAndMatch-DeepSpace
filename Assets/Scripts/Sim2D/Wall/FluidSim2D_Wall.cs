@@ -216,6 +216,7 @@ namespace Seb.Fluid2D.Simulation
             CreateParticleBuffers(initialCapacity);
             compactionInfoBuffer_Wall = ComputeHelper.CreateStructuredBuffer<uint>(1);
 
+            _ventilatedParticlesBuffer = ComputeHelper.CreateStructuredBuffer<VentilatedParticleData>(maxTotalParticles);
             _ventilatedParticleCountBuffer = ComputeHelper.CreateStructuredBuffer<uint>(1);
 
 
@@ -970,7 +971,6 @@ namespace Seb.Fluid2D.Simulation
                         if (mixableColors[i] == -1)
                         {
                             mixableColors[i] = assignedIndices[currentIndex];
-                            currentIndex++;
                             currentIndex = (currentIndex + 1) % assignedIndices.Count;
                         }
                         mixableColorsForShader.Add(colorPalette[mixableColors[i]]);
