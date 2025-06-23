@@ -176,6 +176,11 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                     }
 
                     float3 actualObstacleColor = obstacleColorSum / obstacleCount;
+
+                    if(all(abs(actualObstacleColor - float3(0.0, 0.4, 0.7)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 6);} //Blue
+                    if(all(abs(actualObstacleColor - float3(0.45, 0.2, 0.55)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Violet
+                    if(all(abs(actualObstacleColor - float3(0.675, 0.1, 0.475)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Red-Violet
+                    if(all(abs(actualObstacleColor - float3(0.225, 0.3, 0.625)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Blue-Violet
                     
                     float3 diff = abs(exactColor - float3(-1, -1, -1));
                     if(all(diff > COMPARE_EPSILON))
@@ -190,11 +195,18 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                     {
                         finalColour = saturate(colorB * additiveStrength); //Uncomment to not display other mixed colors
                         //finalColour = saturate(actualObstacleColor * additiveStrength); //Uncomment to also allow other mixed colors
+                        finalColour = saturateColourFurther(finalColour);
                     }
                 }
                 else if (particleType > 0)
                 {
                     float3 playerColour = mixableColors_Wall[particleTypeToUse].rgb;
+
+                    if(all(abs(playerColour - float3(0.0, 0.4, 0.7)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 2);} //Blue
+                    if(all(abs(playerColour - float3(0.45, 0.2, 0.55)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Violet
+                    if(all(abs(playerColour - float3(0.675, 0.1, 0.475)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Red-Violet
+                    if(all(abs(playerColour - float3(0.225, 0.3, 0.625)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Blue-Violet
+
                     finalColour = saturate(playerColour * additiveStrength);
                     finalColour = saturateColourFurther(finalColour);
                 }

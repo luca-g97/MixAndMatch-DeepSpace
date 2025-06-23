@@ -589,7 +589,7 @@ namespace Seb.Fluid2D.Simulation
                             particlesReachedDestination_Wall[actualColor][ventilNumber] += particlesReachedDestinationThisFrame_Wall[color][ventilNumber];
                             if (fluidSimSpawner != null)
                             {
-                                fluidSimSpawner.spawnRegions[color].particlesPerSecond += particlesReachedDestinationThisFrame_Wall[color][ventilNumber];
+                                fluidSimSpawner.spawnRegions[color + 2].particlesPerSecond += particlesReachedDestinationThisFrame_Wall[color][ventilNumber];
                             }
                         }
                     }
