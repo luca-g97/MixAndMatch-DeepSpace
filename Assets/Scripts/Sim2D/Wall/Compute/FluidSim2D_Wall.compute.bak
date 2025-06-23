@@ -319,7 +319,7 @@ void HandleCollisions_Wall(uint particleIndex)
         [loop]
         for (int j = 0; j < obstacle.vertexCount; j++)
         {
-            int nextJ = (uint) (j + 1) % (uint) obstacle.vertexCount;
+            int nextJ = uint(j + 1) % (uint) obstacle.vertexCount;
             float2 a = VerticesBuffer_Wall[obstacle.vertexStart + j];
             float2 b = VerticesBuffer_Wall[obstacle.vertexStart + nextJ];
             float2 edge = b - a;

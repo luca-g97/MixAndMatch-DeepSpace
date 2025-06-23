@@ -222,7 +222,6 @@ MonoBehaviour:
   boundsSize: {x: 16, y: 8}
   yOffset: 12
   maxTotalParticles: 100000
-  targetNormalSpawner: {fileID: 0}
   waterTargetDensity: 1
   waterPressureMultiplier: 150
   waterNearPressureMultiplier: 225
@@ -269,90 +268,90 @@ MonoBehaviour:
   spawnRegions:
   - position: {x: 4, y: 12}
     size: {x: 6, y: 4}
-    spawnDensity: 250
+    spawnDensity: 0
     particlesPerSecond: 0
     particleType: 0
     debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
   - position: {x: -4, y: 12}
     size: {x: 6, y: 4}
-    spawnDensity: 250
+    spawnDensity: 0
     particlesPerSecond: 0
     particleType: 0
     debugCol: {r: 1, g: 0.27843142, b: 0.3170616, a: 1}
   - position: {x: -7, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10001
+    particlesPerSecond: 0
     particleType: 1
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -5.75, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 2
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -4.5, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 3
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -3.25, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 4
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -2, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 5
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -0.75, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 6
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 0.75, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 7
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 2, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 8
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 3.25, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 9
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 4.5, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 10
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 5.75, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 11
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 7, y: 12}
     size: {x: 1, y: 1}
-    spawnDensity: 1000
-    particlesPerSecond: 100
+    spawnDensity: 10000
+    particlesPerSecond: 0
     particleType: 12
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   fluidSimulation: {fileID: 271053326}
-  initialSpawnParticleCount: 24448
+  initialSpawnParticleCount: 120201
   currentSimParticleCount_Inspector: 0
 --- !u!1001 &405644603
 PrefabInstance:
@@ -368,7 +367,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7564270855486431386, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
       propertyPath: m_LocalPosition.x
