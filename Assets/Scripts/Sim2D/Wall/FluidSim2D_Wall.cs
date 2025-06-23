@@ -13,6 +13,7 @@ namespace Seb.Fluid2D.Simulation
         public event System.Action SimulationStepCompleted;
 
         private Spawner2D fluidSimSpawner;
+        private FluidSim2D fluidSim_Floor;
 
         [Header("Simulation Settings")]
         public float timeScale = 1;
@@ -71,6 +72,9 @@ namespace Seb.Fluid2D.Simulation
         public ComputeBuffer obstacleBuffer { get; private set; }
         public ComputeBuffer obstacleColorsBuffer { get; private set; }
 
+        ComputeBuffer gpu_removedParticlesCounter_Wall;
+        ComputeBuffer gpu_particlesReachedDestinationCounter_Wall;
+
         SpatialHash_Wall spatialHash;
 
         const int externalForcesKernel = 0;
@@ -84,6 +88,8 @@ namespace Seb.Fluid2D.Simulation
         const int resetCompactionCounterKernel = 8;
         const int compactAndMoveKernel = 9;
         const int copyCollisionKernel = 10;
+        const int clearIntBufferKernel = 11;
+        const int clearInt4BufferKernel = 12;
 
         bool isPaused;
         Spawner2D_Wall.ParticleSpawnData initialSpawnData;
@@ -152,8 +158,11 @@ namespace Seb.Fluid2D.Simulation
             /* 11: Blue-Green (B+G) */   new Color(0.25f, 0.525f, 0.525f)
         };
 
-        private int[] removedParticlesPerColor = new int[colorPalette.Count];
-        private int[] particlesReachedDestination = new int[colorPalette.Count];
+        private int[] removedParticlesThisFrame_Wall = new int[colorPalette.Count];
+        private int4[] particlesReachedDestinationThisFrame_Wall = new int4[colorPalette.Count];
+
+        private int[] removedParticlesPerColor_Wall = new int[colorPalette.Count];
+        private int4[] particlesReachedDestination_Wall = new int4[colorPalette.Count];
 
         List<Vector2> _gpuVerticesData = new List<Vector2>();
         List<ObstacleData> _gpuObstacleDataList = new List<ObstacleData>();
@@ -184,6 +193,7 @@ namespace Seb.Fluid2D.Simulation
         void Awake()
         {
             fluidSimSpawner = GameObject.FindFirstObjectByType<Spawner2D>();
+            fluidSim_Floor = GameObject.FindFirstObjectByType<FluidSim2D>();
         }
 
         void InitSimulation()
@@ -205,6 +215,11 @@ namespace Seb.Fluid2D.Simulation
             int initialCapacity = Mathf.Max(1, numParticles);
             CreateParticleBuffers(initialCapacity);
             compactionInfoBuffer_Wall = ComputeHelper.CreateStructuredBuffer<uint>(1);
+
+            gpu_removedParticlesCounter_Wall = ComputeHelper.CreateStructuredBuffer<int>(colorPalette.Count);
+            gpu_particlesReachedDestinationCounter_Wall = ComputeHelper.CreateStructuredBuffer<int4>(colorPalette.Count);
+            gpu_removedParticlesCounter_Wall.SetData(new int[colorPalette.Count]);
+            gpu_particlesReachedDestinationCounter_Wall.SetData(new int4[colorPalette.Count]);
 
             if (numParticles > 0)
             {
@@ -259,11 +274,13 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.Release(positionBuffer, predictedPositionBuffer, velocityBuffer, densityBuffer,
                 gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_Position,
                 sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType,
-                compactionInfoBuffer_Wall, sortTarget_Collision, collisionBufferCopy);
+                compactionInfoBuffer_Wall, sortTarget_Collision, collisionBufferCopy,
+                gpu_removedParticlesCounter_Wall, gpu_particlesReachedDestinationCounter_Wall);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
             gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; sortTarget_Position = null;
             sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
             compactionInfoBuffer_Wall = null; sortTarget_Collision = null; collisionBufferCopy = null;
+            gpu_removedParticlesCounter_Wall = null; gpu_particlesReachedDestinationCounter_Wall = null;
             spatialHash?.Release();
             spatialHash = null;
         }
@@ -384,6 +401,10 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities_Wall", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType_Wall", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_Collision, "SortTarget_Collision_Wall", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, gpu_removedParticlesCounter_Wall, "removedParticlesThisFrame_Wall", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, gpu_particlesReachedDestinationCounter_Wall, "particlesReachedDestinationThisFrame_Wall", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, gpu_removedParticlesCounter_Wall, "intBufferToClear_Wall", clearIntBufferKernel);
+            ComputeHelper.SetBuffer(compute, gpu_particlesReachedDestinationCounter_Wall, "int4BufferToClear_Wall", clearInt4BufferKernel);
 
             // --- KERNEL GROUP 4: OBSTACLES & MISC ---
             if (vertexBuffer != null) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer_Wall", updatePositionKernel);
@@ -470,7 +491,6 @@ namespace Seb.Fluid2D.Simulation
 
             if (Time.time >= nextAutoUpdateTime)
             {
-
                 nextAutoUpdateTime = Time.time + autoUpdateInterval;
             }
 
@@ -490,6 +510,7 @@ namespace Seb.Fluid2D.Simulation
                     ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copyCollisionKernel);
                 }
                 ProcessParticleRemovalsGPU();
+                ReadbackAndResetGpuCounters();
             }
 
             if (pauseNextFrame) { isPaused = true; pauseNextFrame = false; }
@@ -532,6 +553,55 @@ namespace Seb.Fluid2D.Simulation
 
             // 5. Update the particle count on the shader for the next frame.
             UpdateComputeShaderDynamicParams();
+        }
+
+        void ReadbackAndResetGpuCounters()
+        {
+            if (gpu_removedParticlesCounter_Wall == null || gpu_particlesReachedDestinationCounter_Wall == null) return;
+
+            int actualColor = 0;
+            // Asynchronously request data from the GPU. The code in the lambda (=>) runs when the data is ready.
+            AsyncGPUReadback.Request(gpu_removedParticlesCounter_Wall, (request) => {
+                if (!request.hasError)
+                {
+                    // Copy the GPU data directly into your existing C# array.
+                    request.GetData<int>().CopyTo(removedParticlesThisFrame_Wall);
+
+                    for(int color = 0; color < removedParticlesThisFrame_Wall.Length; color++)
+                    {
+                        actualColor = mixableColors[color];
+                        removedParticlesPerColor_Wall[actualColor] += removedParticlesThisFrame_Wall[color];
+                    }
+                }
+            });
+
+            AsyncGPUReadback.Request(gpu_particlesReachedDestinationCounter_Wall, (request) => {
+                if (!request.hasError)
+                {
+                    // Copy the GPU data directly into your existing C# array.
+                    request.GetData<int4>().CopyTo(particlesReachedDestinationThisFrame_Wall);
+
+                    for (int color = 0; color < particlesReachedDestinationThisFrame_Wall.Length; color++)
+                    {
+                        actualColor = mixableColors[color];
+                        for (int ventilNumber = 0; ventilNumber < 4; ventilNumber++)
+                        {
+                            particlesReachedDestination_Wall[actualColor][ventilNumber] += particlesReachedDestinationThisFrame_Wall[color][ventilNumber];
+                            if (fluidSimSpawner != null)
+                            {
+                                fluidSimSpawner.spawnRegions[color].particlesPerSecond += particlesReachedDestinationThisFrame_Wall[color][ventilNumber];
+                            }
+                        }
+                    }
+                    fluidSim_Floor.SpawnParticles();
+                }
+            });
+
+            // Immediately dispatch the clear kernels for the next frame.
+            // This happens in parallel with the readback request.
+            int numGroupsToClear = Mathf.CeilToInt(colorPalette.Count / 64f);
+            ComputeHelper.Dispatch(compute, numGroupsToClear, 1, 1, kernelIndex: clearIntBufferKernel);
+            ComputeHelper.Dispatch(compute, numGroupsToClear, 1, 1, kernelIndex: clearInt4BufferKernel);
         }
 
         // Fallback CPU-based buffer resizing (used if Graphics.CopyBuffer is problematic)
@@ -610,6 +680,7 @@ namespace Seb.Fluid2D.Simulation
             sortTarget_PredicitedPosition = FallbackResizeAndAppendBuffer(sortTarget_PredicitedPosition, oldNumParticles, new float2[newSpawnCount]);
             sortTarget_Velocity = FallbackResizeAndAppendBuffer(sortTarget_Velocity, oldNumParticles, new float2[newSpawnCount]);
             sortTarget_ParticleType = FallbackResizeAndAppendBuffer(sortTarget_ParticleType, oldNumParticles, new int2[newSpawnCount]);
+            sortTarget_Collision = FallbackResizeAndAppendBuffer(sortTarget_Collision, oldNumParticles, new int4[newSpawnCount]);
             // --- END OF USING FALLBACK ---
 
             spatialHash?.Release();

@@ -101,7 +101,7 @@ public class Spawner2D : MonoBehaviour
         };
     }
 
-    public ParticleSpawnData GetNewlySpawnedParticles(float deltaTime, int currentTotalParticles, int maxTotalParticles)
+    public ParticleSpawnData GetNewlySpawnedParticles(int currentTotalParticles, int maxTotalParticles)
     {
         if (!allowContinuousSpawning || currentTotalParticles >= maxTotalParticles)
         {
@@ -118,7 +118,7 @@ public class Spawner2D : MonoBehaviour
             SpawnRegion region = spawnRegions[regionIndex]; // Struct copy
             if (region.particlesPerSecond <= 0) continue;
 
-            float newSpawnsPotential = region.particlesPerSecond * deltaTime + spawnRegions[regionIndex].spawnAccumulator;
+            float newSpawnsPotential = region.particlesPerSecond + spawnRegions[regionIndex].spawnAccumulator;
             int numToSpawnThisRegion = Mathf.FloorToInt(newSpawnsPotential);
             // Update the accumulator in the actual array element
             spawnRegions[regionIndex].spawnAccumulator = newSpawnsPotential - numToSpawnThisRegion;

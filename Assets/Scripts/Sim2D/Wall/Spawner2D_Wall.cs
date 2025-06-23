@@ -145,7 +145,7 @@ public class Spawner2D_Wall : MonoBehaviour
                     particlesAddedThisFrame++;
                 }
             }
-            spawnRegions[regionIndex].particlesPerSecond = 0;
+            //spawnRegions[regionIndex].particlesPerSecond = 0; <-- ONLY USED FOR FLOOR!!
             if (currentTotalParticles + particlesAddedThisFrame >= maxTotalParticles) break;
         }
         return new ParticleSpawnData

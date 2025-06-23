@@ -233,73 +233,73 @@ MonoBehaviour:
   - position: {x: -7, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 1
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -5.75, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 2
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -4.5, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 3
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -3.25, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 4
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -2, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 5
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: -0.75, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 6
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 0.75, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 7
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 2, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 8
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 3.25, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 9
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 4.5, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 10
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 5.75, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 11
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - position: {x: 7, y: 0}
     size: {x: 1, y: 1}
     spawnDensity: 1000
-    particlesPerSecond: 10
+    particlesPerSecond: 0
     particleType: 12
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   fluidSimulation: {fileID: 271053319}
