@@ -552,12 +552,12 @@ namespace Seb.Fluid2D.Simulation
 
         void ReadbackAndResetGpuCounters()
         {
-            if (gpu_removedParticlesCounter == null || gpu_particlesReachedDestinationCounter == null) return;
+            if (gpu_removedParticlesCounter == null || gpu_particlesReachedDestinationCounter == null || (lastPlayerCount == 0)) return;
 
             int actualColor = 0;
             // Asynchronously request data from the GPU. The code in the lambda (=>) runs when the data is ready.
             AsyncGPUReadback.Request(gpu_removedParticlesCounter, (request) => {
-                if (!request.hasError)
+                if (!request.hasError && (lastPlayerCount > 0))
                 {
                     // Copy the GPU data directly into your existing C# array.
                     request.GetData<int>().CopyTo(removedParticlesThisFrame);
@@ -571,7 +571,7 @@ namespace Seb.Fluid2D.Simulation
             });
 
             AsyncGPUReadback.Request(gpu_particlesReachedDestinationCounter, (request) => {
-                if (!request.hasError)
+                if (!request.hasError && (lastPlayerCount > 0))
                 {
                     // Copy the GPU data directly into your existing C# array.
                     request.GetData<int4>().CopyTo(particlesReachedDestinationThisFrame);
@@ -696,7 +696,7 @@ namespace Seb.Fluid2D.Simulation
         void RunSimulationStep()
         {
             UpdateCurrentsBuffer();
-            if (numParticles == 0 || compute == null) return;
+            if (numParticles == 0 || compute == null || (lastPlayerCount == 0)) return;
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: externalForcesKernel);
             RunSpatialHashPasses();
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: densityKernel);
