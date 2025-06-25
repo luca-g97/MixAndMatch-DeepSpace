@@ -26,7 +26,8 @@ MonoBehaviour:
     probeVolumeBlendStatesCS: {fileID: 0}
   m_RendererFeatures:
   - {fileID: 2524791775004087449}
-  m_RendererFeatureMap: 9954f210bedc0923
+  - {fileID: 6875646000025916761}
+  m_RendererFeatureMap: 9954f210bedc09235955e1b89b336b5f
   m_UseNativeRenderPass: 0
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
@@ -64,17 +65,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a864f588276bab54f97335821add48a7, type: 3}
   m_Name: LimSSR
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   Settings:
     tracingMode: 0
     stepStrideLength: 0.03
     maxSteps: 128
     downSample: 1
-    minSmoothness: 0.5
+    minSmoothness: 0
     reflectSky: 1
     ditherType: 1
     SSR_Instance: {fileID: 0}
     SSRShader: {fileID: 4800000, guid: 03f5601bba0a8034aa526644e8b9aaeb, type: 3}
+--- !u!114 &6875646000025916761
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f62c9c65cf3354c93be831c8bc075510, type: 3}
+  m_Name: ScreenSpaceAmbientOcclusion
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  m_Settings:
+    AOMethod: 0
+    Downsample: 1
+    AfterOpaque: 0
+    Source: 1
+    NormalSamples: 1
+    Intensity: 1
+    DirectLightingStrength: 0.25
+    Radius: 0.25
+    Samples: 1
+    BlurQuality: 0
+    Falloff: 100
+    SampleCount: -1
 --- !u!114 &9014144241011795795
 MonoBehaviour:
   m_ObjectHideFlags: 0

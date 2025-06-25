@@ -1,27 +1,12 @@
 using Seb.Fluid2D.Simulation;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Spawner2D_Wall : MonoBehaviour
 {
-    public enum ParticleType
-    {
-        Water = 0,
-        OilRed = 1,
-        OilYellow = 2,
-        OilBlue = 3,
-        OilOrange = 4,
-        OilViolet = 5,
-        OilLimeGreen = 6,
-        OilRedOrange = 7,
-        OilYellowOrange = 8,
-        OilRedViolet = 9,
-        OilBlueViolet = 10,
-        OilYellowGreen = 11,
-        OilBlueGreen = 12
-    };
-
     public Vector2 initialVelocity;
     public float jitterStr;
     public bool showSpawnBoundsGizmos;
@@ -216,15 +201,17 @@ public class Spawner2D_Wall : MonoBehaviour
     }
 
     [System.Serializable]
-    public struct SpawnRegion
+    public class SpawnRegion
     {
+        [HideInInspector] public string name;
+        public ParticleType particleType;
         public Vector2 position;
         public Vector2 size;
         [Tooltip("For initial particle burst. Particles per unit area.")]
         public float spawnDensity;
         [Tooltip("For continuous spawning. Particles per second.")]
         public float particlesPerSecond;
-        public ParticleType particleType;
+        
         public Color debugCol;
         internal float spawnAccumulator;
     }
@@ -237,6 +224,8 @@ public class Spawner2D_Wall : MonoBehaviour
         {
             Vector2Int spawnCountPerAxis = CalculateSpawnCountPerAxisBox2D(region.size, region.spawnDensity);
             initialSpawnParticleCount += spawnCountPerAxis.x * spawnCountPerAxis.y;
+
+            region.name = region.particleType.ToString();
         }
     }
 
