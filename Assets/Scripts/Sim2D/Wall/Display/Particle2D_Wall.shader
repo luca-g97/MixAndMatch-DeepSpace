@@ -21,6 +21,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
         Tags { "RenderType"="Transparent" "Queue"="Transparent" }
         Blend SrcAlpha OneMinusSrcAlpha // Alpha blending for smooth particles
         ZWrite Off // Disable depth writing for transparency
+        ZTest Always // Always render particles in front of everything
 
         Pass {
             CGPROGRAM
