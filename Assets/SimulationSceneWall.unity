@@ -520,21 +520,21 @@ MonoBehaviour:
     debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilYellow
     particleType: 2
-    position: {x: -1.1, y: 13.1}
+    position: {x: -0.56, y: 12.7}
     size: {x: 0.1, y: 0.1}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   - name: OilBlue
     particleType: 3
-    position: {x: -0.72, y: 12.7}
+    position: {x: 1.11, y: 12.3}
     size: {x: 0.1, y: 0.1}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 0, g: 0, b: 1, a: 1}
   - name: OilOrange
     particleType: 4
-    position: {x: -0.09, y: 12.3}
+    position: {x: -1.08, y: 13.1}
     size: {x: 0.1, y: 0.1}
     spawnDensity: 0
     particlesPerSecond: 25
@@ -548,7 +548,7 @@ MonoBehaviour:
     debugCol: {r: 0.5803922, g: 0, b: 0.8274511, a: 1}
   - name: OilLimeGreen
     particleType: 6
-    position: {x: 1.16, y: 12.25}
+    position: {x: -0.03, y: 12.3}
     size: {x: 0.1, y: 0.1}
     spawnDensity: 0
     particlesPerSecond: 25
@@ -820,6 +820,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _spawner
+      value: 
+      objectReference: {fileID: 271053327}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _particleType
+      value: 4
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1051,6 +1059,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _spawner
+      value: 
+      objectReference: {fileID: 271053327}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _particleType
+      value: 6
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1116,6 +1132,14 @@ PrefabInstance:
     - target: {fileID: 5872945515082982634, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Name
       value: OilBarrel (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _spawner
+      value: 
+      objectReference: {fileID: 271053327}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _particleType
+      value: 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -6877,6 +6901,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel (4)
       objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _spawner
+      value: 
+      objectReference: {fileID: 271053327}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _particleType
+      value: 5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -7467,11 +7499,11 @@ Transform:
   m_Children:
   - {fileID: 887880877}
   - {fileID: 7477222409412538359}
-  - {fileID: 2012436316}
-  - {fileID: 637922038}
   - {fileID: 427442843}
   - {fileID: 663904864}
+  - {fileID: 637922038}
   - {fileID: 1346842894}
+  - {fileID: 2012436316}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -165.829, z: 0}
 --- !u!1001 &2012436315
@@ -7529,6 +7561,14 @@ PrefabInstance:
     - target: {fileID: 5872945515082982634, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Name
       value: OilBarrel (5)
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _spawner
+      value: 
+      objectReference: {fileID: 271053327}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _particleType
+      value: 3
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -7717,6 +7757,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel
       objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _spawner
+      value: 
+      objectReference: {fileID: 271053327}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

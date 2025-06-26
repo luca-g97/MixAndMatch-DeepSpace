@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3445010211826534617}
+  - component: {fileID: 6315654835225515491}
   m_Layer: 0
   m_Name: OilBarrel
   m_TagString: Untagged
@@ -33,6 +34,22 @@ Transform:
   - {fileID: 6518837181686049878}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6315654835225515491
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5872945515082982634}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ff22fff86452b14b84e51227e7c3ef7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _spawner: {fileID: 0}
+  _barrelMeshRenderer: {fileID: 5349329936830076729}
+  _particleType: 1
+  _emissionIntensityWhileSpawningParticles: 3
 --- !u!1 &8037299025279772889
 GameObject:
   m_ObjectHideFlags: 0
@@ -218,6 +235,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8d1e4ff011b737244ba0d0822b882f87, type: 3}
+--- !u!23 &5349329936830076729 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: 8d1e4ff011b737244ba0d0822b882f87, type: 3}
+  m_PrefabInstance: {fileID: 6772629465219206077}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6518837181686049878 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 8d1e4ff011b737244ba0d0822b882f87, type: 3}

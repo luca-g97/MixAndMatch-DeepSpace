@@ -98,6 +98,35 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                 return HsvToRgb(hsv);
             }
 
+            float3 multiplyColourSaturation(float3 colour, float factor)
+            {
+                float3 hsv = RgbToHsv(colour);
+
+                hsv.y = hsv.y * factor;
+                hsv.y = saturate(hsv.y);
+                
+                return HsvToRgb(hsv);
+            }
+
+            float3 setColourSaturation(float3 colour, float saturation)
+            {
+                // Convert the color to HSV
+                float3 hsv = RgbToHsv(colour);
+                // Set the saturation to the specified value, clamping between 0 and 1
+                hsv.y = saturate(saturation);
+                // Convert back to RGB
+                return HsvToRgb(hsv);
+            }
+
+            float3 multiplyColourLuminance(float3 colour, float factor)
+            {
+                float3 hsv = RgbToHsv(colour);
+
+                hsv.z = hsv.z * factor; // Boost luminance
+
+                return HsvToRgb(hsv);
+            }
+
             // --- Vertex Shader ---
             // Calculates final vertex color and position for each particle instance.
             v2f vert (appdata_full v, uint instanceID : SV_InstanceID)
@@ -177,39 +206,42 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
                     }
 
                     float3 actualObstacleColor = obstacleColorSum / obstacleCount;
-
-                    if(all(abs(actualObstacleColor - float3(0.0, 0.4, 0.7)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 6);} //Blue
-                    if(all(abs(actualObstacleColor - float3(0.45, 0.2, 0.55)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Violet
-                    if(all(abs(actualObstacleColor - float3(0.675, 0.1, 0.475)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Red-Violet
-                    if(all(abs(actualObstacleColor - float3(0.225, 0.3, 0.625)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Blue-Violet
+                    
+                    //if(all(abs(actualObstacleColor - float3(0.1, 0.4, 1.0)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 2.75);} //Blue
+                    //if(all(abs(actualObstacleColor - float3(0.6, 0.25, 0.55)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Violet
+                    //if(all(abs(actualObstacleColor - float3(0.8, 0.175, 0.325)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Red-Violet
+                    //if(all(abs(actualObstacleColor - float3(0.35, 0.325, 0.775)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Blue-Violet 
                     
                     float3 diff = abs(exactColor - float3(-1, -1, -1));
                     if(all(diff > COMPARE_EPSILON))
                     {
-                        finalColour = saturate(actualObstacleColor * (additiveStrength*1.5));
+                        finalColour = setColourSaturation(actualObstacleColor, 1);
+                        //finalColour = multiplyColourLuminance(finalColour, 5);
                     }
                     else if(obstacleCount > 1 && mixableColor) 
                     { 
-                        finalColour = saturate(actualObstacleColor * (additiveStrength*1.25)); 
+                        finalColour = setColourSaturation(actualObstacleColor, 1);
+                        finalColour = multiplyColourLuminance(finalColour, 5);
                     }
                     else
                     {
-                        finalColour = saturate(colorB * additiveStrength); //Uncomment to not display other mixed colors
+                        finalColour = colorB; //Uncomment to not display other mixed colors
                         //finalColour = saturate(actualObstacleColor * additiveStrength); //Uncomment to also allow other mixed colors
-                        finalColour = saturateColourFurther(finalColour);
+                        //finalColour = saturateColourFurther(finalColour);
                     }
                 }
                 else if (particleType > 0)
                 {
                     float3 playerColour = mixableColors_Wall[particleTypeToUse].rgb;
 
-                    if(all(abs(playerColour - float3(0.0, 0.4, 0.7)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 2);} //Blue
-                    if(all(abs(playerColour - float3(0.45, 0.2, 0.55)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Violet
-                    if(all(abs(playerColour - float3(0.675, 0.1, 0.475)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Red-Violet
-                    if(all(abs(playerColour - float3(0.225, 0.3, 0.625)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Blue-Violet
+                    //if(all(abs(playerColour - float3(0.1, 0.4, 1.0)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 2);} //Blue
+                    //if(all(abs(playerColour - float3(0.6, 0.25, 0.55)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Violet
+                    //if(all(abs(playerColour - float3(0.8, 0.175, 0.325)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Red-Violet
+                    //if(all(abs(playerColour - float3(0.35, 0.325, 0.775)) < COMPARE_EPSILON)) {playerColour = saturate(playerColour * additiveStrength * 3);} //Blue-Violet 
 
-                    finalColour = saturate(playerColour * additiveStrength);
-                    finalColour = saturateColourFurther(finalColour);
+                    //finalColour = saturate(playerColour * additiveStrength);
+                    finalColour = playerColour;
+                    //finalColour = saturateColourFurther(finalColour);
                 }
 
                 // 4. Calculate the world position and final clip space position for this vertex
