@@ -173,8 +173,10 @@ namespace Seb.Fluid2D.Simulation
 
         [Header("Obstacle Visualization")]
         public Color obstacleLineColor = Color.white;
+        public Color ventilLineColor = Color.green;
         [Min(0)] public float obstacleLineWidth = 0.1f;
         public Material lineRendererMaterial;
+        
 
         private float autoUpdateInterval = 0.5f;
         private float nextAutoUpdateTime;
@@ -823,6 +825,7 @@ namespace Seb.Fluid2D.Simulation
                     {
                         var info = new CachedObstacleInfo { transform = go.transform };
                         info.polyCol = go.GetComponent<PolygonCollider2D>();
+                        
                         if (!go.TryGetComponent<LineRenderer>(out info.lineRend))
                         {
                             info.lineRend = go.AddComponent<LineRenderer>();
@@ -833,6 +836,7 @@ namespace Seb.Fluid2D.Simulation
                         {
                             info.lineRend.sharedMaterial = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
                         }
+                        
                         _obstacleCache[go] = info;
                         listActuallyChanged = true;
                     }
@@ -1057,12 +1061,12 @@ namespace Seb.Fluid2D.Simulation
                 });
                 currentVertexStartIndex += vertexCountForThisObstacle;
 
-                Color displayColor = obstacleLineColor;
-                if (obsType == 1) { displayColor = Color.white; }
-                else if (obsType == 2) { displayColor = Color.gray; }
+                Color displayColor = Color.white;
+                if (obsType == 1) { displayColor = obstacleLineColor; }
+                else if (obsType == 2) { displayColor = ventilLineColor; }
 
-                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = new Color(colorPalette[pColor].r, colorPalette[pColor].g, colorPalette[pColor].b, 1.0f); //colorPalette[pColor];
-                _propBlock.SetColor("_Color", displayColor); lr.SetPropertyBlock(_propBlock);
+                if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = new Color(colorPalette[pColor].r, colorPalette[pColor].g, colorPalette[pColor].b, 1f); //colorPalette[pColor];
+                _propBlock.SetColor("_BaseColor", displayColor); lr.SetPropertyBlock(_propBlock);
                 _gpuObstacleColorsData.Add(displayColor);
                 lr.startWidth = obstacleLineWidth; lr.endWidth = obstacleLineWidth;
             }
