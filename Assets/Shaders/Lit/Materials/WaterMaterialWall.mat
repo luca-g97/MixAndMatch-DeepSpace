@@ -79,6 +79,9 @@ Material:
     - _CastShadows: 0
     - _Cull: 2
     - _Depth: 0
+    - _Displacement: 0.003
+    - _Displacement_Noise_Scale: 75
+    - _Displacement_Strength: 0.1
     - _DstBlend: 10
     - _Normal_Strength: 0.75
     - _QueueControl: 0

@@ -80,7 +80,12 @@ Material:
     - _BlendModePreserveSpecular: 1
     - _CastShadows: 0
     - _Cull: 2
+    - _DIsplacement_Speed: 5
     - _Depth: -0.25
+    - _Displacement: 0
+    - _Displacement_Noise_Scale: 10
+    - _Displacement_Strength: 0.2
+    - _Displacement_Strength_Sensitivity: 0.1
     - _DstBlend: 10
     - _Normal_Strength: 0.25
     - _QueueControl: 0

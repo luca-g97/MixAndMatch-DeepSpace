@@ -138,26 +138,8 @@ namespace Seb.Fluid2D.Simulation
         }
         private Dictionary<GameObject, CachedObstacleInfo> _obstacleCache = new Dictionary<GameObject, CachedObstacleInfo>();
 
-        public static List<Color> colorPalette = new List<Color> {
-            // Primary Colors (Unchanged)
-            /* 0: Red */      new Color(0.9f, 0.0f, 0.4f),
-            /* 1: Yellow */   new Color(1.0f, 0.9f, 0.0f),
-            /* 2: Blue */     new Color(0.0f, 0.4f, 0.7f),
-
-            // Secondary Colors (Recalculated as Averages)
-            /* 3: Orange (R+Y) */ new Color(0.95f, 0.45f, 0.2f),
-            /* 4: Violet (R+B) */ new Color(0.45f, 0.2f, 0.55f),
-            /* 5: Green (Y+B) */  new Color(0.5f, 0.65f, 0.35f),
-
-            // Tertiary Colors (Recalculated as Averages)
-            /* 6: Red-Orange (R+O) */    new Color(0.925f, 0.225f, 0.3f),
-            /* 7: Yellow-Orange (Y+O) */ new Color(0.975f, 0.675f, 0.1f),
-            /* 8: Red-Violet (R+V) */    new Color(0.675f, 0.1f, 0.475f),
-            /* 9: Blue-Violet (B+V) */   new Color(0.225f, 0.3f, 0.625f),
-            /* 10: Yellow-Green (Y+G) */ new Color(0.75f, 0.775f, 0.175f),
-            /* 11: Blue-Green (B+G) */   new Color(0.25f, 0.525f, 0.525f)
-        };
-
+        private static List<Color> colorPalette = ColorPalette.colorPalette;
+       
         private int[] removedParticlesThisFrame_Wall = new int[colorPalette.Count];
         private int4[] particlesReachedDestinationThisFrame_Wall = new int4[colorPalette.Count];
 
