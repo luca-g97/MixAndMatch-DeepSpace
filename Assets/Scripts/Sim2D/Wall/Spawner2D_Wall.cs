@@ -4,10 +4,13 @@ using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 public class Spawner2D_Wall : MonoBehaviour
 {
     public Vector2 initialVelocity;
+    public bool useInitialVelocityOnlyForContinuousSpawning = true; // If true, initialVelocity is only used for continuous spawning, not initial spawn
+    public float initialVelocitySineWaveFrequency = 2f;
     public float jitterStr;
     public bool showSpawnBoundsGizmos;
 
@@ -30,10 +33,12 @@ public class Spawner2D_Wall : MonoBehaviour
     public int currentSimParticleCount_Inspector; // << NEW: To display live count from FluidSim2D
 
     private Unity.Mathematics.Random _continuousSpawnRng;
+    private Vector2 _originalInitialVelocity;
 
     void Awake()
     {
         _continuousSpawnRng = new Unity.Mathematics.Random((uint)System.Environment.TickCount + (uint)GetInstanceID().GetHashCode());
+        _originalInitialVelocity = initialVelocity;
     }
 
     void Update()
@@ -66,13 +71,18 @@ public class Spawner2D_Wall : MonoBehaviour
         {
             SpawnRegion region = spawnRegions[regionIndex];
             float2[] points = SpawnInRegionUsingDensity(region);
+            
             for (int i = 0; i < points.Length; i++)
             {
                 float angle = (float)initialSpawnRng.NextDouble() * Mathf.PI * 2f;
                 float2 dir = new float2(Mathf.Cos(angle), Mathf.Sin(angle));
                 float2 jitter = dir * jitterStr * ((float)initialSpawnRng.NextDouble() - 0.5f);
                 allPoints.Add(points[i] + jitter);
-                allVelocities.Add(initialVelocity);
+
+                allVelocities.Add(useInitialVelocityOnlyForContinuousSpawning
+                    ? _originalInitialVelocity
+                    : Vector2.zero);
+
                 allIndices.Add(regionIndex);
                 particleTypes.Add(new int2((int)region.particleType, -1));
             }
@@ -102,7 +112,17 @@ public class Spawner2D_Wall : MonoBehaviour
         {
             SpawnRegion region = spawnRegions[regionIndex]; // Struct copy
             if (region.particlesPerSecond <= 0) continue;
-
+            
+            if (initialVelocitySineWaveFrequency <= 0)
+            {
+                initialVelocity = _originalInitialVelocity;
+            }
+            else
+            {
+                float velocitySineValue = Mathf.Sin((Time.time + regionIndex * 10) * initialVelocitySineWaveFrequency);
+                initialVelocity = new Vector2(_originalInitialVelocity.x * velocitySineValue, _originalInitialVelocity.y);
+            }
+            
             float newSpawnsPotential = region.particlesPerSecond * deltaTime + spawnRegions[regionIndex].spawnAccumulator;
             int numToSpawnThisRegion = Mathf.FloorToInt(newSpawnsPotential);
             // Update the accumulator in the actual array element
@@ -124,7 +144,7 @@ public class Spawner2D_Wall : MonoBehaviour
                     float2 dir = new float2(Mathf.Cos(angle), Mathf.Sin(angle));
                     float2 jitter = dir * jitterStr * ((float)_continuousSpawnRng.NextDouble() - 0.5f);
                     newPoints.Add(spawnPos + jitter);
-                    newVelocities.Add(initialVelocity);
+                    newVelocities.Add(initialVelocity); // initalVelocity is now affected by sine wave
                     newSpawnIndices.Add(regionIndex);
                     newParticleTypes.Add(new int2((int)region.particleType, -1));
                     particlesAddedThisFrame++;

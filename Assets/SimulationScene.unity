@@ -184,7 +184,7 @@ MonoBehaviour:
   waterNearPressureMultiplier: 225
   waterViscosityStrength: 0.1
   oilTargetDensity: 0.92
-  oilPressureMultiplier: 120
+  oilPressureMultiplier: 30
   oilNearPressureMultiplier: 180
   oilViscosityStrength: 0.4
   interactionRadius: 5

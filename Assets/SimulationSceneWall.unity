@@ -591,19 +591,19 @@ MonoBehaviour:
   timeScale: 1
   maxTimestepFPS: 144
   iterationsPerFrame: 3
-  gravity: -300
+  gravity: -200
   collisionDamping: 0.5
   smoothingRadius: 0.2
   boundsSize: {x: 16, y: 8}
   yOffset: 12
   maxTotalParticles: 100000
   waterTargetDensity: 1
-  waterPressureMultiplier: 150
-  waterNearPressureMultiplier: 225
+  waterPressureMultiplier: 125
+  waterNearPressureMultiplier: 100
   waterViscosityStrength: 0.1
   oilTargetDensity: 0.92
-  oilPressureMultiplier: 120
-  oilNearPressureMultiplier: 180
+  oilPressureMultiplier: 1
+  oilNearPressureMultiplier: 1
   oilViscosityStrength: 0.4
   interactionRadius: 5
   interactionStrength: 50
@@ -636,7 +636,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 86a3bf7e4cda61940abd3330e4cc86c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  initialVelocity: {x: 0, y: 0}
+  initialVelocity: {x: 3, y: 3}
+  useInitialVelocityOnlyForContinuousSpawning: 1
+  initialVelocitySineWaveFrequency: 5
   jitterStr: 0
   showSpawnBoundsGizmos: 1
   allowInitialSpawn: 1
@@ -644,7 +646,7 @@ MonoBehaviour:
   spawnRegions:
   - name: Water
     particleType: 0
-    position: {x: 0, y: 10}
+    position: {x: 0, y: 9}
     size: {x: 15, y: 4}
     spawnDensity: 250
     particlesPerSecond: 0
@@ -658,50 +660,50 @@ MonoBehaviour:
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - name: OilRed
     particleType: 1
-    position: {x: -1.45, y: 12.2}
-    size: {x: 0.1, y: 0.1}
+    position: {x: -1.45, y: 12.3}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilYellow
     particleType: 2
     position: {x: -0.56, y: 12.7}
-    size: {x: 0.1, y: 0.1}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   - name: OilBlue
     particleType: 3
     position: {x: 1.11, y: 12.3}
-    size: {x: 0.1, y: 0.1}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 0, g: 0, b: 1, a: 1}
   - name: OilOrange
     particleType: 4
     position: {x: -1.08, y: 13.1}
-    size: {x: 0.1, y: 0.1}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 1, g: 0.5490196, b: 0, a: 1}
   - name: OilViolet
     particleType: 5
     position: {x: 0.86, y: 12.7}
-    size: {x: 0.1, y: 0.1}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 0.5803922, g: 0, b: 0.8274511, a: 1}
   - name: OilLimeGreen
     particleType: 6
     position: {x: -0.03, y: 12.3}
-    size: {x: 0.1, y: 0.1}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 0, g: 1, b: 0, a: 1}
   - name: OilRedOrange
     particleType: 7
     position: {x: 0.75, y: 12}
-    size: {x: 1, y: 1}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 0
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
@@ -1265,7 +1267,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.29803923}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.34901962}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
