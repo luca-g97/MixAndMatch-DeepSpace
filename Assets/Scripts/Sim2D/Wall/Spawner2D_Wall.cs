@@ -61,6 +61,7 @@ public class Spawner2D_Wall : MonoBehaviour
         {
             return new ParticleSpawnData(0);
         }
+        
         var initialSpawnRng = new Unity.Mathematics.Random(42);
         List<float2> allPoints = new();
         List<float2> allVelocities = new();
@@ -79,7 +80,7 @@ public class Spawner2D_Wall : MonoBehaviour
                 float2 jitter = dir * jitterStr * ((float)initialSpawnRng.NextDouble() - 0.5f);
                 allPoints.Add(points[i] + jitter);
 
-                allVelocities.Add(useInitialVelocityOnlyForContinuousSpawning
+                allVelocities.Add(!useInitialVelocityOnlyForContinuousSpawning
                     ? _originalInitialVelocity
                     : Vector2.zero);
 
@@ -119,7 +120,7 @@ public class Spawner2D_Wall : MonoBehaviour
             }
             else
             {
-                float velocitySineValue = Mathf.Sin((Time.time + regionIndex * 10) * initialVelocitySineWaveFrequency);
+                float velocitySineValue = Mathf.Sin((Time.time + regionIndex) * initialVelocitySineWaveFrequency);
                 initialVelocity = new Vector2(_originalInitialVelocity.x * velocitySineValue, _originalInitialVelocity.y);
             }
             

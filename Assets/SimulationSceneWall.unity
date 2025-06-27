@@ -591,15 +591,15 @@ MonoBehaviour:
   timeScale: 1
   maxTimestepFPS: 144
   iterationsPerFrame: 3
-  gravity: -200
+  gravity: -75
   collisionDamping: 0.5
   smoothingRadius: 0.2
   boundsSize: {x: 16, y: 8}
   yOffset: 12
   maxTotalParticles: 100000
   waterTargetDensity: 1
-  waterPressureMultiplier: 125
-  waterNearPressureMultiplier: 100
+  waterPressureMultiplier: 45
+  waterNearPressureMultiplier: 45
   waterViscosityStrength: 0.1
   oilTargetDensity: 0.92
   oilPressureMultiplier: 1
@@ -636,9 +636,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 86a3bf7e4cda61940abd3330e4cc86c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  initialVelocity: {x: 3, y: 3}
+  initialVelocity: {x: 2, y: 2}
   useInitialVelocityOnlyForContinuousSpawning: 1
-  initialVelocitySineWaveFrequency: 5
+  initialVelocitySineWaveFrequency: 2
   jitterStr: 0
   showSpawnBoundsGizmos: 1
   allowInitialSpawn: 1
@@ -648,7 +648,7 @@ MonoBehaviour:
     particleType: 0
     position: {x: 0, y: 9}
     size: {x: 15, y: 4}
-    spawnDensity: 250
+    spawnDensity: 200
     particlesPerSecond: 0
     debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
   - name: Water
@@ -743,7 +743,7 @@ MonoBehaviour:
     particlesPerSecond: 0
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   fluidSimulation: {fileID: 271053326}
-  initialSpawnParticleCount: 15232
+  initialSpawnParticleCount: 12141
   currentSimParticleCount_Inspector: 0
 --- !u!1001 &405644603
 PrefabInstance:
@@ -967,6 +967,14 @@ PrefabInstance:
       propertyPath: _spawner
       value: 
       objectReference: {fileID: 271053327}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnRate
+      value: 75
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnRate
+      value: 35
+      objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 4
@@ -1515,6 +1523,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnRate
+      value: 75
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnRate
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 6
       objectReference: {fileID: 0}
@@ -1584,6 +1600,14 @@ PrefabInstance:
       propertyPath: _spawner
       value: 
       objectReference: {fileID: 271053327}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnRate
+      value: 75
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnRate
+      value: 35
+      objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 2
@@ -8628,6 +8652,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnRate
+      value: 75
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnRate
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 5
       objectReference: {fileID: 0}
@@ -9899,6 +9931,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnRate
+      value: 75
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnRate
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 3
       objectReference: {fileID: 0}
@@ -10089,6 +10129,14 @@ PrefabInstance:
       propertyPath: _spawner
       value: 
       objectReference: {fileID: 271053327}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnRate
+      value: 75
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnRate
+      value: 35
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
