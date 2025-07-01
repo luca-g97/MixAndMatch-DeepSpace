@@ -660,42 +660,42 @@ MonoBehaviour:
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - name: OilRed
     particleType: 1
-    position: {x: -1.45, y: 12.3}
+    position: {x: -1.45, y: 12.35}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilYellow
     particleType: 2
-    position: {x: -0.56, y: 12.7}
+    position: {x: -0.56, y: 12.8}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   - name: OilBlue
     particleType: 3
-    position: {x: 1.11, y: 12.3}
+    position: {x: 1.16, y: 12.35}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 0, g: 0, b: 1, a: 1}
   - name: OilOrange
     particleType: 4
-    position: {x: -1.08, y: 13.1}
+    position: {x: -1.09, y: 13.25}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 1, g: 0.5490196, b: 0, a: 1}
   - name: OilViolet
     particleType: 5
-    position: {x: 0.86, y: 12.7}
+    position: {x: 0.9, y: 12.8}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
     debugCol: {r: 0.5803922, g: 0, b: 0.8274511, a: 1}
   - name: OilLimeGreen
     particleType: 6
-    position: {x: -0.03, y: 12.3}
+    position: {x: -0.05, y: 12.35}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
@@ -921,7 +921,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.27
+      value: 1.14
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1554,7 +1554,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.51
+      value: 0.42
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -7736,7 +7736,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 100
-  field of view: 35
+  field of view: 25
   orthographic: 0
   orthographic size: 4.5
   m_Depth: -1
@@ -7745,7 +7745,7 @@ Camera:
     m_Bits: 4294967295
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
-  m_TargetDisplay: 0
+  m_TargetDisplay: 1
   m_TargetEye: 3
   m_HDR: 1
   m_AllowMSAA: 1
@@ -7763,7 +7763,7 @@ Transform:
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 12.25, z: -12}
+  m_LocalPosition: {x: 0, y: 12.25, z: -17.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8605,7 +8605,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.54
+      value: -1.51
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -9884,7 +9884,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.91
+      value: -1.83
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -10083,7 +10083,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.83
+      value: 1.6
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y

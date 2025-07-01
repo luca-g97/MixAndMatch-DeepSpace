@@ -5,9 +5,14 @@ using DG.Tweening;
 using UnityEngine.VFX;
 using Random = UnityEngine.Random;
 
-public class OilBarrel: MonoBehaviour
+
+namespace Seb.Fluid2D.Simulation
+{
+
+public class OilBarrel: MonoBehaviour 
 {
     [Header("References")]
+    [SerializeField] private FluidSim2D _fluidSim;
     [SerializeField] private Spawner2D_Wall _spawner;
     [SerializeField] private MeshRenderer _barrelMeshRenderer;
     [SerializeField] private MeshRenderer _volumetricSphereMeshRenderer;
@@ -44,10 +49,11 @@ public class OilBarrel: MonoBehaviour
     
     private void Awake()
     {
+        _fluidSim = GameObject.FindFirstObjectByType<FluidSim2D>();
         _barrelColorByParticleTypeBlock = new MaterialPropertyBlock();
         _volumetricSphereBlock = new MaterialPropertyBlock();
         AssignSpawnRegionByParticleTyp(_particleType);
-        SetColorByParticleType(_particleType);
+       
     }
 
     private void OnEnable()
@@ -75,6 +81,7 @@ public class OilBarrel: MonoBehaviour
 
     private void Update()
     {
+        SetColorByParticleType(_particleType);
         _barrelMeshRenderer.SetPropertyBlock(_barrelColorByParticleTypeBlock);
         _volumetricSphereMeshRenderer.SetPropertyBlock(_volumetricSphereBlock);
     }
@@ -90,13 +97,14 @@ public class OilBarrel: MonoBehaviour
     
     private Color GetColorByParticleType(ParticleType type)
     {
-        if ((int)type < 0 || (int)type >= _colorPalette.Count)
+        List<Color> mixableColors = _fluidSim.mixableColorsForShader;
+        if ((int)type < 0 || (int)type >= mixableColors.Count)
         {
             Debug.LogError($"Invalid particle type: {type}");
             return Color.white; // Default color
         }
-        
-        return _colorPalette[(int)type-1];
+
+        return mixableColors[(int)type - 1];
     }
 
     private void SpawnSequence()
@@ -147,3 +155,6 @@ public class OilBarrel: MonoBehaviour
             .AppendInterval(_warningBlinkSpeed);
     }
 }
+
+}
+

@@ -296,6 +296,7 @@ MonoBehaviour:
     y: 0
     z: 0
     w: 0
+  mixableColors: 
   mixableColorsForShader: []
   maxPlayerColors: 6
   colorSymbolizingNoPlayer: {r: 0.5882353, g: 0.29411766, b: 0, a: 1}
@@ -1328,7 +1329,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!64 &1179878408
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1673,7 +1674,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1322769272
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1762,7 +1763,7 @@ Camera:
   field of view: 35
   orthographic: 0
   orthographic size: 4.5
-  m_Depth: -1
+  m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
     m_Bits: 16
@@ -2080,10 +2081,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _playerPrefab: {fileID: 4967671303439236353, guid: 9722c485b1849de42bda55cccc77f2e7, type: 3}
   _addUnknownPlayerOnUpdate: 1
-  zeroAbsoluteX: 0.71
-  zeroAbsoluteY: 1.98
-  fullAbsoluteX: 5.46
-  fullAbsoluteY: 5.77
+  zeroAbsoluteX: -1.5
+  zeroAbsoluteY: -0.75
+  fullAbsoluteX: 4
+  fullAbsoluteY: 2
 --- !u!1001 &1625061828
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2558,6 +2559,7 @@ MonoBehaviour:
     y: 0
     z: 0
     w: 0
+  mixableColors: 
   mixableColorsForShader: []
   maxPlayerColors: 6
   colorSymbolizingNoPlayer: {r: 0.5882353, g: 0.29411766, b: 0, a: 1}
@@ -2837,16 +2839,16 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 35
-  orthographic: 1
+  field of view: 25
+  orthographic: 0
   orthographic size: 3.7
-  m_Depth: 0
+  m_Depth: 1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 17
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
-  m_TargetDisplay: 1
+  m_TargetDisplay: 0
   m_TargetEye: 3
   m_HDR: 1
   m_AllowMSAA: 1
@@ -2864,7 +2866,7 @@ Transform:
   m_GameObject: {fileID: 2093008199}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -12}
+  m_LocalPosition: {x: 0, y: 0, z: -17.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3006,7 +3008,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4199803717565064749, guid: b9c3c4623c7137e4a924d6540c19c814, type: 3}
       propertyPath: m_Name
-      value: Coral_Ventil_03
+      value: Coral_Ventil
       objectReference: {fileID: 0}
     - target: {fileID: 4199803717565064749, guid: b9c3c4623c7137e4a924d6540c19c814, type: 3}
       propertyPath: m_Layer
@@ -3156,7 +3158,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4004849568307100376, guid: 207243c18f3405d4d85f875d21fd523d, type: 3}
       propertyPath: m_Name
-      value: Coral_Ventil_02
+      value: Coral_Ventil
       objectReference: {fileID: 0}
     - target: {fileID: 4004849568307100376, guid: 207243c18f3405d4d85f875d21fd523d, type: 3}
       propertyPath: m_Layer
@@ -3286,7 +3288,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7660670058034350226, guid: 37088714cf529d94e88e0c1c897cb9aa, type: 3}
       propertyPath: m_Name
-      value: Coral_Ventil_01
+      value: Coral_Ventil
       objectReference: {fileID: 0}
     - target: {fileID: 7660670058034350226, guid: 37088714cf529d94e88e0c1c897cb9aa, type: 3}
       propertyPath: m_Layer
@@ -3410,7 +3412,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8558435236559466325, guid: 12a459f569d937245aba276524e554bc, type: 3}
       propertyPath: m_Name
-      value: Coral_Ventil_04
+      value: Coral_Ventil
       objectReference: {fileID: 0}
     - target: {fileID: 8558435236559466325, guid: 12a459f569d937245aba276524e554bc, type: 3}
       propertyPath: m_Layer

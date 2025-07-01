@@ -29,7 +29,7 @@ public class TouchPlayer : MonoBehaviour
         if (inputWithinCamera)
         {
             Vector3 currentWorldInputPosition = floorCam.ScreenToWorldPoint(
-                new Vector3(screenPosition.x, screenPosition.y, 12.0f)
+                new Vector3(screenPosition.x, screenPosition.y, -floorCam.transform.localPosition.z)
             );
 
             switch (phase)

@@ -147,7 +147,7 @@ namespace Seb.Fluid2D.Simulation
         List<Color> _gpuObstacleColorsData = new List<Color>();
 
         Dictionary<GameObject, int> playerColors = new Dictionary<GameObject, int>();
-        private List<int> mixableColors = new List<int>();
+        public List<int> mixableColors = new List<int>();
         public List<Color> mixableColorsForShader = new List<Color>();
         [Range(0, 6)] public int maxPlayerColors = 6;
         public Color colorSymbolizingNoPlayer = Color.white;

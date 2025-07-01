@@ -212,12 +212,12 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                     if(all(diff > COMPARE_EPSILON))
                     {
                         finalColour = setColourSaturation(actualObstacleColor, 1);
-                        finalColour = multiplyColourLuminance(finalColour, 5);
+                        finalColour = multiplyColourLuminance(finalColour, 2);
                     }
                     else if(obstacleCount > 1 && mixableColor) // TODO: not working yet
                     { 
                         finalColour = setColourSaturation(actualObstacleColor, 1);
-                        finalColour = multiplyColourLuminance(finalColour, 5);
+                        finalColour = multiplyColourLuminance(finalColour, 2.5);
                     }
                     else
                     {
