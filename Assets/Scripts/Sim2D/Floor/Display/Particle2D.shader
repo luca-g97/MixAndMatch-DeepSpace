@@ -184,26 +184,24 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
                 if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
                 {
-                    float3 colorA = obstacleColorSum;
                     float3 colorB = mixableColors[particleTypeToUse].rgb;
+                    float3 actualObstacleColor = obstacleColorSum / obstacleCount;
 
                     bool mixableColor = false;
                     float3 exactColor = float3(-1, -1, -1);
                     for (int i = 0; i < numberOfColors; i++)
                     {
-                        float3 diff = abs(mixableColors[i].rgb - obstacleColorSum);
+                        float3 diff = abs(mixableColors[i].rgb - actualObstacleColor);
                         if(all(diff < COMPARE_EPSILON))
                         {
                             mixableColor = true;
                             if (i == particleTypeToUse)
                             {
-                                exactColor = obstacleColorSum; 
+                                exactColor = actualObstacleColor; 
                                 break;
                             }
                         }
                     }
-
-                    float3 actualObstacleColor = obstacleColorSum / obstacleCount;
                     
                     //if(all(abs(actualObstacleColor - float3(0.1, 0.4, 1.0)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 2.75);} //Blue
                     //if(all(abs(actualObstacleColor - float3(0.6, 0.25, 0.55)) < COMPARE_EPSILON)) {actualObstacleColor = saturate(actualObstacleColor * additiveStrength * 4);} //Violet
@@ -225,7 +223,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                     {
                         finalColour = multiplyColourLuminance(colorB, 0.75f);
                         finalColour = setColourSaturation(finalColour, 0.75f); //Uncomment to not display other mixed colors
-                        //finalColour = saturate(actualObstacleColor * additiveStrength); //Uncomment to also allow other mixed colors
+                        //finalColour = setColourSaturation(actualObstacleColor, 0.75f); //Uncomment to also allow other mixed colors
                         //finalColour = saturateColourFurther(finalColour);
                     }
                 }

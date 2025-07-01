@@ -235,6 +235,7 @@ void HandleCollisions(uint particleIndex)
     float2 vel = Velocities[particleIndex];
     int particleType = ParticleTypeBuffer[particleIndex][0];
     int particleProcessFlag = ParticleTypeBuffer[particleIndex][1];
+    float3 obstacleColor = ObstacleColorsBuffer[particleIndex];
 
     // If particle is already marked as non-participating (e.g. type -1), skip complex collision.
     // This check is vital if ParticleTypeBuffer can be set to -1 mid-step by this function.
@@ -374,6 +375,19 @@ void HandleCollisions(uint particleIndex)
                         collisionIndices[consideredObstacles] = -2; // Special marker for secondary color
                         consideredObstacles++;
                     }
+
+                    /*int tempCollisionIndices[4] = { -1, -1, -1, -1 };
+                    if(obstacleColor == mixableColors[particleType-1])
+                    {
+                        int collisionIndiceToReplace = consideredObstacles-1;
+                        collisionIndiceToReplace = collisionIndices[];
+                        tempCollisionIndices[0] = collisionIndiceToReplace;
+                        for(int i = 0; i < consideredObstacles-1; i++)
+                        {
+                            tempCollisionIndices[i] = collisionIndices[i];
+                        }
+                        collisionIndices = tempCollisionIndices;
+                    }*/
                 }
 
                 // REMOVAL LOGIC: Independently, check if the particle is close enough to be flagged for removal.
