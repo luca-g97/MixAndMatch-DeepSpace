@@ -45,10 +45,10 @@ MonoBehaviour:
     probeSamplingDebugTexture: {fileID: 0}
     probeVolumeBlendStatesCS: {fileID: 0}
   m_RendererFeatures:
-  - {fileID: 2524791775004087449}
   - {fileID: 6875646000025916761}
   - {fileID: -8298201067699921163}
-  m_RendererFeatureMap: 9954f210bedc09235955e1b89b336b5ff59efa3c18ded68c
+  - {fileID: 3362230582943559526}
+  m_RendererFeatureMap: 5955e1b89b336b5ff59efa3c18ded68c662f4ebde60aa92e
   m_UseNativeRenderPass: 0
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
@@ -97,6 +97,27 @@ MonoBehaviour:
     ditherType: 1
     SSR_Instance: {fileID: 0}
     SSRShader: {fileID: 4800000, guid: 03f5601bba0a8034aa526644e8b9aaeb, type: 3}
+--- !u!114 &3362230582943559526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1614fc811f8f184697d9bee70ab9fe5, type: 3}
+  m_Name: DecalRendererFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  m_Settings:
+    technique: 0
+    maxDrawDistance: 1000
+    decalLayers: 1
+    dBufferSettings:
+      surfaceData: 2
+    screenSpaceSettings:
+      normalBlend: 0
 --- !u!114 &6875646000025916761
 MonoBehaviour:
   m_ObjectHideFlags: 0

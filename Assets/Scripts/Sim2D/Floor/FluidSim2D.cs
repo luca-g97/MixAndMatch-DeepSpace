@@ -137,10 +137,10 @@ namespace Seb.Fluid2D.Simulation
         private static List<Color> colorPalette = ColorPalette.colorPalette;
         
         private int[] removedParticlesThisFrame = new int[colorPalette.Count];
-        private int4[] particlesReachedDestinationThisFrame = new int4[colorPalette.Count];
+        public int4[] particlesReachedDestinationThisFrame = new int4[colorPalette.Count];
 
         private int[] removedParticlesPerColor = new int[colorPalette.Count];
-        private int4[] particlesReachedDestination = new int4[colorPalette.Count];
+        public int4[] particlesReachedDestination = new int4[colorPalette.Count];
 
         List<Vector2> _gpuVerticesData = new List<Vector2>();
         List<ObstacleData> _gpuObstacleDataList = new List<ObstacleData>();
