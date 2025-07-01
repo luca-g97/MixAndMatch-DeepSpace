@@ -73,7 +73,7 @@ MonoBehaviour:
   m_DepthAttachmentFormat: 0
   m_DepthTextureFormat: 0
   m_AccurateGbufferNormals: 0
-  m_IntermediateTextureMode: 1
+  m_IntermediateTextureMode: 0
 --- !u!114 &2524791775004087449
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -109,7 +109,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1614fc811f8f184697d9bee70ab9fe5, type: 3}
   m_Name: DecalRendererFeature
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   m_Settings:
     technique: 0
     maxDrawDistance: 1000
@@ -133,14 +133,14 @@ MonoBehaviour:
   m_Active: 1
   m_Settings:
     AOMethod: 0
-    Downsample: 1
-    AfterOpaque: 0
+    Downsample: 0
+    AfterOpaque: 1
     Source: 1
     NormalSamples: 1
     Intensity: 1
     DirectLightingStrength: 0.25
-    Radius: 0.25
-    Samples: 1
+    Radius: 0.1
+    Samples: 0
     BlurQuality: 0
     Falloff: 100
     SampleCount: -1
