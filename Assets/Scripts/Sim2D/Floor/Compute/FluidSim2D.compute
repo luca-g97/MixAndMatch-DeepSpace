@@ -376,18 +376,21 @@ void HandleCollisions(uint particleIndex)
                         consideredObstacles++;
                     }
 
-                    /*int tempCollisionIndices[4] = { -1, -1, -1, -1 };
-                    if(obstacleColor == mixableColors[particleType-1])
+                    int tempCollisionIndices[4] = { -1, -1, -1, -1 };
+                    float3 diff = abs(obstacleColor - mixableColors[particleType-1]);
+                    if(all(diff < 0.01f))
                     {
-                        int collisionIndiceToReplace = consideredObstacles-1;
-                        collisionIndiceToReplace = collisionIndices[];
-                        tempCollisionIndices[0] = collisionIndiceToReplace;
+                        int collisionIndiceToPutFirst = consideredObstacles-1;
+                        tempCollisionIndices[0] = collisionIndices[collisionIndiceToPutFirst];
                         for(int i = 0; i < consideredObstacles-1; i++)
                         {
-                            tempCollisionIndices[i] = collisionIndices[i];
+                            if(i != collisionIndiceToPutFirst)
+                            {
+                                tempCollisionIndices[i+1] = collisionIndices[i];
+                            }
                         }
                         collisionIndices = tempCollisionIndices;
-                    }*/
+                    }
                 }
 
                 // REMOVAL LOGIC: Independently, check if the particle is close enough to be flagged for removal.

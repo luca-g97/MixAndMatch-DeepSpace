@@ -184,7 +184,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
                 if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
                 {
-                    float3 colorB = mixableColors[particleTypeToUse].rgb;
+                    float3 particleColor = mixableColors[particleTypeToUse].rgb;
                     float3 actualObstacleColor = obstacleColorSum / obstacleCount;
 
                     bool mixableColor = false;
@@ -221,7 +221,7 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                     }
                     else
                     {
-                        finalColour = multiplyColourLuminance(colorB, 0.75f);
+                        finalColour = multiplyColourLuminance(particleColor, 0.75f);
                         finalColour = setColourSaturation(finalColour, 0.75f); //Uncomment to not display other mixed colors
                         //finalColour = setColourSaturation(actualObstacleColor, 0.75f); //Uncomment to also allow other mixed colors
                         //finalColour = saturateColourFurther(finalColour);

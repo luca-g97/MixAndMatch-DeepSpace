@@ -195,7 +195,7 @@ MonoBehaviour:
   compute: {fileID: 7200000, guid: 1c77ce8de78fddb419ed2d15cae41af0, type: 3}
   spawner2D: {fileID: 271053320}
   obstacles: []
-  areaToColorAroundObstacles: 2
+  areaToColorAroundObstacles: 1
   minDistanceToRemoveParticles: 0.2
   coloredAreaAroundObstaclesDivider: 0
   particlesReachedDestinationThisFrame:
