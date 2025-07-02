@@ -7,6 +7,13 @@
       "dependencies": {},
       "hash": "f6d6db8bb46aa36d0e0737cba661233f0febb750"
     },
+    "com.gitamend.unityutils": {
+      "version": "https://github.com/adammyhre/Unity-Utils.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "abce380167a02eff74cfeb1b64a33e31efa1441e"
+    },
     "com.kylewbanks.scenerefattribute": {
       "version": "https://github.com/KyleBanks/scene-ref-attribute.git",
       "depth": 0,

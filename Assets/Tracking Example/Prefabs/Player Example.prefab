@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 7669986104714563405}
   - component: {fileID: 2035639172202885184}
   - component: {fileID: 5879520417297131090}
+  - component: {fileID: 1792496115951814854}
   m_Layer: 0
   m_Name: Player Example
   m_TagString: Player
@@ -174,6 +175,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   positionHistoryCount: 20
   minSpeedThreshold: 0.5
+--- !u!114 &1792496115951814854
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4967671303439236353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09ca41de16c5ae47b829ff0232abbf3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _playerDirectionTracker: {fileID: 5879520417297131090}
+  _loopedAudioSource: {fileID: 1887838589031371117}
+  _oneShotAudioSource: {fileID: 8697883485198951695}
+  _oilCollectedSound: {fileID: 0}
+  maxSpeedInput: 2
+  _minLoopedSoundVolumeMultiplier: 0.5
+  _maxLoopedSoundVolumeMultiplier: 1
+  _minLoopedSoundPitch: 0.8
+  _maxLoopedSoundPitch: 1.5
+  _oilCollectedPitchDelta: 0.1
 --- !u!1 &4967671305088396478
 GameObject:
   m_ObjectHideFlags: 0
@@ -322,6 +345,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 4967671303439236355}
     m_Modifications:
+    - target: {fileID: 1607087246672967022, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+      propertyPath: m_Volume
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1607087246672967022, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+      propertyPath: m_Resource
+      value: 
+      objectReference: {fileID: 8300000, guid: 42dedaed0de75c84fb2840483f80bfc0, type: 3}
+    - target: {fileID: 1607087246672967022, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+      propertyPath: m_audioClip
+      value: 
+      objectReference: {fileID: 8300000, guid: 42dedaed0de75c84fb2840483f80bfc0, type: 3}
     - target: {fileID: 4967671303439236353, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
       propertyPath: m_Name
       value: PlayerBoat
@@ -387,8 +422,18 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+--- !u!82 &1887838589031371117 stripped
+AudioSource:
+  m_CorrespondingSourceObject: {fileID: 1607087246672967022, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+  m_PrefabInstance: {fileID: 900568638497350659}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &5228609746933143808 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4967671303439236355, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+  m_PrefabInstance: {fileID: 900568638497350659}
+  m_PrefabAsset: {fileID: 0}
+--- !u!82 &8697883485198951695 stripped
+AudioSource:
+  m_CorrespondingSourceObject: {fileID: 8415645049051201804, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
   m_PrefabInstance: {fileID: 900568638497350659}
   m_PrefabAsset: {fileID: 0}

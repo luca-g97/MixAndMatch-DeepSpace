@@ -13,6 +13,7 @@ public class PlayerDirectionTracker : MonoBehaviour
     private float minSpeedThreshold = 1f;
 
     private List<Vector2> recentPositions = new List<Vector2>();
+    private float currentSpeed = 0f;
 
     void FixedUpdate()
     {
@@ -55,10 +56,10 @@ public class PlayerDirectionTracker : MonoBehaviour
         }
 
         // Calculate the average speed over the tracked duration
-        float speed = distance / timeElapsed;
+        currentSpeed = distance / timeElapsed;
 
         // Only update rotation if the player's speed is above the threshold
-        if (speed > minSpeedThreshold)
+        if (currentSpeed > minSpeedThreshold)
         {
             // We still need the direction vector to calculate the angle
             Vector2 direction = (currentPosition - oldestPosition).normalized;
@@ -74,5 +75,10 @@ public class PlayerDirectionTracker : MonoBehaviour
             // Apply the rotation to the player's local transform
             transform.localRotation = targetRotation;
         }
+    }
+
+    public float GetSpeed()
+    {
+        return currentSpeed;
     }
 }
