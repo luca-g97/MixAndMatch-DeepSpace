@@ -2545,10 +2545,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _playerPrefab: {fileID: 4967671303439236353, guid: 9722c485b1849de42bda55cccc77f2e7, type: 3}
   _addUnknownPlayerOnUpdate: 1
-  zeroAbsoluteX: -1.5
-  zeroAbsoluteY: -0.75
-  fullAbsoluteX: 4
-  fullAbsoluteY: 2
+  zeroAbsoluteX: -1
+  zeroAbsoluteY: -1
+  fullAbsoluteX: 1
+  fullAbsoluteY: 1
 --- !u!1001 &1625061828
 PrefabInstance:
   m_ObjectHideFlags: 0

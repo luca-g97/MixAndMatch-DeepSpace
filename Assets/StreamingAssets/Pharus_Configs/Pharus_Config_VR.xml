@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pharus>
+	<useXML>true</useXML>
+
+	<zeroAbsoluteX>-1.5</zeroAbsoluteX>
+
+	<zeroAbsoluteY>-0.75</zeroAbsoluteY>
+
+	<fullAbsoluteX>4.0</fullAbsoluteX>
+
+	<fullAbsoluteY>2.0</fullAbsoluteY>
+</pharus>

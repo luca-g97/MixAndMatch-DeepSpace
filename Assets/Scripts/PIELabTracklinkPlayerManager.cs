@@ -2,8 +2,13 @@
 using Assets.UnityPharusAPI.Managers;
 using Assets.UnityPharusAPI.Player;
 using Seb.Fluid2D.Simulation;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Xml;
 using UnityEngine;
 using UnityPharusAPI;
+using UnityPharusAPI.Services;
 using UnityPharusAPI.TransmissionFrameworks.Tracklink;
 
 namespace Assets.Tracking_Example.Scripts
@@ -14,6 +19,7 @@ namespace Assets.Tracking_Example.Scripts
         [SerializeField] private float zeroAbsoluteY;
         [SerializeField] private float fullAbsoluteX;
         [SerializeField] private float fullAbsoluteY;
+
         private FluidSim2D fluidSim;
         private Vector2 simulationBounds;
         private float factorX;
@@ -31,10 +37,65 @@ namespace Assets.Tracking_Example.Scripts
                 return;
             }
 
-                simulationBounds = fluidSim.boundsSize;
+            simulationBounds = fluidSim.boundsSize;
             factorX = simulationBounds.x / 2 * (-1);
             factorY = simulationBounds.y / 2 * (-1);
 
+            UpdateBoundaries();
+        }
+
+        private void UpdateBoundaries()
+        {
+            string configFileName = "Pharus_Config.xml";
+            string path = Path.Combine(Application.streamingAssetsPath, configFileName);
+
+            if (!File.Exists(path))
+            {
+                Debug.LogError("Pharus file Error! Using default values instead");
+                return;
+            }
+
+            try
+            {
+                XmlDocument xmlDocument = new XmlDocument();
+                xmlDocument.Load(path);
+
+                XmlNode root = xmlDocument.SelectSingleNode("pharus");
+                if (root == null)
+                {
+                    Debug.LogError("XML in wrong configuration. Using default values.");
+                    return;
+                }
+
+                XmlNode updateNode = root.SelectSingleNode("useXML");
+                if (updateNode != null && bool.TryParse(updateNode.InnerText, out bool shouldUpdate) && shouldUpdate)
+                {
+                    XmlNode zxNode = root.SelectSingleNode("zeroAbsoluteX");
+                    if (zxNode != null && float.TryParse(zxNode.InnerText, out float zx))
+                    {
+                        zeroAbsoluteX = zx;
+                    }
+                    XmlNode zyNode = root.SelectSingleNode("zeroAbsoluteY");
+                    if (zyNode != null && float.TryParse(zyNode.InnerText, out float zy))
+                    {
+                        zeroAbsoluteY = zy;
+                    }
+                    XmlNode fxNode = root.SelectSingleNode("fullAbsoluteX");
+                    if (fxNode != null && float.TryParse(fxNode.InnerText, out float fx))
+                    {
+                        fullAbsoluteX = fx;
+                    }
+                    XmlNode fyNode = root.SelectSingleNode("fullAbsoluteY");
+                    if (fyNode != null && float.TryParse(fyNode.InnerText, out float fy))
+                    {
+                        fullAbsoluteY = fy;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogErrorFormat("XML read error: {0}", e.Message);
+            }
         }
 
         public override void AddPlayer(TrackRecord trackRecord)
@@ -91,8 +152,9 @@ namespace Assets.Tracking_Example.Scripts
 
                     Vector2 newPlayerPos = new Vector2();
                     float percentX = Mathf.InverseLerp(zeroAbsoluteX, fullAbsoluteX, trackRecord.currentPos.x);
+                    float percentY = Mathf.InverseLerp(zeroAbsoluteY, fullAbsoluteY, trackRecord.currentPos.y);
                     newPlayerPos.x = factorX + percentX * simulationBounds.x;
-                    newPlayerPos.y = factorY + Mathf.InverseLerp(zeroAbsoluteY, fullAbsoluteY, trackRecord.currentPos.y) * simulationBounds.y;
+                    newPlayerPos.y = factorY + percentY * simulationBounds.y;
                     aPlayer.SetPosition(newPlayerPos);
 
                     return;
