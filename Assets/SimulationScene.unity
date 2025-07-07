@@ -305,6 +305,10 @@ MonoBehaviour:
   ventilLineColor: {r: 1, g: 1, b: 1, a: 0}
   obstacleLineWidth: 0
   lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
+  _minLoopedSoundPitch: 0.8
+  _maxLoopedSoundPitch: 1.2
+  _oilCollectedPitchDelta: 0.1
+  _oilCollectedSound: {fileID: 8300000, guid: 5d33586386f8d0a47aa72c317ea4e38b, type: 3}
 --- !u!114 &271053320
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3032,6 +3036,10 @@ MonoBehaviour:
   ventilLineColor: {r: 1, g: 1, b: 1, a: 0}
   obstacleLineWidth: 0
   lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
+  _minLoopedSoundPitch: 0.8
+  _maxLoopedSoundPitch: 1.2
+  _oilCollectedPitchDelta: 0.1
+  _oilCollectedSound: {fileID: 0}
 --- !u!4 &1660149314
 Transform:
   m_ObjectHideFlags: 0

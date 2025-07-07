@@ -11,6 +11,7 @@
 #pragma kernel CopyCollisionBuffer
 #pragma kernel ClearIntBuffer
 #pragma kernel ClearInt4Buffer
+#pragma kernel FlagParticlesForCompaction
 
 #include "./FluidMaths2D.hlsl"
 #include "./SpatialHash.hlsl"
@@ -46,6 +47,8 @@ RWStructuredBuffer<int2> ParticleTypeBuffer;
 RWStructuredBuffer<uint> SpatialKeys;
 RWStructuredBuffer<uint> SpatialOffsets;
 RWStructuredBuffer<int4> CopiedCollisionBuffer_Destination;
+RWStructuredBuffer<int> ParticleFlags;
+StructuredBuffer<int> Source_ParticleFlags;
 
 // Buffers that are read-only in most contexts
 StructuredBuffer<float> GravityScales;
@@ -63,6 +66,8 @@ RWStructuredBuffer<float2> SortTarget_PredictedPositions;
 RWStructuredBuffer<float2> SortTarget_Velocities;
 RWStructuredBuffer<int2> SortTarget_ParticleType;
 RWStructuredBuffer<int4> SortTarget_Collision;
+RWStructuredBuffer<uint> RemovedParticlesPositionCounter;
+RWStructuredBuffer<float2> RemovedParticlesPositionBuffer;
 
 // This is the atomic counter, it MUST be RW (UAV)
 RWStructuredBuffer<uint> CompactionInfoBuffer;
@@ -734,33 +739,33 @@ void UpdatePositions(uint3 id : SV_DispatchThreadID)
 void ResetCompactionCounter(uint3 id : SV_DispatchThreadID)
 {
     CompactionInfoBuffer[0] = 0;
+    RemovedParticlesPositionCounter[0] = 0;
 }
 
 [numthreads(NumThreads, 1, 1)]
-void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
+void FlagParticlesForCompaction(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles)
+    {
+        ParticleFlags[id.x] = 0;
         return;
+    }
 
     int particleTypeIndex = Source_ParticleType[id.x].x;
     int removalFlag = Source_ParticleType[id.x].y;
-    bool shouldKeep = true;
-    
-    // --- Step 1: Get the particle's CURRENT VISUAL color from mixableColors ---
     int particleColorIndex = particleTypeIndex - 1;
+    int flag = 1;
 
-    if (removalFlag <= -2) // Ventil removal
+    if (removalFlag <= -2)
     {
-        shouldKeep = false;
+        flag = removalFlag;
         InterlockedAdd(particlesReachedDestinationThisFrame[particleColorIndex][abs(removalFlag + 2)], 1);
     }
-    else if (removalFlag >= 0) // Player flagged this particle
+    else if (removalFlag >= 0)
     {
         if (particleTypeIndex > 0)
         {
             float3 particleVisualColor = mixableColors[particleColorIndex].rgb;
-
-            // --- Step 2: Get the UNIQUE BASE colors of all nearby players ---
             int4 nearbyObstacleIndices = Source_Collision[id.x];
             float3 uniqueColors[4];
             int uniqueColorCount = 0;
@@ -787,8 +792,7 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
                     }
                 }
             }
-
-            // --- Step 3: AVERAGE the unique base colors to get the resulting blend ---
+            
             if (uniqueColorCount > 0)
             {
                 float3 blendedColorSum = float3(0, 0, 0);
@@ -798,18 +802,27 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
                 }
                 float3 blendedColorAverage = blendedColorSum / uniqueColorCount;
 
-                // --- Step 4: Compare the blend of base colors to the particle's current visual color ---
                 if (distance(blendedColorAverage, particleVisualColor) < 0.02)
                 {
-                    shouldKeep = false;
+                    flag = 0;
                     InterlockedAdd(removedParticlesThisFrame[particleColorIndex], 1);
                 }
             }
         }
     }
+    
+    ParticleFlags[id.x] = flag;
+}
 
-    // Compaction Step...
-    if (shouldKeep)
+[numthreads(NumThreads, 1, 1)]
+void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles)
+        return;
+
+    int flag = Source_ParticleFlags[id.x];
+    
+    if (flag >= 1)
     {
         uint newIndex;
         InterlockedAdd(CompactionInfoBuffer[0], 1, newIndex);
@@ -821,6 +834,12 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
         int2 currentParticleTypeInfo = Source_ParticleType[id.x];
         currentParticleTypeInfo.y = -1;
         SortTarget_ParticleType[newIndex] = currentParticleTypeInfo;
+    }
+    else
+    {
+        uint newRemovedIndex;
+        InterlockedAdd(RemovedParticlesPositionCounter[0], 1, newRemovedIndex);
+        RemovedParticlesPositionBuffer[newRemovedIndex] = Source_Positions[id.x];
     }
 }
 

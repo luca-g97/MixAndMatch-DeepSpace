@@ -9,8 +9,6 @@ public class PlayerSound : ValidatedMonoBehaviour
     [SerializeField, Self] PlayerDirectionTracker _playerDirectionTracker;
     [SerializeField] private AudioSource _loopedAudioSource;
     [SerializeField] private AudioSource _oneShotAudioSource;
-    
-    [SerializeField] private AudioClip _oilCollectedSound;
 
     [SerializeField] private float maxSpeedInput;
     [SerializeField] private float _minLoopedSoundVolumeMultiplier;
@@ -20,12 +18,10 @@ public class PlayerSound : ValidatedMonoBehaviour
     [SerializeField] private float _oilCollectedPitchDelta = 0.1f;
     
     private float defaultLoopedSourceVolume;
-    private float defaultOneShotSourcePitch;
 
     private void Awake()
     {
         defaultLoopedSourceVolume = _loopedAudioSource.volume;
-        defaultOneShotSourcePitch = _oneShotAudioSource.pitch;
     }
 
     private void OnEnable()
@@ -52,12 +48,6 @@ public class PlayerSound : ValidatedMonoBehaviour
         loopedSoundPitchBySpeed = Mathf.Clamp(loopedSoundPitchBySpeed, _minLoopedSoundPitch, _maxLoopedSoundPitch);
         
         _loopedAudioSource.pitch = loopedSoundPitchBySpeed;
-    }
-    
-    public void PlayOilCollectedSound()
-    {
-        _oneShotAudioSource.pitch = Random.Range(defaultOneShotSourcePitch - _oilCollectedPitchDelta, defaultOneShotSourcePitch + _oilCollectedPitchDelta);
-        _oneShotAudioSource.PlayOneShot(_oilCollectedSound);
     }
 
     private async void StartAudioDelayed() // This method is called to ensure the audio starts after a short delay, otherwise a short and loud buzz is heard when a new player spawns
