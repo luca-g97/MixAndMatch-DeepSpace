@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices; // For Marshal.SizeOf
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Audio;
 using UnityEngine.Rendering; // Required for AsyncGPUReadback
 
 namespace Seb.Fluid2D.Simulation
@@ -1204,6 +1205,7 @@ namespace Seb.Fluid2D.Simulation
         [SerializeField] private float _maxLoopedSoundPitch = 1.2f;
         [SerializeField] private float _oilCollectedPitchDelta = 0.1f;
         [SerializeField] private AudioClip _oilCollectedSound;
+        [SerializeField] private AudioMixerGroup _audioMixerOil;
         void PlaySoundAtPosition(Vector2[] positions)
         {
             foreach (Vector2 position in positions)
@@ -1213,6 +1215,7 @@ namespace Seb.Fluid2D.Simulation
 
                 AudioSource audioSource = tempAudio.AddComponent<AudioSource>();
                 audioSource.clip = _oilCollectedSound;
+                audioSource.outputAudioMixerGroup = _audioMixerOil;
                 audioSource.pitch = UnityEngine.Random.Range(1.0f - _oilCollectedPitchDelta, 1.0f + _oilCollectedPitchDelta);
                 audioSource.spatialBlend = 1.0f;
                 audioSource.Play();

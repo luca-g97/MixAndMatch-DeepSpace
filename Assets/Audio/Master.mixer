@@ -19,6 +19,25 @@ AudioMixerGroupController:
   m_Mute: 0
   m_Solo: 0
   m_BypassEffects: 0
+--- !u!243 &-7125921913927979170
+AudioMixerGroupController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Oil-Collect
+  m_AudioMixer: {fileID: 24100000}
+  m_GroupID: f419ca7b1ff889f42b7c30f47137396f
+  m_Children: []
+  m_Volume: 915b7bc5b924ee2419664fed89dead75
+  m_Pitch: 145061c8d28971e4b9256c4f2dcd11e7
+  m_Send: 00000000000000000000000000000000
+  m_Effects:
+  - {fileID: -5840368508854833451}
+  m_UserColorIndex: 0
+  m_Mute: 0
+  m_Solo: 0
+  m_BypassEffects: 0
 --- !u!244 &-6353582469035199115
 AudioMixerEffectController:
   m_ObjectHideFlags: 3
@@ -29,6 +48,20 @@ AudioMixerEffectController:
   m_EffectID: 8f510e3a81e880a4780f2b7db6f1300a
   m_EffectName: Attenuation
   m_MixLevel: 2634bc61b0e05ed4badcb9573fe242c4
+  m_Parameters: []
+  m_SendTarget: {fileID: 0}
+  m_EnableWetMix: 0
+  m_Bypass: 0
+--- !u!244 &-5840368508854833451
+AudioMixerEffectController:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_EffectID: c9f2aaa340a930546a166d54bdcaa173
+  m_EffectName: Attenuation
+  m_MixLevel: 745e4d79710be4a43bab688da55a722d
   m_Parameters: []
   m_SendTarget: {fileID: 0}
   m_EnableWetMix: 0
@@ -119,6 +152,7 @@ AudioMixerController:
     - 3cdf4597486e9b44c92d7663a9dc18cc
     - 32ce6b00a86512847aa7f4f4c88424b7
     - f136c2b0e507aef45a12f58b6cf1069a
+    - f419ca7b1ff889f42b7c30f47137396f
     name: View
   m_CurrentViewIndex: 0
   m_TargetSnapshot: {fileID: 24500006}
@@ -167,6 +201,7 @@ AudioMixerSnapshotController:
   m_AudioMixer: {fileID: 24100000}
   m_SnapshotID: bfd32b52ae1cf8d4ca4a85fa13295f61
   m_FloatValues:
+    915b7bc5b924ee2419664fed89dead75: 6.6486793
     928a5618b6b49b943bc8e9b294501d4c: 0
     d901791987caea244bd0bcafc58aff88: -2.8722944
     7fb46a6fece883f42b758818c599e51f: -3
@@ -246,7 +281,8 @@ AudioMixerGroupController:
   m_Name: InGameSFX_Floor
   m_AudioMixer: {fileID: 24100000}
   m_GroupID: 7f9a366b4b64c45489f0ac481341ffa2
-  m_Children: []
+  m_Children:
+  - {fileID: -7125921913927979170}
   m_Volume: d901791987caea244bd0bcafc58aff88
   m_Pitch: 4e875b8ddf79479468db8c4bb1b2574e
   m_Send: 00000000000000000000000000000000
