@@ -835,8 +835,8 @@ namespace Seb.Fluid2D.Simulation
                     {
                         vertexStart = currentVertices.Count,
                         vertexCount = points.Length,
-                        maxVelocity = current.maxVelocity,
-                        width = current.width,
+                        maxVelocity = current.currentVelocity,
+                        width = current.currentWidth,
                         linearFactor = current.linearFactor
                     });
                     currentVertices.AddRange(points);

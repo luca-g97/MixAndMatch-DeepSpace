@@ -1,17 +1,35 @@
+using System;
+using DG.Tweening;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 [RequireComponent(typeof(LineRenderer))]
 public class Current : MonoBehaviour
 {
     [Header("Current Settings")]
-    public float maxVelocity = 50f;
-    [Min(0.001f)]public float width = 5f;
+    public float currentVelocity = 50f;
+    [Min(0.001f)] public float currentWidth = 5f;
     [Range(-1, 1)] public float linearFactor = 0f;
 
-    [Header("Visualization")]
-    public Color currentColor = Color.cyan;
+    [SerializeField] private float _minVelocity = 0.01f;
+    [SerializeField] private float _maxVelocity = 0.1f;
+    [SerializeField] private float _minWidth = 0.25f;
+    [SerializeField] private float _maxWidth = 0.75f;
+    [SerializeField] private float _minChangeDuration = 4f;
+    [SerializeField] private float _maxChangeDuration = 8f;
+    [SerializeField] private float _minStayTime = 0.5f;
+    [SerializeField] private float _maxStayTime = 5f;
 
-    private LineRenderer lineRenderer;
+    [Header("Visualization")]
+    public Color _currentColor = Color.cyan;
+
+    private LineRenderer _lineRenderer;
+    private Sequence _currentSequence;
+
+    private float _targetVelocity;
+    private float _targetWidth;
+    private float _newChangeDuration;
+    private float _newStayTime;
 
     void OnValidate()
     {
@@ -25,35 +43,49 @@ public class Current : MonoBehaviour
         InitializeLineRenderer();
         UpdateVisual();
 #endif
+        RerollTargetValues();
+        SetCurrentVelocity(_targetVelocity);
+        SetCurrentWidth(_targetWidth);
+        CurrentSequence();
+    }
+
+    private void Update()
+    {
+        if (_currentSequence == null || !_currentSequence.IsActive() || !_currentSequence.IsPlaying())
+        {
+            _currentSequence?.Kill();
+            _currentSequence = CurrentSequence();
+        }
     }
 
     void InitializeLineRenderer()
     {
-        if (!lineRenderer) lineRenderer = GetComponent<LineRenderer>();
-        lineRenderer.alignment = LineAlignment.View;
-        lineRenderer.textureMode = LineTextureMode.Tile;
+        if (!_lineRenderer) _lineRenderer = GetComponent<LineRenderer>();
+        _lineRenderer.alignment = LineAlignment.View;
+        _lineRenderer.textureMode = LineTextureMode.Tile;
     }
 
     void UpdateVisual()
     {
-        lineRenderer.startColor = currentColor;
-        lineRenderer.endColor = currentColor;
-        lineRenderer.startWidth = width * 0.1f;
-        lineRenderer.endWidth = width * 0.1f;
+        _lineRenderer.startColor = _currentColor;
+        _lineRenderer.endColor = _currentColor;
+        _lineRenderer.startWidth = currentWidth * 0.1f;
+        _lineRenderer.endWidth = currentWidth * 0.1f;
 
-        Vector3[] points = new Vector3[lineRenderer.positionCount];
-        lineRenderer.GetPositions(points);
+        Vector3[] points = new Vector3[_lineRenderer.positionCount];
+        _lineRenderer.GetPositions(points);
         for (int i = 0; i < points.Length; i++)
         {
             points[i].z = 0;
         }
-        lineRenderer.SetPositions(points);
+
+        _lineRenderer.SetPositions(points);
     }
 
     public Vector2[] GetWorldPoints()
     {
-        Vector3[] localPoints = new Vector3[lineRenderer.positionCount];
-        lineRenderer.GetPositions(localPoints);
+        Vector3[] localPoints = new Vector3[_lineRenderer.positionCount];
+        _lineRenderer.GetPositions(localPoints);
 
         Vector2[] worldPoints = new Vector2[localPoints.Length];
         for (int i = 0; i < localPoints.Length; i++)
@@ -61,6 +93,38 @@ public class Current : MonoBehaviour
             Vector3 worldPoint = transform.TransformPoint(localPoints[i]);
             worldPoints[i] = new Vector2(worldPoint.x, worldPoint.y);
         }
+
         return worldPoints;
+    }
+
+    private Sequence CurrentSequence()
+    {
+        return DOTween.Sequence()
+            .AppendCallback(RerollTargetValues)
+            .Append(DOTween.To(() => currentVelocity, SetCurrentVelocity, _targetVelocity,
+                _newChangeDuration))
+            .Join(DOTween.To(() => currentWidth, SetCurrentWidth,
+                _targetWidth, _newChangeDuration))
+            .AppendInterval(_newStayTime);
+    }
+    
+    private void RerollTargetValues()
+    {
+        _targetVelocity = Random.Range(_minVelocity, _maxVelocity);
+        _targetWidth = Random.Range(_minWidth, _maxWidth);
+        _newChangeDuration = Random.Range(_minChangeDuration, _maxChangeDuration);
+        _newStayTime = Random.Range(_minStayTime, _maxStayTime);
+    }
+
+    private void SetCurrentVelocity(float velocity)
+    {
+        currentVelocity = Mathf.Clamp(velocity, _minVelocity, _maxVelocity);
+        //UpdateVisual();
+    }
+
+    private void SetCurrentWidth(float width)
+    {
+        currentWidth = Mathf.Clamp(width, _minWidth, _maxWidth);
+        UpdateVisual();
     }
 }

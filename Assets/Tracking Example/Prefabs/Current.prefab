@@ -87,7 +87,7 @@ LineRenderer:
       m_Curve:
       - serializedVersion: 3
         time: 0
-        value: 8
+        value: 40
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -96,7 +96,7 @@ LineRenderer:
         outWeight: 0.33333334
       - serializedVersion: 3
         time: 1
-        value: 8
+        value: 40
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -159,7 +159,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c9cee81970255c14e93fd4165f0c4092, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxVelocity: 0.05
-  width: 1
+  currentVelocity: 50
+  currentWidth: 5
   linearFactor: 0
-  currentColor: {r: 0, g: 1, b: 1, a: 1}
+  _minVelocity: 0.01
+  _maxVelocity: 0.1
+  _minWidth: 0.25
+  _maxWidth: 0.75
+  _minChangeDuration: 0.5
+  _maxChangeDuration: 1.5
+  _minStayTime: 0.5
+  _maxStayTime: 1.5
+  _currentColor: {r: 0, g: 1, b: 1, a: 1}
