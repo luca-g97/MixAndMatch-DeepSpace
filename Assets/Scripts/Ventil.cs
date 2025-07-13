@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using KBCore.Refs;
@@ -11,7 +12,7 @@ public class Ventil : ValidatedMonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     
     private MaterialPropertyBlock _materialPropertyBlock;
-    [HideInInspector] public bool IsDestroyed => currentHealthPoints <= 0;
+    [HideInInspector] public bool IsNotAlive => currentHealthPoints <= 0;
     
     private static readonly int _SATURATION = Shader.PropertyToID("_Saturation");
     private static readonly int _TINT = Shader.PropertyToID("_Tint");
@@ -20,15 +21,16 @@ public class Ventil : ValidatedMonoBehaviour
     private Sequence _currentColorSequence;
     private float _defaultScale;
     private static List<Color> _colorPalette = ColorPalette.colorPalette;
-    
+
+
+    private void Awake()
+    {
+        _defaultScale = transform.localScale.x; // Assuming uniform scale
+    }
+
     void Start()
     {
         _materialPropertyBlock = new MaterialPropertyBlock();
-        
-        // Initialize current health points
-        currentHealthPoints = maxHealthPoints;
-        _defaultScale = transform.localScale.x; // Assuming uniform scale
-
         transform.localScale = Vector3.zero;
         SpawnSequence();
     }
@@ -49,7 +51,7 @@ public class Ventil : ValidatedMonoBehaviour
     
     public void UpdateHealth(int particlesReachedThisFrame)
     {
-        if (IsDestroyed) return;
+        if (IsNotAlive) return;
         currentHealthPoints -= particlesReachedThisFrame;
         
         if (currentHealthPoints <= 0)
@@ -58,9 +60,14 @@ public class Ventil : ValidatedMonoBehaviour
         }
     }
     
+    public void Kill()
+    {
+       UpdateHealth(10000);
+    }
+    
     public void UpdateTintByParticleType(int type)
     {
-        if (IsDestroyed) return;
+        if (IsNotAlive) return;
         
         if (type < 0 || type >= _colorPalette.Count)
         {
@@ -76,21 +83,22 @@ public class Ventil : ValidatedMonoBehaviour
         float saturationByHealth = Helper.RemapRange(currentHealthPoints, 0, maxHealthPoints, 0f, 1f);
         _materialPropertyBlock.SetFloat(_SATURATION, saturationByHealth);
     }
-    
-    private void DestroyedSequence()
+
+    public void DestroyedSequence()
     {
         _currentSpawnSequence?.Kill();
         _currentSpawnSequence = DOTween.Sequence()
-            .Append(transform.DOScale(0, 1f).SetEase(Ease.InBack));
-        //.OnComplete((() => gameObject.SetActive(false)));
+            .Append(transform.DOScale(0, 0.5f).SetEase(Ease.InBack))
+        .OnComplete((() => gameObject.SetActive(false)));
     }
-    
-    private void SpawnSequence ()
+
+    public void SpawnSequence ()
     {
+        currentHealthPoints = maxHealthPoints;
         _currentSpawnSequence?.Kill();
         gameObject.SetActive(true);
         _currentSpawnSequence = DOTween.Sequence()
-            .Append(transform.DOScale(_defaultScale, 1f).SetEase(Ease.OutBack));
+            .Append(transform.DOScale(_defaultScale, 0.5f).SetEase(Ease.OutBack));
     }
 
     private void ColoringSequence(Color color)
