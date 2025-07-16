@@ -228,41 +228,55 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                     float3 particleColor = mixableColors[particleTypeToUse].rgb;
                     float3 mixedColor = obstacleColorSum / obstacleCount;
 
-                    bool mixableColor = false;
+                    // Condition 1: Check if the final MIXED color is an exact match for the particle's own color.
                     bool isExactMatchingColor = false;
-                    for (int i = 0; i < 12; i++)
+                    if (distance(mixedColor, particleColor) < COMPARE_EPSILON)
                     {
-                        float3 diff = abs(mixableColors[i].rgb - mixedColor);
-                        if(all(diff < COMPARE_EPSILON))
+                        isExactMatchingColor = true;
+                    }
+
+                    // Condition 2: Check if the particle's own color is one of the UNIQUE colors from nearby obstacles.
+                    bool particleColorIsPresent = false;
+                    for (int i = 0; i < obstacleCount; i++)
+                    {
+                        if (distance(uniqueColors[i], particleColor) < COMPARE_EPSILON)
                         {
-                            mixableColor = true;
-                            if (i == particleTypeToUse)
-                            {
-                                isExactMatchingColor = true; 
-                                break;
-                            }
+                            particleColorIsPresent = true;
+                            break;
                         }
                     }
 
-                    if(isExactMatchingColor)
+                    // --- Apply final color based on the two conditions ---
+                    // Highlight the particle if EITHER condition is true.
+                    if (isExactMatchingColor || particleColorIsPresent)
                     {
-                        finalColour = setColourSaturation(mixedColor, 1);
-                        finalColour = multiplyColourLuminance(finalColour, 2);
-                    }
-                    else if(obstacleCount > 1 && mixableColor) // TODO: not working yet
-                    { 
-                        finalColour = setColourSaturation(mixedColor, 1);
-                        finalColour = multiplyColourLuminance(finalColour, 2.5);
+                        // Apply the bright highlight effect. Using particleColor directly ensures a consistent highlight color.
+                        finalColour = setColourSaturation(particleColor, 1);
+                        
+                        //Highlight all collectable colors in the mixed color as mix
+                        //finalColour = setColourSaturation(mixedColor, 1);
+                        //finalColour = multiplyColourLuminance(finalColour, 2); //Uncomment to highlight the mixedColor
+
+                        //Highlight each color individually (e.g. red, yellow and orange seperately)
+                        if(obstacleCount > 1)
+                        {
+                            finalColour = multiplyColourLuminance(finalColour, 2.5);
+                        }
+                        else
+                        {
+                            finalColour = multiplyColourLuminance(finalColour, 1.75);
+                        }
                     }
                     else
                     {
-                        finalColour = multiplyColourLuminance(particleColor, 0.75f); //Uncomment to not display other mixed colors
-                        //finalColour = multiplyColourLuminance(mixedColor, 0.75f); //Uncomment to also allow other mixed colors
+                        // Not a highlight case, so apply the default dim/desaturated effect.
+                        finalColour = multiplyColourLuminance(particleColor, 0.75f);
                         finalColour = setColourSaturation(finalColour, 0.75f);
                     }
                 }
                 else if (particleType > 0)
                 {
+                    // Default particle color when not near any obstacles.
                     float3 playerColour = mixableColors[particleTypeToUse].rgb;
                     finalColour = playerColour;
                 }
