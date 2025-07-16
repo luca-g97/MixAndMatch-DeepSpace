@@ -182,9 +182,9 @@ MonoBehaviour:
   oilPressureMultiplier: 30
   oilNearPressureMultiplier: 180
   oilViscosityStrength: 0.4
-  interactionRadius: 5
-  interactionStrength: 50
-  mouseGravityStrength: 10
+  interactionRadius: 0
+  interactionStrength: 0
+  mouseGravityStrength: 0
   mouseGravityRadius: 5
   invertMouseGravity: 0
   compute: {fileID: 7200000, guid: 1c77ce8de78fddb419ed2d15cae41af0, type: 3}
@@ -339,89 +339,90 @@ MonoBehaviour:
     debugCol: {r: 0.254902, g: 0.4117647, b: 0.882353, a: 1}
   - name: OilRed
     particleType: 1
-    position: {x: -6, y: 3.5}
-    size: {x: 4, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
     debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilYellow
     particleType: 2
-    position: {x: -1.43, y: 3.5}
-    size: {x: 4, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilBlue
     particleType: 3
-    position: {x: 3.98, y: 3.5}
-    size: {x: 4, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0, g: 0, b: 1, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilOrange
     particleType: 4
-    position: {x: -3.715, y: 3.5}
-    size: {x: 4, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 1, g: 0.5490196, b: 0, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilViolet
     particleType: 5
-    position: {x: 6, y: 3.5}
-    size: {x: 4, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.5803922, g: 0, b: 0.8274511, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilLimeGreen
     particleType: 6
-    position: {x: 1.4, y: 3.5}
-    size: {x: 4, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0, g: 1, b: 0, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilRedOrange
     particleType: 7
-    position: {x: 0.75, y: 0}
-    size: {x: 1, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilYellowOrange
     particleType: 8
-    position: {x: 2, y: 0}
-    size: {x: 1, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilRedViolet
     particleType: 9
-    position: {x: 3.25, y: 0}
-    size: {x: 1, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilBlueViolet
     particleType: 10
-    position: {x: 4.5, y: 0}
-    size: {x: 1, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilYellowGreen
     particleType: 11
-    position: {x: 5.75, y: 0}
-    size: {x: 1, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   - name: OilBlueGreen
     particleType: 12
-    position: {x: 7, y: 0}
-    size: {x: 1, y: 1}
+    position: {x: 0, y: 3.4}
+    size: {x: 15, y: 0.2}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 1, g: 0, b: 0, a: 1}
   fluidSimulation: {fileID: 271053319}
+  fluidSimulation_Wall: {fileID: 0}
   initialSpawnParticleCount: 26418
   currentSimParticleCount_Inspector: 0
 --- !u!114 &271053322
@@ -3299,6 +3300,7 @@ MonoBehaviour:
     particlesPerSecond: 0
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   fluidSimulation: {fileID: 1660149313}
+  fluidSimulation_Wall: {fileID: 0}
   initialSpawnParticleCount: 26418
   currentSimParticleCount_Inspector: 0
 --- !u!114 &1660149313

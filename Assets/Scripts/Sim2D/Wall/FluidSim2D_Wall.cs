@@ -62,7 +62,7 @@ namespace Seb.Fluid2D.Simulation
 
         public ComputeBuffer removedParticlesPositionBuffer { get; private set; }
         ComputeBuffer removedParticlesPositionCounter_Wall;
-        private Vector2[] _removedPositionsCache;
+        private Vector4[] _removedPositionsCache;
         ComputeBuffer sortTarget_Position;
         ComputeBuffer sortTarget_PredicitedPosition;
         ComputeBuffer sortTarget_Velocity;
@@ -151,6 +151,8 @@ namespace Seb.Fluid2D.Simulation
         private int[] removedParticlesPerColor_Wall = new int[colorPalette.Count];
         private int4[] particlesReachedDestination_Wall = new int4[colorPalette.Count];
 
+        public List<Vector4> transferedParticles = new List<Vector4>();
+
         List<Vector2> _gpuVerticesData = new List<Vector2>();
         List<ObstacleData> _gpuObstacleDataList = new List<ObstacleData>();
         List<Color> _gpuObstacleColorsData = new List<Color>();
@@ -177,15 +179,10 @@ namespace Seb.Fluid2D.Simulation
             Debug.Log("Controls: Space = Play/Pause, R = Reset, LMB = Attract, RMB = Repel, G + Mouse = Gravity Well");
             InitSimulation();
         }
-        
+
         void LateUpdate()
         {
-        	//TODO:
-            var test = GetRemovedParticlePositions();
-            if (test.Length > 0)
-            {
-                Debug.Log(test[0] + " " + test[1]);
-            }
+            GetRemovedParticlePositions();
         }
 
         void Awake()
@@ -437,11 +434,11 @@ namespace Seb.Fluid2D.Simulation
             if (currentVerticesBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer_Wall", currentVerticesBuffer);
         }
 
-		public Vector2[] GetRemovedParticlePositions()
+		public void GetRemovedParticlePositions()
         {
             if (removedParticlesPositionCounter_Wall == null || !removedParticlesPositionCounter_Wall.IsValid() || removedParticlesPositionBuffer == null || !removedParticlesPositionBuffer.IsValid())
             {
-                return System.Array.Empty<Vector2>();
+                return;
             }
 
             uint[] countData = { 0 };
@@ -450,20 +447,23 @@ namespace Seb.Fluid2D.Simulation
 
             if (count == 0)
             {
-                return System.Array.Empty<Vector2>();
+                return;
             }
 
             if (_removedPositionsCache == null || _removedPositionsCache.Length < count)
             {
-                _removedPositionsCache = new Vector2[count];
+                _removedPositionsCache = new Vector4[count];
             }
 
             removedParticlesPositionBuffer.GetData(_removedPositionsCache, 0, 0, count);
 
-            Vector2[] result = new Vector2[count];
+            Vector4[] result = new Vector4[count];
             System.Array.Copy(_removedPositionsCache, 0, result, 0, count);
 
-            return result;
+            foreach (Vector4 particle in result)
+            {
+                transferedParticles.Add(particle);
+            }
         }
         
         void UpdateComputeShaderDynamicParams()

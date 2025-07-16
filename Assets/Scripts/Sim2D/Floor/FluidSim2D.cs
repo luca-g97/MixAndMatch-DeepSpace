@@ -615,7 +615,7 @@ namespace Seb.Fluid2D.Simulation
             UpdateComputeShaderDynamicParams();
         }
 
-        void ReadbackAndResetGpuCounters()
+        async void ReadbackAndResetGpuCounters() 
         {
             if (gpu_removedParticlesCounter == null || gpu_particlesReachedDestinationCounter == null || (lastPlayerCount == 0)) return;
 

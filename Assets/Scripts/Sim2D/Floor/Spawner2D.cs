@@ -20,6 +20,7 @@ public class Spawner2D : MonoBehaviour
     [Header("References")]
     [Tooltip("Assign the FluidSim2D instance here to display its current particle count.")]
     public FluidSim2D fluidSimulation; // << NEW: Assign FluidSim2D instance in Inspector
+    public FluidSim2D_Wall fluidSimulation_Wall;
 
     [Header("Debug Info")]
     [Tooltip("Number of particles this spawner would create in an initial burst based on its settings.")]
@@ -36,6 +37,15 @@ public class Spawner2D : MonoBehaviour
 
     void Update()
     {
+        if (!fluidSimulation_Wall)
+        {
+            try
+            {
+                fluidSimulation_Wall = GameObject.FindFirstObjectByType<FluidSim2D_Wall>().gameObject.GetComponent<FluidSim2D_Wall>();
+            }
+            catch { }
+        }
+
         // Update the Inspector field with the live particle count from FluidSim2D
         if (fluidSimulation != null)
         {
@@ -86,7 +96,7 @@ public class Spawner2D : MonoBehaviour
 
     public ParticleSpawnData GetNewlySpawnedParticles(int currentTotalParticles, int maxTotalParticles)
     {
-        if (!allowContinuousSpawning || currentTotalParticles >= maxTotalParticles)
+        if (!fluidSimulation_Wall || !allowContinuousSpawning || currentTotalParticles >= maxTotalParticles)
         {
             return new ParticleSpawnData(0);
         }
@@ -96,41 +106,16 @@ public class Spawner2D : MonoBehaviour
         List<int2> newParticleTypes = new();
         int particlesAddedThisFrame = 0;
 
-        for (int regionIndex = 0; regionIndex < spawnRegions.Length; regionIndex++)
+        foreach (Vector4 particle in fluidSimulation_Wall.transferedParticles)
         {
-            SpawnRegion region = spawnRegions[regionIndex]; // Struct copy
-            if (region.particlesPerSecond <= 0) continue;
-
-            float newSpawnsPotential = region.particlesPerSecond + spawnRegions[regionIndex].spawnAccumulator;
-            int numToSpawnThisRegion = Mathf.FloorToInt(newSpawnsPotential);
-            // Update the accumulator in the actual array element
-            spawnRegions[regionIndex].spawnAccumulator = newSpawnsPotential - numToSpawnThisRegion;
-
-
-            if (numToSpawnThisRegion > 0)
-            {
-                int maxCanSpawnGlobal = maxTotalParticles - (currentTotalParticles + particlesAddedThisFrame);
-                numToSpawnThisRegion = Mathf.Min(numToSpawnThisRegion, maxCanSpawnGlobal);
-
-                for (int i = 0; i < numToSpawnThisRegion; i++)
-                {
-                    if (currentTotalParticles + particlesAddedThisFrame >= maxTotalParticles) break;
-                    float px = region.position.x + ((float)_continuousSpawnRng.NextDouble() - 0.5f) * region.size.x;
-                    float py = region.position.y + ((float)_continuousSpawnRng.NextDouble() - 0.5f) * region.size.y;
-                    float2 spawnPos = new float2(px, py);
-                    float angle = (float)_continuousSpawnRng.NextDouble() * Mathf.PI * 2f;
-                    float2 dir = new float2(Mathf.Cos(angle), Mathf.Sin(angle));
-                    float2 jitter = dir * jitterStr * ((float)_continuousSpawnRng.NextDouble() - 0.5f);
-                    newPoints.Add(spawnPos + jitter);
-                    newVelocities.Add(initialVelocity);
-                    newSpawnIndices.Add(regionIndex);
-                    newParticleTypes.Add(new int2((int)region.particleType, -1));
-                    particlesAddedThisFrame++;
-                }
-            }
-            spawnRegions[regionIndex].particlesPerSecond = 0;
-            if (currentTotalParticles + particlesAddedThisFrame >= maxTotalParticles) break;
+            newPoints.Add(new float2(particle[1], 3.75f));
+            newVelocities.Add(new float2(particle[2], particle[3] * 3.0f));
+            newSpawnIndices.Add((int)particle[0]);
+            newParticleTypes.Add(new int2((int)particle[0], -1));
         }
+
+        fluidSimulation_Wall.transferedParticles = new List<Vector4>();
+
         return new ParticleSpawnData
         {
             positions = newPoints.ToArray(),

@@ -67,7 +67,7 @@ RWStructuredBuffer<float2> SortTarget_Velocities_Wall;
 RWStructuredBuffer<int2> SortTarget_ParticleType_Wall;
 RWStructuredBuffer<int4> SortTarget_Collision_Wall;
 RWStructuredBuffer<uint> RemovedParticlesPositionCounter_Wall;
-RWStructuredBuffer<float2> RemovedParticlesPositionBuffer_Wall;
+RWStructuredBuffer<float4> RemovedParticlesPositionBuffer_Wall;
 
 // This is the atomic counter, it MUST be RW (UAV)
 RWStructuredBuffer<uint> CompactionInfoBuffer_Wall;
@@ -833,7 +833,10 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
     {
         uint newRemovedIndex;
         InterlockedAdd(RemovedParticlesPositionCounter_Wall[0], 1, newRemovedIndex);
-        RemovedParticlesPositionBuffer_Wall[newRemovedIndex] = Source_Positions_Wall[id.x];
+        RemovedParticlesPositionBuffer_Wall[newRemovedIndex][0] = Source_ParticleType_Wall[id.x][0];
+        RemovedParticlesPositionBuffer_Wall[newRemovedIndex][1] = Source_Positions_Wall[id.x][0];
+        RemovedParticlesPositionBuffer_Wall[newRemovedIndex][2] = Source_Velocities_Wall[id.x][0];
+        RemovedParticlesPositionBuffer_Wall[newRemovedIndex][3] = Source_Velocities_Wall[id.x][1];
     }
 
 }
