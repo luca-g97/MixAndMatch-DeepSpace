@@ -11,6 +11,7 @@
 #pragma kernel CopyCollisionBuffer_Wall
 #pragma kernel ClearIntBuffer_Wall
 #pragma kernel ClearInt4Buffer_Wall
+#pragma kernel FlagParticlesForCompaction_Wall
 
 #include "./FluidMaths2D_Wall.hlsl"
 #include "./SpatialHash_Wall.hlsl"
@@ -46,6 +47,8 @@ RWStructuredBuffer<int2> ParticleTypeBuffer_Wall;
 RWStructuredBuffer<uint> SpatialKeys_Wall;
 RWStructuredBuffer<uint> SpatialOffsets_Wall;
 RWStructuredBuffer<int4> CopiedCollisionBuffer_Destination_Wall;
+RWStructuredBuffer<int> ParticleFlags_Wall;
+StructuredBuffer<int> Source_ParticleFlags_Wall;
 
 // Buffers that are read-only in most contexts
 StructuredBuffer<float> GravityScales_Wall;
@@ -63,6 +66,8 @@ RWStructuredBuffer<float2> SortTarget_PredictedPositions_Wall;
 RWStructuredBuffer<float2> SortTarget_Velocities_Wall;
 RWStructuredBuffer<int2> SortTarget_ParticleType_Wall;
 RWStructuredBuffer<int4> SortTarget_Collision_Wall;
+RWStructuredBuffer<uint> RemovedParticlesPositionCounter_Wall;
+RWStructuredBuffer<float2> RemovedParticlesPositionBuffer_Wall;
 
 // This is the atomic counter, it MUST be RW (UAV)
 RWStructuredBuffer<uint> CompactionInfoBuffer_Wall;
@@ -319,7 +324,7 @@ void HandleCollisions_Wall(uint particleIndex)
         [loop]
         for (int j = 0; j < obstacle.vertexCount; j++)
         {
-            int nextJ = uint(j + 1) % (uint) obstacle.vertexCount;
+            int nextJ = (uint) (j + 1) % (uint) obstacle.vertexCount;
             float2 a = VerticesBuffer_Wall[obstacle.vertexStart + j];
             float2 b = VerticesBuffer_Wall[obstacle.vertexStart + nextJ];
             float2 edge = b - a;
@@ -722,24 +727,27 @@ void UpdatePositions_Wall(uint3 id : SV_DispatchThreadID)
 void ResetCompactionCounter_Wall(uint3 id : SV_DispatchThreadID)
 {
     CompactionInfoBuffer_Wall[0] = 0;
+    RemovedParticlesPositionCounter_Wall[0] = 0;
 }
 
 [numthreads(NumThreads_Wall, 1, 1)]
 void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles_Wall)
+    {
+        ParticleFlags_Wall[id.x] = 0;
         return;
-
+    }
+    
     int particleTypeIndex = Source_ParticleType_Wall[id.x].x;
     int removalFlag = Source_ParticleType_Wall[id.x].y;
-    bool shouldKeep = true;
-    
-    // --- Step 1: Get the particle's CURRENT VISUAL color from mixableColors ---
+
     int particleColorIndex = particleTypeIndex - 1;
+	int flag = 1;
 
     if (removalFlag <= -2) // Ventil removal
     {
-        shouldKeep = false;
+        flag = removalFlag;
         InterlockedAdd(particlesReachedDestinationThisFrame_Wall[particleColorIndex][abs(removalFlag + 2)], 1);
     }
     else if (removalFlag >= 0) // Player flagged this particle
@@ -760,6 +768,7 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
                 {
                     float3 obsColor = ObstacleColorsBuffer_Wall[obsIndex].rgb;
                     bool alreadyFound = false;
+					[loop]	
                     for (int j = 0; j < uniqueColorCount; j++)
                     {
                         if (distance(obsColor, uniqueColors[j]) < 0.001)
@@ -789,15 +798,25 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
                 // --- Step 4: Compare the blend of base colors to the particle's current visual color ---
                 if (distance(blendedColorAverage, particleVisualColor) < 0.02)
                 {
-                    shouldKeep = false;
+                    flag = 0;
                     InterlockedAdd(removedParticlesThisFrame_Wall[particleColorIndex], 1);
                 }
             }
         }
     }
+    
+    ParticleFlags_Wall[id.x] = flag;
+}
 
-    // Compaction Step...
-    if (shouldKeep)
+[numthreads(NumThreads_Wall, 1, 1)]
+void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numParticles_Wall)
+        return;
+
+    int flag = Source_ParticleFlags_Wall[id.x];
+    
+    if (flag >= 1)
     {
         uint newIndex;
         InterlockedAdd(CompactionInfoBuffer_Wall[0], 1, newIndex);
@@ -809,7 +828,14 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
         int2 currentParticleTypeInfo = Source_ParticleType_Wall[id.x];
         currentParticleTypeInfo.y = -1;
         SortTarget_ParticleType_Wall[newIndex] = currentParticleTypeInfo;
+	}
+    else
+    {
+        uint newRemovedIndex;
+        InterlockedAdd(RemovedParticlesPositionCounter_Wall[0], 1, newRemovedIndex);
+        RemovedParticlesPositionBuffer_Wall[newRemovedIndex] = Source_Positions_Wall[id.x];
     }
+
 }
 
 [numthreads(64, 1, 1)]
