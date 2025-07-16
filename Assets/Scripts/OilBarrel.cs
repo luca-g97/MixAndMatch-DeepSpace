@@ -1,8 +1,7 @@
-using System;
+using DG.Tweening;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
-using DG.Tweening;
 using UnityEngine.VFX;
 using Random = UnityEngine.Random;
 
@@ -57,6 +56,7 @@ namespace Seb.Fluid2D.Simulation
         private MaterialPropertyBlock _volumetricSphereBlock;
 
         private Sequence _currentSpawnSequence;
+        private bool _isSpawning = false;
 
         private void Awake()
         {
@@ -69,7 +69,6 @@ namespace Seb.Fluid2D.Simulation
         private void OnEnable()
         {
             StopSpawning();
-            StartSpawning();
         }
 
         private void OnDisable()
@@ -95,6 +94,20 @@ namespace Seb.Fluid2D.Simulation
             SetColorByParticleType(_particleType);
             _barrelMeshRenderer.SetPropertyBlock(_barrelColorByParticleTypeBlock);
             _volumetricSphereMeshRenderer.SetPropertyBlock(_volumetricSphereBlock);
+
+            // Check if the condition to spawn is met
+            bool shouldBeSpawning = _fluidSim.lastPlayerCount > 0;
+
+            // If we should be spawning but we aren't, start the process
+            if (shouldBeSpawning && !_isSpawning)
+            {
+                StartSpawning();
+            }
+            // If we shouldn't be spawning but we are, stop the process
+            else if (!shouldBeSpawning && _isSpawning)
+            {
+                StopSpawning();
+            }
         }
 
         private void SetColorByParticleType(ParticleType type)
@@ -108,14 +121,15 @@ namespace Seb.Fluid2D.Simulation
 
         private Color GetColorByParticleType(ParticleType type)
         {
-            List<Color> mixableColors = _fluidSim.mixableColorsForShader;
-            if ((int) type < 0 || (int) type >= mixableColors.Count)
+            List<int> mixableColors = _fluidSim.mixableColors;
+            int colorIdx = mixableColors[(int)type - 1];
+
+            if ((int)type <= 0 || (int)type > mixableColors.Count || colorIdx < 0)
             {
-                Debug.LogError($"Invalid particle type: {type}");
-                return Color.white; // Default color
+                return _fluidSim.colorSymbolizingNoPlayer; // Default color
             }
 
-            return mixableColors[(int) type - 1];
+            return _colorPalette[colorIdx];
         }
 
         private void SpawnSequence()
@@ -130,7 +144,7 @@ namespace Seb.Fluid2D.Simulation
                     _fireAudioSource.PlayOneShot(_fireSound);
                     _warningAudioSource.pitch = Random.Range(1f - _warningSoundPitchDelta, 1f + _warningSoundPitchDelta);
                     _warningAudioSource.PlayOneShot(_oilDripSound);
-                    
+
                     _explosionEffect.Play();
                     _fireEffect.Play();
                     _currentSpawnRegion.particlesPerSecond = Random.Range(_minSpawnRate, _maxSpawnRate);
@@ -151,20 +165,28 @@ namespace Seb.Fluid2D.Simulation
 
         private async void StartSpawning()
         {
-            await Task.Delay((int) Random.Range(_preDelayMin * 1000, _preDelayMax * 1000));
+            if (_isSpawning) return; // Prevent multiple starts
+            _isSpawning = true;     // Set state to active
+
+            await Task.Delay((int)Random.Range(_preDelayMin * 1000, _preDelayMax * 1000));
+
+            // Ensure we should still be spawning after the delay
+            if (!_isSpawning) return;
+
             SpawnSequence();
             _currentSpawnSequence.Play().SetLoops(-1, LoopType.Restart);
         }
 
         private void StopSpawning()
         {
+            _isSpawning = false; // Set state to inactive
+
             _currentSpawnSequence?.Kill();
             _currentSpawnRegion.particlesPerSecond = 0f;
             _fireAudioSource.Stop();
             _fireEffect.Stop();
             _explosionEffect.Stop();
             _barrelColorByParticleTypeBlock.SetVector(_EMISSION_COLOR, _currentColor * 0f);
-            
         }
 
         private Sequence WarningSequence()
@@ -173,8 +195,8 @@ namespace Seb.Fluid2D.Simulation
                 .AppendCallback(delegate
                 {
                     _warningAudioSource.pitch = Random.Range(1f - _warningSoundPitchDelta, 1f + _warningSoundPitchDelta);
-                    _warningAudioSource.PlayOneShot(_warningSound); 
-                    
+                    _warningAudioSource.PlayOneShot(_warningSound);
+
                 })
                 .AppendCallback((() =>
                     _barrelColorByParticleTypeBlock.SetVector(_EMISSION_COLOR,

@@ -1,11 +1,8 @@
-using System;
+using KBCore.Refs;
+using Seb.Fluid2D.Simulation;
 using System.Collections.Generic;
 using System.Linq;
-using KBCore.Refs;
-using NUnit.Framework;
-using Seb.Fluid2D.Simulation;
 using Unity.Mathematics;
-using UnityEditor.Rendering;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -41,14 +38,14 @@ public class VentilManager : ValidatedMonoBehaviour
             Debug.LogError("No ventil spawn points assigned.");
             return;
         }
-        
+
         SpawnVentilWave();
     }
 
     private void SpawnVentilWave()
     {
         int aliveVentils = _ventilList.Count(ventil => !ventil.IsNotAlive);
-        print(aliveVentils);
+        Debug.Log("Alive Ventils: " + aliveVentils);
 
         if (aliveVentils == _ventilList.Count)
         {
@@ -62,7 +59,7 @@ public class VentilManager : ValidatedMonoBehaviour
 
             int maxIterations = 1000; // Prevent infinite loop
             int iterations = 0;
-            
+
             while (iterations < maxIterations)
             {
                 iterations++;
@@ -72,7 +69,7 @@ public class VentilManager : ValidatedMonoBehaviour
                 if (!_ventilAtSpawnPoint.ContainsKey(spawnPoint) || _ventilAtSpawnPoint[spawnPoint].IsNotAlive)
                 {
                     randomSpawnPoint = spawnPoint;
-                    
+
                     foreach (Ventil ventil in _ventilList.Where(ventil => ventil.IsNotAlive))
                     {
                         _ventilAtSpawnPoint[randomSpawnPoint] = ventil;
@@ -82,7 +79,7 @@ public class VentilManager : ValidatedMonoBehaviour
                         ventil.SpawnSequence(); // Start spawn sequence
                         break; // Exit the loop after spawning one ventil
                     }
-                    
+
                     break; // Exit the loop once a valid spawn point is found
                 }
             }
@@ -115,7 +112,7 @@ public class VentilManager : ValidatedMonoBehaviour
 
             ventilToKill = _ventilList[randomIndex];
             _ventilAtSpawnPoint.Remove(_spawnPointForVentil[ventilToKill]);
-            
+
             ventilToKill.Kill();
         }
     }

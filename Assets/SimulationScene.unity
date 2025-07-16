@@ -294,7 +294,7 @@ MonoBehaviour:
   mixableColors: 
   mixableColorsForShader: []
   maxPlayerColors: 6
-  colorSymbolizingNoPlayer: {r: 0.5882353, g: 0.29411766, b: 0, a: 1}
+  colorSymbolizingNoPlayer: {r: 1, g: 1, b: 1, a: 1}
   lastPlayerCount: -1
   obstacleLineColor: {r: 1, g: 1, b: 1, a: 0}
   ventilLineColor: {r: 1, g: 1, b: 1, a: 0}

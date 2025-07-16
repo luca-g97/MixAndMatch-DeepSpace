@@ -142,7 +142,7 @@ namespace Seb.Fluid2D.Simulation
         private Dictionary<GameObject, CachedObstacleInfo> _obstacleCache = new Dictionary<GameObject, CachedObstacleInfo>();
 
         private static List<Color> colorPalette = ColorPalette.colorPalette;
-        
+
         private int[] removedParticlesThisFrame = new int[colorPalette.Count];
         public int4[] particlesReachedDestinationThisFrame = new int4[colorPalette.Count];
 
@@ -165,7 +165,7 @@ namespace Seb.Fluid2D.Simulation
         public Color ventilLineColor = Color.green;
         [Min(0)] public float obstacleLineWidth = 0.1f;
         public Material lineRendererMaterial;
-        
+
 
         private float autoUpdateInterval = 0.5f;
         private float nextAutoUpdateTime;
@@ -621,7 +621,8 @@ namespace Seb.Fluid2D.Simulation
 
             int actualColor = 0;
             // Asynchronously request data from the GPU. The code in the lambda (=>) runs when the data is ready.
-            AsyncGPUReadback.Request(gpu_removedParticlesCounter, (request) => {
+            AsyncGPUReadback.Request(gpu_removedParticlesCounter, (request) =>
+            {
                 if (!request.hasError && (lastPlayerCount > 0))
                 {
                     // Copy the GPU data directly into your existing C# array.
@@ -635,7 +636,8 @@ namespace Seb.Fluid2D.Simulation
                 }
             });
 
-            AsyncGPUReadback.Request(gpu_particlesReachedDestinationCounter, (request) => {
+            AsyncGPUReadback.Request(gpu_particlesReachedDestinationCounter, (request) =>
+            {
                 if (!request.hasError && (lastPlayerCount > 0))
                 {
                     // Copy the GPU data directly into your existing C# array.
@@ -888,7 +890,7 @@ namespace Seb.Fluid2D.Simulation
                     {
                         var info = new CachedObstacleInfo { transform = go.transform };
                         info.polyCol = go.GetComponent<PolygonCollider2D>();
-                        
+
                         if (!go.TryGetComponent<LineRenderer>(out info.lineRend))
                         {
                             info.lineRend = go.AddComponent<LineRenderer>();
@@ -899,7 +901,7 @@ namespace Seb.Fluid2D.Simulation
                         {
                             info.lineRend.sharedMaterial = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
                         }
-                        
+
                         _obstacleCache[go] = info;
                         listActuallyChanged = true;
                     }

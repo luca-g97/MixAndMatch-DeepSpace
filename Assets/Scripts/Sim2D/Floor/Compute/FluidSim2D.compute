@@ -240,7 +240,6 @@ void HandleCollisions(uint particleIndex)
     float2 vel = Velocities[particleIndex];
     int particleType = ParticleTypeBuffer[particleIndex][0];
     int particleProcessFlag = ParticleTypeBuffer[particleIndex][1];
-    float3 obstacleColor = ObstacleColorsBuffer[particleIndex];
 
     // If particle is already marked as non-participating (e.g. type -1), skip complex collision.
     // This check is vital if ParticleTypeBuffer can be set to -1 mid-step by this function.
@@ -379,22 +378,6 @@ void HandleCollisions(uint particleIndex)
                     {
                         collisionIndices[consideredObstacles] = -2; // Special marker for secondary color
                         consideredObstacles++;
-                    }
-
-                    int tempCollisionIndices[4] = { -1, -1, -1, -1 };
-                    float3 diff = abs(obstacleColor - mixableColors[particleType-1]);
-                    if(all(diff < 0.01f))
-                    {
-                        int collisionIndiceToPutFirst = consideredObstacles-1;
-                        tempCollisionIndices[0] = collisionIndices[collisionIndiceToPutFirst];
-                        for(int i = 0; i < consideredObstacles-1; i++)
-                        {
-                            if(i != collisionIndiceToPutFirst)
-                            {
-                                tempCollisionIndices[i+1] = collisionIndices[i];
-                            }
-                        }
-                        collisionIndices = tempCollisionIndices;
                     }
                 }
 
@@ -777,6 +760,8 @@ void FlagParticlesForCompaction(uint3 id : SV_DispatchThreadID)
                 {
                     float3 obsColor = ObstacleColorsBuffer[obsIndex].rgb;
                     bool alreadyFound = false;
+                    
+                    [loop]
                     for (int j = 0; j < uniqueColorCount; j++)
                     {
                         if (distance(obsColor, uniqueColors[j]) < 0.001)

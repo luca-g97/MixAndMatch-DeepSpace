@@ -55,18 +55,6 @@ namespace Seb.Fluid2D.Rendering
                 return;
             }
 
-            int colorsToUse = 1;
-            if ((sim.maxPlayerColors) == 2)
-            {
-                colorsToUse = 3;
-            }
-            else if ((sim.maxPlayerColors) > 2)
-            {
-                colorsToUse = sim.maxPlayerColors * 2;
-            }
-
-            material.SetInt("numberOfColors", colorsToUse);
-
             ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.numParticles);
             bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
 

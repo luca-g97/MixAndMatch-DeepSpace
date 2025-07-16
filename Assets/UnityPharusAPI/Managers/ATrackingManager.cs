@@ -157,7 +157,7 @@ namespace Assets.UnityPharusAPI.Managers
 
                 if (request.result != UnityWebRequest.Result.ConnectionError && request.result != UnityWebRequest.Result.ProtocolError)
                 {
-                    Debug.Log("no errors occured during config file load");
+                    Debug.Log("Tracking Manager: No errors occured during config file load!");
                     config = TrackingXMLConfig.Load(aPathToConfigXML);
                 }
             }
