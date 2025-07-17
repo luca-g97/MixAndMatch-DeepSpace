@@ -7,7 +7,7 @@ using Random = UnityEngine.Random;
 public class Current : MonoBehaviour
 {
     [Header("Current Settings")]
-    public float currentVelocity = 50f;
+    public float currentVelocity = 1f;
     [Min(0.001f)] public float currentWidth = 5f;
     [Range(-1, 1)] public float linearFactor = 0f;
 

@@ -589,12 +589,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   timeScale: 1
-  maxTimestepFPS: 144
+  maxTimestepFPS: 120
   iterationsPerFrame: 3
   gravity: -75
-  collisionDamping: 0.5
+  collisionDamping: 0
   smoothingRadius: 0.2
-  boundsSize: {x: 16, y: 8}
+  boundsSize: {x: 16, y: 9}
   yOffset: 12
   maxTotalParticles: 100000
   waterTargetDensity: 1
@@ -605,10 +605,10 @@ MonoBehaviour:
   oilPressureMultiplier: 1
   oilNearPressureMultiplier: 1
   oilViscosityStrength: 0.4
-  interactionRadius: 5
-  interactionStrength: 50
-  mouseGravityStrength: 10
-  mouseGravityRadius: 5
+  interactionRadius: 0
+  interactionStrength: 0
+  mouseGravityStrength: 0
+  mouseGravityRadius: 0
   invertMouseGravity: 1
   compute: {fileID: 7200000, guid: 2d342f91ee800f140958be6ec301e94a, type: 3}
   spawner2D: {fileID: 271053327}
@@ -616,6 +616,7 @@ MonoBehaviour:
   areaToColorAroundObstacles: 1
   minDistanceToRemoveParticles: 0.2
   coloredAreaAroundObstaclesDivider: 0
+  transferedParticles: []
   mixableColorsForShader: []
   maxPlayerColors: 6
   colorSymbolizingNoPlayer: {r: 1, g: 1, b: 1, a: 1}

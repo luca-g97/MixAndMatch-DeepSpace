@@ -166,12 +166,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   timeScale: 1
-  maxTimestepFPS: 144
+  maxTimestepFPS: 120
   iterationsPerFrame: 3
   gravity: 0
   collisionDamping: 0
   smoothingRadius: 0.2
-  boundsSize: {x: 16, y: 8}
+  boundsSize: {x: 16, y: 9}
   yOffset: 0
   maxTotalParticles: 100000
   waterTargetDensity: 1
@@ -570,7 +570,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[0].x
-      value: 8
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[0].y
@@ -578,11 +578,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[1].x
-      value: 6
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[1].y
-      value: 2
+      value: -3.5
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[2].x
@@ -626,7 +626,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minWidth
-      value: 0.33
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: maxVelocity
@@ -638,7 +638,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _maxVelocity
-      value: 0.015
+      value: 0.02
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minStayTime
@@ -1062,7 +1062,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minWidth
-      value: 0.33
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: maxVelocity
@@ -1082,7 +1082,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minVelocity
-      value: 0.005
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: currentWidth
@@ -2043,7 +2043,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minWidth
-      value: 0.33
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: maxVelocity
@@ -2063,7 +2063,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minVelocity
-      value: 0.005
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: currentWidth
@@ -2780,7 +2780,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[0].x
-      value: -8
+      value: -7
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[0].y
@@ -2788,11 +2788,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[1].x
-      value: -6
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[1].y
-      value: 2
+      value: -3.5
       objectReference: {fileID: 0}
     - target: {fileID: 1337835766514996644, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: m_Positions.Array.data[2].x
@@ -2836,7 +2836,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minWidth
-      value: 0.33
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: maxVelocity
@@ -2848,7 +2848,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _maxVelocity
-      value: 0.015
+      value: 0.02
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minStayTime
@@ -3026,7 +3026,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minWidth
-      value: 0.33
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: maxVelocity
@@ -3046,7 +3046,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minVelocity
-      value: 0.005
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: currentWidth
@@ -3168,7 +3168,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1588181315
 Transform:
   m_ObjectHideFlags: 0
@@ -3402,7 +3402,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minWidth
-      value: 0.33
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: maxVelocity
@@ -3422,7 +3422,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minVelocity
-      value: 0.005
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: currentWidth
@@ -3498,360 +3498,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8465265251951431075, guid: e72d2930cef10834898db779f32b071b, type: 3}
   m_PrefabInstance: {fileID: 1625061828}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1660149310
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1660149314}
-  - component: {fileID: 1660149313}
-  - component: {fileID: 1660149312}
-  - component: {fileID: 1660149311}
-  m_Layer: 0
-  m_Name: Simulation_Debug
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
-  m_IsActive: 0
---- !u!114 &1660149311
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1660149310}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b090cee05a6cd0e4291a0e02381231c1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  sim: {fileID: 1660149313}
-  mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
-  shader: {fileID: 4800000, guid: 441b7193936682446b30d2140d15792a, type: 3}
-  scale: 0.03
-  colourMap:
-    serializedVersion: 2
-    key0: {r: 0.282634, g: 0.3109339, b: 0.443, a: 1}
-    key1: {r: 0.6273585, g: 0.8659867, b: 1, a: 1}
-    key2: {r: 0, g: 0, b: 0, a: 0}
-    key3: {r: 0, g: 0, b: 0, a: 0}
-    key4: {r: 0, g: 0, b: 0, a: 0}
-    key5: {r: 0, g: 0, b: 0, a: 0}
-    key6: {r: 0, g: 0, b: 0, a: 0}
-    key7: {r: 0, g: 0, b: 0, a: 0}
-    ctime0: 0
-    ctime1: 65535
-    ctime2: 0
-    ctime3: 0
-    ctime4: 0
-    ctime5: 0
-    ctime6: 0
-    ctime7: 0
-    atime0: 0
-    atime1: 65535
-    atime2: 0
-    atime3: 0
-    atime4: 0
-    atime5: 0
-    atime6: 0
-    atime7: 0
-    m_Mode: 2
-    m_ColorSpace: -1
-    m_NumColorKeys: 2
-    m_NumAlphaKeys: 2
-  gradientResolution: 64
-  velocityDisplayMax: 10
---- !u!114 &1660149312
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1660149310}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 895837b52d5fc53409ded3589d4da696, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  initialVelocity: {x: 0, y: 0}
-  jitterStr: 0
-  showSpawnBoundsGizmos: 1
-  allowInitialSpawn: 1
-  allowContinuousSpawning: 1
-  spawnRegions:
-  - name: Water
-    particleType: 0
-    position: {x: 0, y: 0}
-    size: {x: 15, y: 7}
-    spawnDensity: 250
-    particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 0.8376986, b: 1, a: 1}
-  - name: Water
-    particleType: 0
-    position: {x: 0, y: 0}
-    size: {x: 0, y: 0}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0.254902, g: 0.4117647, b: 0.882353, a: 1}
-  - name: OilRed
-    particleType: 1
-    position: {x: -6, y: 0}
-    size: {x: 4, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 1, g: 0, b: 0, a: 1}
-  - name: OilYellow
-    particleType: 2
-    position: {x: -1.43, y: 0}
-    size: {x: 4, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  - name: OilBlue
-    particleType: 3
-    position: {x: 3.98, y: 0}
-    size: {x: 4, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0, g: 0, b: 1, a: 1}
-  - name: OilOrange
-    particleType: 4
-    position: {x: -3.715, y: 0}
-    size: {x: 4, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 1, g: 0.5490196, b: 0, a: 1}
-  - name: OilViolet
-    particleType: 5
-    position: {x: 6, y: 0}
-    size: {x: 4, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0.5803922, g: 0, b: 0.8274511, a: 1}
-  - name: OilLimeGreen
-    particleType: 6
-    position: {x: 1.4, y: 0}
-    size: {x: 4, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0, g: 1, b: 0, a: 1}
-  - name: OilRedOrange
-    particleType: 7
-    position: {x: 0.75, y: 0}
-    size: {x: 1, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - name: OilYellowOrange
-    particleType: 8
-    position: {x: 2, y: 0}
-    size: {x: 1, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - name: OilRedViolet
-    particleType: 9
-    position: {x: 3.25, y: 0}
-    size: {x: 1, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - name: OilBlueViolet
-    particleType: 10
-    position: {x: 4.5, y: 0}
-    size: {x: 1, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - name: OilYellowGreen
-    particleType: 11
-    position: {x: 5.75, y: 0}
-    size: {x: 1, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  - name: OilBlueGreen
-    particleType: 12
-    position: {x: 7, y: 0}
-    size: {x: 1, y: 1}
-    spawnDensity: 0
-    particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
-  fluidSimulation: {fileID: 1660149313}
-  fluidSimulation_Wall: {fileID: 0}
-  initialSpawnParticleCount: 26418
-  currentSimParticleCount_Inspector: 0
---- !u!114 &1660149313
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1660149310}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bf901970f9cf132479a879d7a4acde3d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  timeScale: 1
-  maxTimestepFPS: 144
-  iterationsPerFrame: 3
-  gravity: 0
-  collisionDamping: 0.5
-  smoothingRadius: 0.2
-  boundsSize: {x: 16, y: 8}
-  yOffset: 0
-  maxTotalParticles: 100000
-  waterTargetDensity: 1
-  waterPressureMultiplier: 150
-  waterNearPressureMultiplier: 225
-  waterViscosityStrength: 0.1
-  oilTargetDensity: 0.92
-  oilPressureMultiplier: 120
-  oilNearPressureMultiplier: 180
-  oilViscosityStrength: 0.4
-  interactionRadius: 5
-  interactionStrength: 50
-  mouseGravityStrength: 10
-  mouseGravityRadius: 5
-  invertMouseGravity: 0
-  compute: {fileID: 7200000, guid: 1c77ce8de78fddb419ed2d15cae41af0, type: 3}
-  spawner2D: {fileID: 1660149312}
-  obstacles: []
-  areaToColorAroundObstacles: 1
-  minDistanceToRemoveParticles: 0.2
-  coloredAreaAroundObstaclesDivider: 0
-  particlesReachedDestinationThisFrame:
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  particlesReachedDestination:
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  mixableColors: 
-  mixableColorsForShader: []
-  maxPlayerColors: 6
-  colorSymbolizingNoPlayer: {r: 0.5882353, g: 0.29411766, b: 0, a: 1}
-  lastPlayerCount: -1
-  obstacleLineColor: {r: 1, g: 1, b: 1, a: 0}
-  ventilLineColor: {r: 1, g: 1, b: 1, a: 0}
-  obstacleLineWidth: 0
-  lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
-  _minLoopedSoundPitch: 0.8
-  _maxLoopedSoundPitch: 1.2
-  _oilCollectedPitchDelta: 0.1
-  _oilCollectedSound: {fileID: 0}
-  _audioMixerOil: {fileID: 0}
---- !u!4 &1660149314
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1660149310}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1781308776
 GameObject:
   m_ObjectHideFlags: 0
@@ -3900,7 +3546,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d65bfe7cb37dcf49a951299aba106c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _fluidSimulation: {fileID: 1660149313}
+  _fluidSimulation: {fileID: 0}
   _ventilList:
   - {fileID: 3828339404260979083}
   - {fileID: 3671200550278036167}
@@ -4141,7 +3787,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minWidth
-      value: 0.33
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: maxVelocity
@@ -4161,7 +3807,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: _minVelocity
-      value: 0.005
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3489825640415674047, guid: e72d2930cef10834898db779f32b071b, type: 3}
       propertyPath: currentWidth
@@ -5072,7 +4718,6 @@ SceneRoots:
   - {fileID: 821915495}
   - {fileID: 1621349553}
   - {fileID: 271053318}
-  - {fileID: 1660149314}
   - {fileID: 1588181315}
   - {fileID: 1251892011}
   - {fileID: 1781308777}
