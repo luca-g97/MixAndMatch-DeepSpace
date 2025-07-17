@@ -163,7 +163,7 @@ namespace Seb.Fluid2D.Simulation
         [Header("Obstacle Visualization")]
         public Color obstacleLineColor = Color.white;
         public Color ventilLineColor = Color.green;
-        [Min(0)] public float obstacleLineWidth = 0.1f;
+        public float obstacleLineWidth = 0.1f;
         public Material lineRendererMaterial;
 
 
@@ -615,7 +615,7 @@ namespace Seb.Fluid2D.Simulation
             UpdateComputeShaderDynamicParams();
         }
 
-        async void ReadbackAndResetGpuCounters() 
+        async void ReadbackAndResetGpuCounters()
         {
             if (gpu_removedParticlesCounter == null || gpu_particlesReachedDestinationCounter == null || (lastPlayerCount == 0)) return;
 
