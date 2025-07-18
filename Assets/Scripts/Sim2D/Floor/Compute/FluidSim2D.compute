@@ -285,8 +285,6 @@ void HandleCollisions(uint particleIndex)
         pos.y = (halfSize.y - boundaryEpsilon) * sign(pos.y);
         vel.y *= -collisionDamping;
     }
-
-    int ventilNumber = -1;
     
     // --- 2. Obstacle Collisions ---
     [loop]
@@ -295,12 +293,6 @@ void HandleCollisions(uint particleIndex)
         Obstacle obstacle = ObstaclesBuffer[obstacleIdx];
         if (obstacle.vertexCount < 2)
             continue;
-        
-        
-        if (obstacle.obstacleType == 2)
-        {
-            ventilNumber--;
-        }
 
         // Find closest point on obstacle polygon
         int intersections = 0;
@@ -389,7 +381,7 @@ void HandleCollisions(uint particleIndex)
             // --- Ventil Obstacle Interaction (type 2) ---
             else if (obstacle.obstacleType == 2 && particleProcessFlag == -1 && isInside)
             {
-                ParticleTypeBuffer[particleIndex][1] = ventilNumber; // Mark for removal by Ventil
+                ParticleTypeBuffer[particleIndex][1] = -obstacleIdx-10; // Mark for removal by Ventil
             }
         }
 

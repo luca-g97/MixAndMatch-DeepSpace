@@ -47,6 +47,7 @@ namespace Seb.Fluid2D.Simulation
         [Header("References")]
         public ComputeShader compute;
         public Spawner2D spawner2D;
+        private FluidSim2D_Wall fluidSim_Wall;
 
         public ComputeBuffer positionBuffer { get; private set; }
         ComputeBuffer predictedPositionBuffer;
@@ -153,7 +154,6 @@ namespace Seb.Fluid2D.Simulation
         public Color ventilLineColor = Color.green;
         public float obstacleLineWidth = 0.1f;
         public Material lineRendererMaterial;
-
 
         private float autoUpdateInterval = 0.5f;
         private float nextAutoUpdateTime;
@@ -447,6 +447,11 @@ namespace Seb.Fluid2D.Simulation
                 nextAutoUpdateTime = Time.time + autoUpdateInterval;
             }
 
+            if (!fluidSim_Wall)
+            {
+                fluidSim_Wall = GameObject.FindAnyObjectByType<FluidSim2D_Wall>();
+            }
+
             UpdateAutoPlayers();
             UpdateObstacleBuffer(_forceObstacleBufferUpdate);
             _forceObstacleBufferUpdate = false;
@@ -469,18 +474,6 @@ namespace Seb.Fluid2D.Simulation
 
             if (pauseNextFrame) { isPaused = true; pauseNextFrame = false; }
             HandleInput();
-        }
-
-        public void SpawnParticles()
-        {
-            if (spawner2D != null && spawner2D.allowContinuousSpawning && numParticles < maxTotalParticles)
-            {
-                Spawner2D.ParticleSpawnData newParticleInfo = spawner2D.GetNewlySpawnedParticles(numParticles, maxTotalParticles);
-                if (newParticleInfo.positions != null && newParticleInfo.positions.Length > 0)
-                {
-                    HandleAddingNewParticles(newParticleInfo);
-                }
-            }
         }
 
         void ProcessParticleRemovalsGPU()

@@ -7,6 +7,7 @@ namespace Seb.Fluid2D.Rendering
     public class ParticleDisplay2D_Wall : MonoBehaviour
     {
         public FluidSim2D_Wall sim;
+        public FluidSim2D sim_Floor;
         public Mesh mesh;
         public Shader shader;
         public float scale;
@@ -23,11 +24,12 @@ namespace Seb.Fluid2D.Rendering
         void Start()
         {
             material = new Material(shader);
+            sim_Floor = GameObject.FindAnyObjectByType<FluidSim2D>();
         }
 
         void LateUpdate()
         {
-            if (shader != null)
+            if (shader != null && sim_Floor != null)
             {
                 UpdateSettings();
                 Graphics.DrawMeshInstancedIndirect(mesh, 0, material, bounds, argsBuffer);
@@ -36,37 +38,20 @@ namespace Seb.Fluid2D.Rendering
 
         void UpdateSettings()
         {
-
             material.SetBuffer("Positions2D_Wall", sim.positionBuffer);
             material.SetBuffer("Velocities_Wall", sim.velocityBuffer);
             material.SetBuffer("DensityData_Wall", sim.densityBuffer);
-
-            material.SetBuffer("CollisionBuffer_Wall", sim.collisionBuffer);
-            material.SetBuffer("ObstacleColors_Wall", sim.obstacleColorsBuffer);
             material.SetBuffer("ParticleTypeBuffer_Wall", sim.particleTypeBuffer);
 
             try
             {
-                material.SetColorArray("mixableColors_Wall", sim.mixableColorsForShader);
+                material.SetColorArray("mixableColors_Wall", sim_Floor.mixableColorsForShader);
             }
             catch
             {
                 Debug.LogError("Cannot assign Colors! Is Pharus running?");
                 return;
             }
-
-
-            int colorsToUse = 1;
-            if ((sim.maxPlayerColors) == 2)
-            {
-                colorsToUse = 3;
-            }
-            else if ((sim.maxPlayerColors) > 2)
-            {
-                colorsToUse = sim.maxPlayerColors * 2;
-            }
-
-            material.SetInt("numberOfColors_Wall", colorsToUse);
 
             ComputeHelper.CreateArgsBuffer(ref argsBuffer, mesh, sim.numParticles);
             bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
@@ -77,8 +62,8 @@ namespace Seb.Fluid2D.Rendering
                 TextureFromGradient(ref gradientTexture, gradientResolution, colourMap);
                 material.SetTexture("ColourMap_Wall", gradientTexture);
 
-                material.SetFloat("scale_Wall", scale);
-                material.SetFloat("velocityMax_Wall", velocityDisplayMax);
+                material.SetFloat("scale", scale);
+                material.SetFloat("velocityMax", velocityDisplayMax);
             }
         }
 
