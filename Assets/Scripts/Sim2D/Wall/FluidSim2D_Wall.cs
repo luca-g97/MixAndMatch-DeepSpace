@@ -681,16 +681,41 @@ namespace Seb.Fluid2D.Simulation
 
             foreach (var go in obstacles)
             {
-                // Skip any invalid objects
                 var lr = go.GetComponent<LineRenderer>();
-                if (lr == null || lr.positionCount < 2)
-                {
-                    PolygonCollider2D polygonCollider = go.GetComponent<PolygonCollider2D>();
+                PolygonCollider2D polygonCollider = go.GetComponent<PolygonCollider2D>();
 
-                    if (!go.TryGetComponent<LineRenderer>(out lr))
+                // Check if we need to set up the LineRenderer
+                // This is true if it doesn't exist, has no points, or if the collider exists and has points
+                if (lr == null || lr.positionCount < 2 && polygonCollider != null)
+                {
+                    // If the LineRenderer doesn't exist, add it.
+                    if (lr == null)
                     {
                         lr = go.AddComponent<LineRenderer>();
-                        lr.useWorldSpace = true;
+                        lr.useWorldSpace = true; // Set this on creation
+                    }
+
+                    // Now, force the LineRenderer to match the PolygonCollider
+                    if (polygonCollider != null && polygonCollider.pathCount > 0)
+                    {
+                        // Get the points from the collider (these are in local space)
+                        Vector2[] localPoints = polygonCollider.GetPath(0);
+
+                        // Prepare the LineRenderer
+                        lr.positionCount = localPoints.Length;
+                        lr.loop = true; // Close the shape to match the collider
+
+                        // Create an array for the world-space points
+                        Vector3[] worldPoints = new Vector3[localPoints.Length];
+
+                        // Convert each local point to a world point
+                        for (int i = 0; i < localPoints.Length; i++)
+                        {
+                            worldPoints[i] = go.transform.TransformPoint(localPoints[i]);
+                        }
+
+                        // Assign the final world-space points to the LineRenderer
+                        lr.SetPositions(worldPoints);
                     }
                 }
 

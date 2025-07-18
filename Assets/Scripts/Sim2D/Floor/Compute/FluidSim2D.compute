@@ -747,14 +747,18 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
                     float3 obsColor = ObstacleColorsBuffer[obsIndex].rgb;
                     bool alreadyFound = false;
                     
-                    for (int j = 0; j < uniqueColorCount; j++)
+                    if (uniqueColorCount > 0)
                     {
-                        if (distance(obsColor, uniqueColors[j]) < 0.001)
+                        for (int j = 0; j < uniqueColorCount; j++)
                         {
-                            alreadyFound = true;
-                            break;
+                            if (distance(obsColor, uniqueColors[j]) < 0.001)
+                            {
+                                alreadyFound = true;
+                                break;
+                            }
                         }
                     }
+                    
                     if (!alreadyFound && uniqueColorCount < 4)
                     {
                         uniqueColors[uniqueColorCount] = obsColor;
