@@ -54,16 +54,16 @@ MonoBehaviour:
   _barrelMeshRenderer: {fileID: 5349329936830076729}
   _volumetricSphereMeshRenderer: {fileID: 2861251897945176240}
   _particleType: 1
-  _preDelayMin: 0.5
-  _preDelayMax: 10
+  _preDelayMin: 3
+  _preDelayMax: 15
   _minSpawnRate: 50
   _maxSpawnRate: 100
-  _minSpawnPeriod: 1
+  _minSpawnPeriod: 0.5
   _maxSpawnPeriod: 3
-  _minSpawnPauseDuration: 6
-  _maxSpawnPauseDuration: 12
+  _minSpawnPauseDuration: 7.5
+  _maxSpawnPauseDuration: 15
   _warningBlinkSpeed: 0.1
-  _warningBlinkRepetitions: 5
+  _warningBlinkRepetitions: 6
   _emissionIntensityWhileSpawningParticles: 3
   _explosionEffect: {fileID: 7749287587446862670}
   _fireEffect: {fileID: 5377737184950882562}
@@ -101,7 +101,7 @@ Transform:
   m_GameObject: {fileID: 7977069800028545634}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -0.83, y: -9, z: 3.26}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
