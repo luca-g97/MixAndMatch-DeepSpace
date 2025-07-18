@@ -72,7 +72,7 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer vertexBuffer;
         ComputeBuffer compactionInfoBuffer;
         ComputeBuffer collisionBufferCopy;
-        
+
         public ComputeBuffer obstacleBuffer { get; private set; }
         public ComputeBuffer obstacleColorsBuffer { get; private set; }
 
@@ -144,7 +144,7 @@ namespace Seb.Fluid2D.Simulation
         private Dictionary<GameObject, CachedObstacleInfo> _obstacleCache = new Dictionary<GameObject, CachedObstacleInfo>();
 
         private static List<Color> colorPalette = ColorPalette.colorPalette;
-       
+
         private int[] removedParticlesThisFrame_Wall = new int[colorPalette.Count];
         private int4[] particlesReachedDestinationThisFrame_Wall = new int4[colorPalette.Count];
 
@@ -176,7 +176,7 @@ namespace Seb.Fluid2D.Simulation
 
         void Start()
         {
-            Debug.Log("Controls: Space = Play/Pause, R = Reset, LMB = Attract, RMB = Repel, G + Mouse = Gravity Well");
+            //Debug.Log("Controls: Space = Play/Pause, R = Reset, LMB = Attract, RMB = Repel, G + Mouse = Gravity Well");
             InitSimulation();
         }
 
@@ -210,8 +210,8 @@ namespace Seb.Fluid2D.Simulation
             int initialCapacity = Mathf.Max(1, numParticles);
             CreateParticleBuffers(initialCapacity);
             compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<uint>(1);
-			
-			removedParticlesPositionCounter_Wall = ComputeHelper.CreateStructuredBuffer<uint>(1);
+
+            removedParticlesPositionCounter_Wall = ComputeHelper.CreateStructuredBuffer<uint>(1);
 
             gpu_removedParticlesCounter_Wall = ComputeHelper.CreateStructuredBuffer<int>(colorPalette.Count);
             gpu_particlesReachedDestinationCounter_Wall = ComputeHelper.CreateStructuredBuffer<int4>(colorPalette.Count);
@@ -234,7 +234,7 @@ namespace Seb.Fluid2D.Simulation
                     _sharedUnlitMaterial = new Material(Shader.Find("Legacy Shaders/Particles/Alpha Blended Premultiply"));
             }
 
-			// Initialize current buffers with a minimal size to ensure they always exist.
+            // Initialize current buffers with a minimal size to ensure they always exist.
             currentsBuffer = ComputeHelper.CreateStructuredBuffer<CurrentData>(1);
             currentVerticesBuffer = ComputeHelper.CreateStructuredBuffer<Vector2>(1);
             UpdateAutoPlayers();
@@ -249,7 +249,7 @@ namespace Seb.Fluid2D.Simulation
             ReleaseParticleBuffers();
             int safeCapacity = Mathf.Max(1, capacity);
 
-			removedParticlesPositionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(Mathf.Max(1, maxTotalParticles));
+            removedParticlesPositionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(Mathf.Max(1, maxTotalParticles));
             positionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             predictedPositionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             velocityBuffer = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
@@ -262,10 +262,10 @@ namespace Seb.Fluid2D.Simulation
             sortTarget_PredicitedPosition = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             sortTarget_Velocity = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             sortTarget_ParticleType = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
-			sortTarget_Collision = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
+            sortTarget_Collision = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
 
             collisionBufferCopy = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
-			particleFlagsBuffer = ComputeHelper.CreateStructuredBuffer<int>(safeCapacity);
+            particleFlagsBuffer = ComputeHelper.CreateStructuredBuffer<int>(safeCapacity);
         }
 
         void ReleaseParticleBuffers()
@@ -275,17 +275,17 @@ namespace Seb.Fluid2D.Simulation
                 sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType,
                 compactionInfoBuffer, sortTarget_Collision, collisionBufferCopy,
                 gpu_removedParticlesCounter_Wall, gpu_particlesReachedDestinationCounter_Wall,
-				removedParticlesPositionBuffer, removedParticlesPositionCounter_Wall,
+                removedParticlesPositionBuffer, removedParticlesPositionCounter_Wall,
                 particleFlagsBuffer);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
             gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; sortTarget_Position = null;
             sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
             compactionInfoBuffer = null; sortTarget_Collision = null; collisionBufferCopy = null;
             gpu_removedParticlesCounter_Wall = null; gpu_particlesReachedDestinationCounter_Wall = null;
-			removedParticlesPositionBuffer = null; removedParticlesPositionCounter_Wall = null;
+            removedParticlesPositionBuffer = null; removedParticlesPositionCounter_Wall = null;
             spatialHash?.Release();
             spatialHash = null;
-			particleFlagsBuffer = null;
+            particleFlagsBuffer = null;
         }
 
         void ReleaseObstacleBuffers()
@@ -434,7 +434,7 @@ namespace Seb.Fluid2D.Simulation
             if (currentVerticesBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer_Wall", currentVerticesBuffer);
         }
 
-		public void GetRemovedParticlePositions()
+        public void GetRemovedParticlePositions()
         {
             if (removedParticlesPositionCounter_Wall == null || !removedParticlesPositionCounter_Wall.IsValid() || removedParticlesPositionBuffer == null || !removedParticlesPositionBuffer.IsValid())
             {
@@ -465,7 +465,7 @@ namespace Seb.Fluid2D.Simulation
                 transferedParticles.Add(particle);
             }
         }
-        
+
         void UpdateComputeShaderDynamicParams()
         {
             if (compute == null) return;
@@ -485,7 +485,7 @@ namespace Seb.Fluid2D.Simulation
             compute.SetVector("mousePosition_Wall", mousePos);
             compute.SetInt("gKeyPressed_Wall", Input.GetKey(KeyCode.G) ? 1 : 0);
             compute.SetInt("numObstacles_Wall", _gpuObstacleDataList.Count);
-            
+
             // Send the dynamic list of mixable colors to the shader every frame.
             if (mixableColorsForShader != null && mixableColorsForShader.Count > 0)
             {
@@ -497,7 +497,7 @@ namespace Seb.Fluid2D.Simulation
             {
                 compute.SetInt("mixableColorsSize_Wall", 0);
             }
-       }
+        }
 
         void SetInitialBufferData(Spawner2D_Wall.ParticleSpawnData spawnData)
         {
@@ -546,7 +546,7 @@ namespace Seb.Fluid2D.Simulation
                 nextAutoUpdateTime = Time.time + autoUpdateInterval;
             }
 
-			UpdateAutoPlayers();
+            UpdateAutoPlayers();
             UpdateObstacleBuffer(_forceObstacleBufferUpdate);
             _forceObstacleBufferUpdate = false;
 
@@ -575,11 +575,11 @@ namespace Seb.Fluid2D.Simulation
 
             // 1. Reset the atomic counter on the GPU to 0.
             ComputeHelper.Dispatch(compute, 1, 1, 1, kernelIndex: resetCompactionCounterKernel);
-            
+
             // 2. Run the compaction kernel.
             // Each thread checks its particle. If it survives, it increments the counter
             // and copies its data to the correct slot in the SortTarget buffers.
-			ComputeHelper.Dispatch(compute, numParticles, kernelIndex: flagParticlesKernel);
+            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: flagParticlesKernel);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: compactAndMoveKernel);
 
             // 3. Read back the final count of surviving particles.
@@ -596,7 +596,7 @@ namespace Seb.Fluid2D.Simulation
                 // but just setting the count to 0 is sufficient and fast.
                 Debug.Log("All particles removed.");
             }
-			else
+            else
             {
                 numParticles = newNumParticles;
                 // 4. Copy the compacted data from SortTarget buffers back to the main buffers.
@@ -614,13 +614,14 @@ namespace Seb.Fluid2D.Simulation
 
             int actualColor = 0;
             // Asynchronously request data from the GPU. The code in the lambda (=>) runs when the data is ready.
-            AsyncGPUReadback.Request(gpu_removedParticlesCounter_Wall, (request) => {
+            AsyncGPUReadback.Request(gpu_removedParticlesCounter_Wall, (request) =>
+            {
                 if (!request.hasError && (lastPlayerCount > 0))
                 {
                     // Copy the GPU data directly into your existing C# array.
                     request.GetData<int>().CopyTo(removedParticlesThisFrame_Wall);
 
-                    for(int color = 0; color < removedParticlesThisFrame_Wall.Length; color++)
+                    for (int color = 0; color < removedParticlesThisFrame_Wall.Length; color++)
                     {
                         actualColor = mixableColors[color];
                         removedParticlesPerColor_Wall[actualColor] += removedParticlesThisFrame_Wall[color];
@@ -628,7 +629,8 @@ namespace Seb.Fluid2D.Simulation
                 }
             });
 
-            AsyncGPUReadback.Request(gpu_particlesReachedDestinationCounter_Wall, (request) => {
+            AsyncGPUReadback.Request(gpu_particlesReachedDestinationCounter_Wall, (request) =>
+            {
                 if (!request.hasError && (lastPlayerCount > 0))
                 {
                     // Copy the GPU data directly into your existing C# array.
@@ -725,7 +727,7 @@ namespace Seb.Fluid2D.Simulation
 
             int4[] newCollisionData = new int4[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newCollisionData[i] = new int4(-1, -1, -1, -1);
             collisionBuffer = FallbackResizeAndAppendBuffer(collisionBuffer, oldNumParticles, newCollisionData);
-			collisionBufferCopy = FallbackResizeAndAppendBuffer(collisionBufferCopy, oldNumParticles, new int4[newSpawnCount]);
+            collisionBufferCopy = FallbackResizeAndAppendBuffer(collisionBufferCopy, oldNumParticles, new int4[newSpawnCount]);
 
             densityBuffer = FallbackResizeAndAppendBuffer(densityBuffer, oldNumParticles, new float2[newSpawnCount]);
 
@@ -773,7 +775,7 @@ namespace Seb.Fluid2D.Simulation
         {
             if (numParticles == 0 || spatialHash == null || compute == null) return;
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: spatialHashKernel);
-            spatialHash.Run(); 
+            spatialHash.Run();
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: reorderKernel);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
         }
@@ -886,7 +888,7 @@ namespace Seb.Fluid2D.Simulation
                     {
                         var info = new CachedObstacleInfo { transform = go.transform };
                         info.polyCol = go.GetComponent<PolygonCollider2D>();
-                        
+
                         if (!go.TryGetComponent<LineRenderer>(out info.lineRend))
                         {
                             info.lineRend = go.AddComponent<LineRenderer>();
@@ -900,7 +902,7 @@ namespace Seb.Fluid2D.Simulation
                                 ? lineRendererMaterial
                                 : _sharedUnlitMaterial;
                         }
-                            
+
                         _obstacleCache[go] = info;
                         listActuallyChanged = true;
                     }
@@ -1128,7 +1130,7 @@ namespace Seb.Fluid2D.Simulation
                 Color displayColor = Color.white;
                 if (obsType == 1) { displayColor = obstacleLineColor; }
                 else if (obsType == 2) { displayColor = ventilLineColor; }
-                
+
                 if (obsType == 0 && playerColors.TryGetValue(obstacleGO, out int pColor)) displayColor = new Color(colorPalette[pColor].r, colorPalette[pColor].g, colorPalette[pColor].b, 1f); //colorPalette[pColor];
                 _propBlock_Wall.SetColor("_BaseColor", displayColor); lr.SetPropertyBlock(_propBlock_Wall);
                 _gpuObstacleColorsData.Add(displayColor);

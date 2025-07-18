@@ -286,104 +286,6 @@ MonoBehaviour:
   areaToColorAroundObstacles: 1
   minDistanceToRemoveParticles: 0.2
   coloredAreaAroundObstaclesDivider: 0
-  particlesReachedDestinationThisFrame:
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  particlesReachedDestination:
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
-  - x: 0
-    y: 0
-    z: 0
-    w: 0
   mixableColors: 
   mixableColorsForShader: []
   maxPlayerColors: 6
@@ -393,11 +295,6 @@ MonoBehaviour:
   ventilLineColor: {r: 1, g: 1, b: 1, a: 0}
   obstacleLineWidth: 0
   lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
-  _minLoopedSoundPitch: 0.8
-  _maxLoopedSoundPitch: 1.2
-  _oilCollectedPitchDelta: 0.1
-  _oilCollectedSound: {fileID: 8300000, guid: 5d33586386f8d0a47aa72c317ea4e38b, type: 3}
-  _audioMixerOil: {fileID: -7125921913927979170, guid: f7d129ff1f9abf84baabd82be508b538, type: 2}
 --- !u!114 &271053320
 MonoBehaviour:
   m_ObjectHideFlags: 0

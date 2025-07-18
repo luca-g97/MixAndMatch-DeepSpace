@@ -768,7 +768,8 @@ void FlagParticlesForCompaction_Wall(uint3 id : SV_DispatchThreadID)
                 {
                     float3 obsColor = ObstacleColorsBuffer_Wall[obsIndex].rgb;
                     bool alreadyFound = false;
-					[loop]	
+					
+                    [loop]
                     for (int j = 0; j < uniqueColorCount; j++)
                     {
                         if (distance(obsColor, uniqueColors[j]) < 0.001)

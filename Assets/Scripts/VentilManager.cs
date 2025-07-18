@@ -2,7 +2,6 @@ using KBCore.Refs;
 using Seb.Fluid2D.Simulation;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Mathematics;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -119,7 +118,7 @@ public class VentilManager : ValidatedMonoBehaviour
 
     private void EvaluateParticlesReached()
     {
-        if (!_fluidSimulation)
+        /*if (!_fluidSimulation)
         {
             return;
         }
@@ -143,6 +142,6 @@ public class VentilManager : ValidatedMonoBehaviour
             }
 
             _ventilList[i].UpdateHealth(accumulatedParticlesPerVentil[i]);
-        }
+        }*/
     }
 }

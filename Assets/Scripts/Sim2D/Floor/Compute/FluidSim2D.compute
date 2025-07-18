@@ -9,8 +9,7 @@
 #pragma kernel ResetCompactionCounter
 #pragma kernel CompactAndMoveParticles
 #pragma kernel CopyCollisionBuffer
-#pragma kernel ClearIntBuffer
-#pragma kernel ClearInt4Buffer
+#pragma kernel ClearRemovedParticlesBuffer
 
 #include "./FluidMaths2D.hlsl"
 #include "./SpatialHash.hlsl"
@@ -65,7 +64,8 @@ RWStructuredBuffer<int2> SortTarget_ParticleType;
 RWStructuredBuffer<int4> SortTarget_Collision;
 
 // This is the atomic counter, it MUST be RW (UAV)
-RWStructuredBuffer<uint> CompactionInfoBuffer;
+RWStructuredBuffer<int2> CompactionInfoBuffer;
+RWStructuredBuffer<int2> RemovedParticlesBuffer;
 
 // This is read-only for the compaction kernel, so it is NOT a UAV
 StructuredBuffer<float4> ObstacleColorsBuffer;
@@ -715,7 +715,7 @@ void UpdatePositions(uint3 id : SV_DispatchThreadID)
 [numthreads(1, 1, 1)]
 void ResetCompactionCounter(uint3 id : SV_DispatchThreadID)
 {
-    CompactionInfoBuffer[0] = 0;
+    CompactionInfoBuffer[0] = int2(0, 0);
 }
 
 [numthreads(NumThreads, 1, 1)]
@@ -734,7 +734,7 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
     if (removalFlag <= -2) // Ventil removal
     {
         shouldKeep = false;
-        InterlockedAdd(particlesReachedDestinationThisFrame[particleColorIndex][abs(removalFlag + 2)], 1);
+        removalFlag = removalFlag + 10;
     }
     else if (removalFlag >= 0) // Player flagged this particle
     {
@@ -785,17 +785,17 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
                 if (distance(blendedColorAverage, particleVisualColor) < 0.02)
                 {
                     shouldKeep = false;
-                    InterlockedAdd(removedParticlesThisFrame[particleColorIndex], 1);
                 }
             }
         }
     }
 
     // Compaction Step...
+    uint newIndex;
     if (shouldKeep)
     {
-        uint newIndex;
-        InterlockedAdd(CompactionInfoBuffer[0], 1, newIndex);
+        //Increment counter for staying particles
+        InterlockedAdd(CompactionInfoBuffer[0][0], 1, newIndex);
         SortTarget_Positions[newIndex] = Source_Positions[id.x];
         SortTarget_PredictedPositions[newIndex] = Source_PredictedPositions[id.x];
         SortTarget_Velocities[newIndex] = Source_Velocities[id.x];
@@ -804,6 +804,12 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
         int2 currentParticleTypeInfo = Source_ParticleType[id.x];
         currentParticleTypeInfo.y = -1;
         SortTarget_ParticleType[newIndex] = currentParticleTypeInfo;
+    }
+    else
+    {
+        //Increment counter for removing particles
+        InterlockedAdd(CompactionInfoBuffer[0][1], 1, newIndex);
+        RemovedParticlesBuffer[newIndex] = Source_ParticleType[id.x];
     }
 }
 
@@ -820,13 +826,7 @@ void CopyCollisionBuffer(uint3 id : SV_DispatchThreadID)
 }
 
 [numthreads(64, 1, 1)]
-void ClearIntBuffer(uint3 id : SV_DispatchThreadID)
+void ClearRemovedParticlesBuffer(uint3 id : SV_DispatchThreadID)
 {
-    intBufferToClear[id.x] = 0;
-}
-
-[numthreads(64, 1, 1)]
-void ClearInt4Buffer(uint3 id : SV_DispatchThreadID)
-{
-    int4BufferToClear[id.x] = int4(0, 0, 0, 0);
+    RemovedParticlesBuffer[id.x] = int2(-1, -1);
 }
