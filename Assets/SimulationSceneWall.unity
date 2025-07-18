@@ -609,10 +609,6 @@ MonoBehaviour:
   compute: {fileID: 7200000, guid: 2d342f91ee800f140958be6ec301e94a, type: 3}
   spawner2D: {fileID: 271053327}
   obstacles: []
-  obstacleLineColor: {r: 0, g: 1, b: 0, a: 0}
-  ventilLineColor: {r: 0, g: 1, b: 0, a: 0}
-  obstacleLineWidth: 0.1
-  lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
 --- !u!114 &271053327
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1051,6 +1047,10 @@ PrefabInstance:
     - target: {fileID: 7564270855486431386, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7564270855486431386, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_TagString
+      value: Ventil_Wall
       objectReference: {fileID: 0}
     - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
       propertyPath: m_LocalPosition.x

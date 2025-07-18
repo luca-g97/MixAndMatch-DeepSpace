@@ -8,6 +8,7 @@
 #pragma kernel UpdatePositions_Wall
 #pragma kernel ResetCompactionCounter_Wall
 #pragma kernel CompactAndMoveParticles_Wall
+#pragma kernel CopyParticleTypeBuffer_Wall
 #pragma kernel ClearRemovedParticlesBuffer_Wall
 
 #include "./FluidMaths2D_Wall.hlsl"
@@ -43,7 +44,7 @@ RWStructuredBuffer<int4> CollisionBuffer_Wall;
 RWStructuredBuffer<int2> ParticleTypeBuffer_Wall;
 RWStructuredBuffer<uint> SpatialKeys_Wall;
 RWStructuredBuffer<uint> SpatialOffsets_Wall;
-RWStructuredBuffer<int4> CopiedCollisionBuffer_Destination_Wall;
+RWStructuredBuffer<int4> CopiedParticleTypeBuffer_Destination_Wall;
 
 // Buffers that are read-only in most contexts
 StructuredBuffer<float> GravityScales_Wall;
@@ -52,7 +53,7 @@ StructuredBuffer<Obstacle> ObstaclesBuffer_Wall;
 StructuredBuffer<float2> VerticesBuffer_Wall;
 StructuredBuffer<Current> CurrentsBuffer_Wall;
 StructuredBuffer<float2> CurrentVerticesBuffer_Wall;
-StructuredBuffer<int4> OriginalCollisionBuffer_Source_Wall;
+StructuredBuffer<int4> OriginalParticleTypeBuffer_Source_Wall;
 
 // --- Buffers for Compaction Kernel ---
 // NOTE: These are the destinations, so they MUST be RW (UAVs)
@@ -60,7 +61,6 @@ RWStructuredBuffer<float2> SortTarget_Positions_Wall;
 RWStructuredBuffer<float2> SortTarget_PredictedPositions_Wall;
 RWStructuredBuffer<float2> SortTarget_Velocities_Wall;
 RWStructuredBuffer<int2> SortTarget_ParticleType_Wall;
-RWStructuredBuffer<int4> SortTarget_Collision_Wall;
 
 // This is the atomic counter, it MUST be RW (UAV)
 RWStructuredBuffer<int2> CompactionInfoBuffer_Wall;
@@ -70,14 +70,12 @@ StructuredBuffer<float2> Source_Positions_Wall;
 StructuredBuffer<float2> Source_PredictedPositions_Wall;
 StructuredBuffer<float2> Source_Velocities_Wall;
 StructuredBuffer<int2> Source_ParticleType_Wall;
-StructuredBuffer<int4> Source_Collision_Wall;
 
 // Aliases for the REORDERCOPYBACK kernel's source data
 StructuredBuffer<float2> CopySource_Positions_Wall;
 StructuredBuffer<float2> CopySource_PredictedPositions_Wall;
 StructuredBuffer<float2> CopySource_Velocities_Wall;
 StructuredBuffer<int2> CopySource_ParticleType_Wall;
-StructuredBuffer<int4> CopySource_Collision_Wall;
 
 int numObstacles_Wall;
 static const int NumThreads_Wall = 64;
@@ -649,6 +647,18 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
         currentParticleTypeInfo.y = -1;
         SortTarget_ParticleType_Wall[newIndex] = currentParticleTypeInfo;
     }
+}
+
+[numthreads(64, 1, 1)]
+void CopyParticleTypeBuffer_Wall(uint3 id : SV_DispatchThreadID)
+{
+    // Use the existing global 'numParticles' constant for the check.
+    if (id.x >= numParticles_Wall)
+    {
+        return;
+    }
+    
+    CopiedParticleTypeBuffer_Destination_Wall[id.x] = OriginalParticleTypeBuffer_Source_Wall[id.x];
 }
 
 [numthreads(64, 1, 1)]

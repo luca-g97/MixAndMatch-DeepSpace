@@ -6,6 +6,8 @@ TagManager:
   tags:
   - Obstacle
   - Ventil
+  - Ventil_Wall
+  - Obstacle_Wall
   layers:
   - Default
   - TransparentFX

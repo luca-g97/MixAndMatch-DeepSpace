@@ -184,7 +184,6 @@ namespace Seb.Fluid2D.Simulation
             int initialCapacity = Mathf.Max(1, numParticles);
             CreateParticleBuffers(initialCapacity);
             compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<int2>(1);
-            removedParticlesBuffer = ComputeHelper.CreateStructuredBuffer<int2>(1);
 
             if (numParticles > 0)
             {
@@ -233,6 +232,7 @@ namespace Seb.Fluid2D.Simulation
             sortTarget_Collision = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
 
             collisionBufferCopy = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
+            removedParticlesBuffer = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
         }
 
         void ReleaseParticleBuffers()
@@ -459,8 +459,7 @@ namespace Seb.Fluid2D.Simulation
             if (!isPaused && numParticles > 0)
             {
                 RunSimulationFrame(cappedSimDeltaTime);
-                // This still forces the GPU to finish all writes to collisionBuffer
-                // and eliminates the Read-After-Write hazard.
+
                 if (collisionBuffer != null && collisionBufferCopy != null && collisionBuffer.count == collisionBufferCopy.count && numParticles > 0)
                 {
                     compute.SetBuffer(copyCollisionKernel, "OriginalCollisionBuffer_Source", collisionBuffer);
@@ -468,27 +467,14 @@ namespace Seb.Fluid2D.Simulation
                     ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copyCollisionKernel);
                 }
 
-                ProcessParticleRemovalsGPU();
-                ProcessParticleRemovalsCPU();
+                ProcessParticleRemovals();
             }
 
             if (pauseNextFrame) { isPaused = true; pauseNextFrame = false; }
             HandleInput();
         }
 
-        void ProcessParticleRemovalsGPU()
-        {
-            if (numParticles == 0 || compute == null || !particleTypeBuffer.IsValid()) return;
-
-            //First reset the counter than check all particles and copy only the existing ones back
-            ComputeHelper.Dispatch(compute, 1, 1, 1, kernelIndex: resetCompactionCounterKernel);
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: compactAndMoveKernel);
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
-
-            UpdateComputeShaderDynamicParams();
-        }
-
-        void ProcessParticleRemovalsCPU()
+        void ProcessParticleRemovals()
         {
             if (numParticles == 0 || compute == null || isProcessingRemovals)
             {
@@ -505,81 +491,95 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: compactAndMoveKernel);
 
             // 2. Request the counter data ONCE.
-            var request = AsyncGPUReadback.Request(compactionInfoBuffer);
-
-            if (request.hasError)
+            AsyncGPUReadback.Request(compactionInfoBuffer, (request) =>
             {
-                Debug.LogError("GPU readback error!");
-                isProcessingRemovals = false;
-                return;
-            }
-
-            if (request.done)
-            {
-                var counters = request.GetData<int2>();
-                int keptCount = counters[0].x;
-                int removedCount = counters[0].y;
-
-                numParticles = keptCount;
-
-                if (removedCount > 0)
+                if (request.hasError)
                 {
-                    // Now request the list of removed particle indices
-                    AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<int2>(), 0, (listRequest) =>
+                    Debug.LogError("GPU readback error on compaction info buffer!");
+                    isProcessingRemovals = false;
+                    return;
+                }
+
+                var counters = request.GetData<int2>();
+                if (counters.Length > 0)
+                {
+                    int keptCount = counters[0].x;
+                    int removedCount = counters[0].y;
+
+                    // If the GPU reports that particles were removed, we do everything here.
+                    if (removedCount > 0)
                     {
-                        if (listRequest.hasError) return;
-                        var removedParticlesData = listRequest.GetData<int2>();
+                        // 1. Finalize the compaction on the GPU by copying the "kept" particles back.
+                        ComputeHelper.Dispatch(compute, keptCount, kernelIndex: copybackKernel);
 
-                        Dictionary<GameObject, int> interactingObstacles = new Dictionary<GameObject, int>();
+                        // 2. Update the CPU's particle count. This is the critical step.
+                        numParticles = keptCount;
 
-                        // Process the list of removed particles
-                        for (int particleNr = 0; particleNr < removedCount; particleNr++)
+                        // 3. Now, handle transferring the removed particles to the other simulation.
+                        AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<int2>(), 0, (listRequest) =>
                         {
-                            int2 particleData = removedParticlesData[particleNr];
-                            int particleType = particleData.x - 1;
-                            int actualParticleColor = mixableColorsSnapshot[particleType];
-                            int obstacleId = particleData.y;
-                            GameObject obstacle = obstaclesSnapshot[obstacleId];
-
-                            if (!interactingObstacles.ContainsKey(obstacle))
+                            if (listRequest.hasError)
                             {
-                                interactingObstacles.Add(obstacle, 1);
+                                isProcessingRemovals = false;
+                                return;
                             }
                             else
                             {
-                                interactingObstacles[obstacle]++;
-                            }
+                                var removedParticlesData = listRequest.GetData<int2>();
+                                Dictionary<GameObject, int> interactingObstacles = new Dictionary<GameObject, int>();
 
-                            if (obstacle.tag.Equals("Player"))
-                            {
-                                removedParticlesPerColor[actualParticleColor][0]++;
-                            }
-                            else if (obstacle.tag.Equals("Ventil"))
-                            {
-                                removedParticlesPerColor[actualParticleColor][1]++;
-                            }
-                        }
+                                // Process the list of removed particles
+                                for (int particleNr = 0; particleNr < removedCount; particleNr++)
+                                {
+                                    int2 particleData = removedParticlesData[particleNr];
+                                    int particleType = particleData.x - 1;
+                                    int actualParticleColor = mixableColorsSnapshot[particleType];
+                                    int obstacleId = particleData.y;
+                                    GameObject obstacle = obstaclesSnapshot[obstacleId];
 
-                        foreach (GameObject obstacle in interactingObstacles.Keys)
-                        {
-                            AudioSource audioSource = obstacle.GetComponent<AudioSource>();
-                            if (obstacle.tag.Equals("Player"))
-                            {
-                                audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
-                            }
-                            else if (obstacle.tag.Equals("Ventil"))
-                            {
-                                audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
-                                obstacle.GetComponent<Ventil>().UpdateHealth(interactingObstacles[obstacle]);
-                            }
+                                    if (!interactingObstacles.ContainsKey(obstacle))
+                                    {
+                                        interactingObstacles.Add(obstacle, 1);
+                                    }
+                                    else
+                                    {
+                                        interactingObstacles[obstacle]++;
+                                    }
 
-                            audioSource.Play();
-                        }
-                    });
+                                    if (obstacle.tag.Equals("Player"))
+                                    {
+                                        removedParticlesPerColor[actualParticleColor][0]++;
+                                    }
+                                    else if (obstacle.tag.Equals("Ventil"))
+                                    {
+                                        removedParticlesPerColor[actualParticleColor][1]++;
+                                    }
+                                }
+
+                                foreach (GameObject obstacle in interactingObstacles.Keys)
+                                {
+                                    AudioSource audioSource = obstacle.GetComponent<AudioSource>();
+                                    if (obstacle.tag.Equals("Player"))
+                                    {
+                                        audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
+                                    }
+                                    else if (obstacle.tag.Equals("Ventil"))
+                                    {
+                                        audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
+                                        obstacle.GetComponent<Ventil>().UpdateHealth(interactingObstacles[obstacle]);
+                                    }
+
+                                    audioSource.Play();
+                                }
+                            }
+                        });
+
+                    }
                 }
-
+                // Update the shader parameters with the new count for the next frame.
+                UpdateComputeShaderDynamicParams();
                 isProcessingRemovals = false;
-            }
+            });
         }
 
         public void SpawnParticles(List<float4> particlesToSpawn)
