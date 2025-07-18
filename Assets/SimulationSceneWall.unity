@@ -661,7 +661,7 @@ MonoBehaviour:
     debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
   - name: OilRed
     particleType: 1
-    position: {x: -1.45, y: 12.35}
+    position: {x: -1.63, y: 12.35}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
@@ -682,7 +682,7 @@ MonoBehaviour:
     debugCol: {r: 0, g: 0, b: 1, a: 1}
   - name: OilOrange
     particleType: 4
-    position: {x: -1.09, y: 13.25}
+    position: {x: -1.44, y: 13.25}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 25
@@ -703,46 +703,46 @@ MonoBehaviour:
     debugCol: {r: 0, g: 1, b: 0, a: 1}
   - name: OilRedOrange
     particleType: 7
-    position: {x: 0.75, y: 12}
+    position: {x: -1.03, y: 12.35}
     size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 1, g: 0.2705882, b: 0, a: 1}
   - name: OilYellowOrange
     particleType: 8
-    position: {x: 2, y: 12}
-    size: {x: 1, y: 1}
+    position: {x: -0.8, y: 13.25}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 0.854902, g: 0.6470588, b: 0.1254902, a: 1}
   - name: OilRedViolet
     particleType: 9
-    position: {x: 3.25, y: 12}
-    size: {x: 1, y: 1}
+    position: {x: 0.15, y: 12.8}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 0.6901961, g: 0.1882353, b: 0.3764706, a: 1}
   - name: OilBlueViolet
     particleType: 10
-    position: {x: 4.5, y: 12}
-    size: {x: 1, y: 1}
+    position: {x: 0.57, y: 13.25}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 0.36759683, g: 0.254902, b: 0.88235295, a: 1}
   - name: OilYellowGreen
     particleType: 11
-    position: {x: 5.75, y: 12}
-    size: {x: 1, y: 1}
+    position: {x: 1.9, y: 12.8}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 0.81292915, g: 1, b: 0, a: 1}
   - name: OilBlueGreen
     particleType: 12
-    position: {x: 7, y: 12}
-    size: {x: 1, y: 1}
+    position: {x: 0.61, y: 12.35}
+    size: {x: 0.05, y: 0.05}
     spawnDensity: 0
     particlesPerSecond: 0
-    debugCol: {r: 0.27843142, g: 1, b: 0.36379793, a: 1}
+    debugCol: {r: 0.27843142, g: 1, b: 1, a: 1}
   fluidSimulation: {fileID: 271053326}
   initialSpawnParticleCount: 12141
   currentSimParticleCount_Inspector: 0
@@ -768,7 +768,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.381
+      value: -1.13
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -826,6 +826,14 @@ PrefabInstance:
       propertyPath: _particleType
       value: 12
       objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -858,11 +866,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.583
+      value: -1.06
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.7229996
+      value: 2.868
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.z
@@ -916,6 +924,14 @@ PrefabInstance:
       propertyPath: _particleType
       value: 10
       objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -948,7 +964,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.85
+      value: -2.66
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -956,7 +972,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 2.064
+      value: 1.4
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1005,6 +1021,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 11
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1204,7 +1228,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.14
+      value: 1.59
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1261,6 +1285,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1490,7 +1522,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.14
+      value: 1.1
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1547,6 +1579,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1760,7 +1800,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.662
+      value: 0.67
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1817,6 +1857,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1951,7 +1999,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.28
+      value: -0.25
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2008,6 +2056,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2227,6 +2283,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -9134,7 +9198,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.227
+      value: -0.47
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -9191,6 +9255,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -9322,7 +9394,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.51
+      value: -1.52
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -9379,6 +9451,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -10289,6 +10369,14 @@ PrefabInstance:
       propertyPath: _particleType
       value: 3
       objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -10442,7 +10530,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.6
+      value: 1.89
       objectReference: {fileID: 0}
     - target: {fileID: 3445010211826534617, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -10499,6 +10587,14 @@ PrefabInstance:
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPauseDuration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPauseDuration
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
