@@ -582,6 +582,18 @@ namespace Seb.Fluid2D.Simulation
             }
         }
 
+        public void SpawnParticles(List<float4> particlesToSpawn)
+        {
+            if (spawner2D != null && spawner2D.allowContinuousSpawning && numParticles < maxTotalParticles)
+            {
+                Spawner2D.ParticleSpawnData newParticleInfo = spawner2D.SpawnTransferedParticles(particlesToSpawn);
+                if (newParticleInfo.positions != null && newParticleInfo.positions.Length > 0)
+                {
+                    HandleAddingNewParticles(newParticleInfo);
+                }
+            }
+        }
+
         // Fallback CPU-based buffer resizing (used if Graphics.CopyBuffer is problematic)
         ComputeBuffer FallbackResizeAndAppendBuffer<T>(ComputeBuffer buffer, int oldCount, T[] newDataToAppend) where T : struct
         {

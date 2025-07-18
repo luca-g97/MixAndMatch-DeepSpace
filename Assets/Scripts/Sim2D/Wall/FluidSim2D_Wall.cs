@@ -153,7 +153,7 @@ namespace Seb.Fluid2D.Simulation
 
             int initialCapacity = Mathf.Max(1, numParticles);
             CreateParticleBuffers(initialCapacity);
-            compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<uint>(1);
+            compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<int2>(1);
             removedParticlesBuffer = ComputeHelper.CreateStructuredBuffer<float4>(1);
 
             if (numParticles > 0)
@@ -175,7 +175,8 @@ namespace Seb.Fluid2D.Simulation
             // Initialize current buffers with a minimal size to ensure they always exist.
             currentsBuffer = ComputeHelper.CreateStructuredBuffer<CurrentData>(1);
             currentVerticesBuffer = ComputeHelper.CreateStructuredBuffer<Vector2>(1);
-            UpdateObstacleBuffer(true); // Force initial creation/update
+
+            SetupObstacleBuffers();
             SetupComputeShaderPersistent();
             BindComputeShaderBuffers();
             UpdateComputeShaderDynamicParams();
@@ -209,6 +210,7 @@ namespace Seb.Fluid2D.Simulation
             gravityScaleBuffer = null; particleTypeBuffer = null; sortTarget_Position = null;
             sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
             compactionInfoBuffer = null; removedParticlesBuffer = null;
+
             spatialHash?.Release();
             spatialHash = null;
         }
@@ -354,12 +356,10 @@ namespace Seb.Fluid2D.Simulation
             particleTypeBuffer.SetData(spawnData.particleTypes);
 
             float[] defaultGravityScales = new float[numParticles];
-            int4[] defaultCollisionData = new int4[numParticles];
 
             for (int i = 0; i < numParticles; i++)
             {
                 defaultGravityScales[i] = 1f;
-                defaultCollisionData[i] = new int4(-1, -1, -1, -1);
             }
 
             gravityScaleBuffer.SetData(defaultGravityScales);
@@ -385,9 +385,6 @@ namespace Seb.Fluid2D.Simulation
             {
                 nextAutoUpdateTime = Time.time + autoUpdateInterval;
             }
-
-            UpdateObstacleBuffer(_forceObstacleBufferUpdate);
-            _forceObstacleBufferUpdate = false;
 
             if (!isPaused && numParticles > 0)
             {
@@ -429,37 +426,39 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: compactAndMoveKernel);
 
             // 2. Request the counter data ONCE.
-            var request = AsyncGPUReadback.Request(compactionInfoBuffer);
-
-            if (request.hasError)
+            AsyncGPUReadback.Request(compactionInfoBuffer, (request) =>
             {
-                Debug.LogError("GPU readback error!");
-                isProcessingRemovals = false;
-                return;
-            }
-
-            if (request.done)
-            {
-                var counters = request.GetData<int2>();
-                int keptCount = counters[0].x;
-                int removedCount = counters[0].y;
-
-                numParticles = keptCount;
-
-                if (removedCount > 0)
+                if (request.hasError)
                 {
-                    // Now request the list of removed particle indices
-                    AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<float4>(), 0, (listRequest) =>
-                    {
-                        if (listRequest.hasError) return;
-                        var removedParticlesData = listRequest.GetData<float4>();
+                    Debug.LogError("GPU readback error!");
+                }
+                else
+                {
+                    var counters = request.GetData<int2>();
 
-                        fluidSim_Floor.spawner2D.SpawnTransferedParticles(removedParticlesData.ToList());
-                    });
+                    if (counters.Length > 0)
+                    {
+                        int keptCount = counters[0].x;
+                        int removedCount = counters[0].y;
+
+                        numParticles = keptCount;
+
+                        if (removedCount > 0)
+                        {
+                            // Now request the list of removed particle indices
+                            AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<float4>(), 0, (listRequest) =>
+                            {
+                                if (listRequest.hasError) return;
+                                var removedParticlesData = listRequest.GetData<float4>();
+
+                                fluidSim_Floor.SpawnParticles(removedParticlesData.ToList());
+                            });
+                        }
+                    }
                 }
 
                 isProcessingRemovals = false;
-            }
+            });
         }
 
         // Fallback CPU-based buffer resizing (used if Graphics.CopyBuffer is problematic)
@@ -527,8 +526,6 @@ namespace Seb.Fluid2D.Simulation
 
             float[] newGravityScales = new float[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newGravityScales[i] = 1f;
             gravityScaleBuffer = FallbackResizeAndAppendBuffer(gravityScaleBuffer, oldNumParticles, newGravityScales);
-
-            int4[] newCollisionData = new int4[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newCollisionData[i] = new int4(-1, -1, -1, -1);
 
             densityBuffer = FallbackResizeAndAppendBuffer(densityBuffer, oldNumParticles, new float2[newSpawnCount]);
 
@@ -602,14 +599,14 @@ namespace Seb.Fluid2D.Simulation
                     spatialHash = new SpatialHash_Wall(capacity);
                     numParticles = newNumParticles;
                     if (numParticles > 0) SetInitialBufferData(initialSpawnData);
-                    UpdateObstacleBuffer(true);
+                    SetupObstacleBuffers();
                 }
                 else
                 {
                     ReleaseParticleBuffers(); ReleaseObstacleBuffers();
                     _gpuObstacleDataList.Clear(); _gpuVerticesData.Clear();
                     CreateParticleBuffers(1); spatialHash = new SpatialHash_Wall(1); numParticles = 0;
-                    UpdateObstacleBuffer(true);
+                    SetupObstacleBuffers();
                 }
                 BindComputeShaderBuffers();
                 UpdateComputeShaderDynamicParams();
@@ -655,58 +652,107 @@ namespace Seb.Fluid2D.Simulation
             compute.SetInt("numCurrents_Wall", currentDataList.Count);
         }
 
-        void UpdateObstacleBuffer(bool forceBufferRecreation = false)
+        void SetupObstacleBuffers()
         {
-            if (!Application.isPlaying && compute == null) return;
+            if (!Application.isPlaying || compute == null) return;
 
+            // --- 1. Find and Sort Obstacles from the Scene ---
+            var allGameObjectsInScene = FindObjectsOfType<GameObject>();
+            var obstaclesToSort = new List<GameObject>();
+
+            foreach (GameObject go in allGameObjectsInScene)
+            {
+                // Add active objects with the correct tags to our list
+                if (go.activeInHierarchy && (go.CompareTag("Obstacle") || go.CompareTag("Ventil")))
+                {
+                    obstaclesToSort.Add(go);
+                }
+            }
+
+            // Sort the list: "Obstacle" types first, then "Ventil" types
+            obstacles = obstaclesToSort.OrderBy(o => o.CompareTag("Obstacle") ? 0 : 1)
+                                       .ThenBy(o => o.GetInstanceID())
+                                       .ToList();
+
+
+            // --- 2. Populate CPU-side lists with data for the GPU ---
             _gpuVerticesData.Clear();
             _gpuObstacleDataList.Clear();
 
-            if (_propBlock_Wall == null) _propBlock_Wall = new MaterialPropertyBlock();
-            bool anyObstacleTransformChanged = false;
-
-            bool buffersNeedStructuralUpdate = forceBufferRecreation || anyObstacleTransformChanged; // Simplified: update data if any transform changed or forced
-
-            // Vertex Buffer
-            if (vertexBuffer == null || !vertexBuffer.IsValid() || vertexBuffer.count != _gpuVerticesData.Count || forceBufferRecreation)
+            foreach (var go in obstacles)
             {
-                ComputeHelper.Release(vertexBuffer);
-                vertexBuffer = ComputeHelper.CreateStructuredBuffer(_gpuVerticesData.Count > 0 ? _gpuVerticesData.ToArray() : new Vector2[] { Vector2.zero });
-                buffersNeedStructuralUpdate = true;
+                // Skip any invalid objects
+                var lr = go.GetComponent<LineRenderer>();
+                if (lr == null || lr.positionCount < 2)
+                {
+                    PolygonCollider2D polygonCollider = go.GetComponent<PolygonCollider2D>();
+
+                    if (!go.TryGetComponent<LineRenderer>(out lr))
+                    {
+                        lr = go.AddComponent<LineRenderer>();
+                        lr.useWorldSpace = true;
+                    }
+                }
+
+                // Determine the obstacle type for the shader based on its tag
+                int obstacleType = -1;
+                if (go.CompareTag("Obstacle")) obstacleType = 1; // Physical obstacle
+                else if (go.CompareTag("Ventil")) obstacleType = 2; // Removal zone
+
+                // If it's a valid type, process it
+                if (obstacleType != -1)
+                {
+                    // Get the raw vertex positions from the LineRenderer
+                    var vertices = new Vector3[lr.positionCount];
+                    lr.GetPositions(vertices);
+
+                    // Create the obstacle data struct for the GPU
+                    var obstacleData = new ObstacleData
+                    {
+                        vertexStart = _gpuVerticesData.Count, // The starting index in the master vertex list
+                        vertexCount = lr.positionCount,
+                        lineWidth = lr.startWidth,
+                        obstacleType = obstacleType,
+                        centre = go.transform.position
+                    };
+                    _gpuObstacleDataList.Add(obstacleData);
+
+                    // Add this obstacle's vertices (in world space) to the master list
+                    for (int i = 0; i < lr.positionCount; i++)
+                    {
+                        _gpuVerticesData.Add(lr.transform.TransformPoint(vertices[i]));
+                    }
+                }
             }
-            else if (_gpuVerticesData.Count > 0 && anyObstacleTransformChanged)
+
+
+            // --- 3. Create, Populate, and Bind the GPU Buffers ---
+
+            // Release any old buffers first to prevent memory leaks
+            ComputeHelper.Release(vertexBuffer, obstacleBuffer);
+
+            // Create the vertex buffer
+            // Use a minimum size of 1 to prevent errors if no obstacles are found
+            int vertexBufferSize = Mathf.Max(1, _gpuVerticesData.Count);
+            vertexBuffer = ComputeHelper.CreateStructuredBuffer<Vector2>(vertexBufferSize);
+            if (_gpuVerticesData.Count > 0)
             {
                 vertexBuffer.SetData(_gpuVerticesData);
             }
-            else if (_gpuVerticesData.Count == 0 && (vertexBuffer == null || !vertexBuffer.IsValid() || vertexBuffer.count != 1))
-            {
-                ComputeHelper.Release(vertexBuffer); vertexBuffer = ComputeHelper.CreateStructuredBuffer<Vector2>(1);
-                vertexBuffer.SetData(new Vector2[] { Vector2.zero }); buffersNeedStructuralUpdate = true;
-            }
 
-            // Obstacle Data Buffer
-            if (obstacleBuffer == null || !obstacleBuffer.IsValid() || obstacleBuffer.count != _gpuObstacleDataList.Count || forceBufferRecreation)
-            {
-                ComputeHelper.Release(obstacleBuffer);
-                obstacleBuffer = ComputeHelper.CreateStructuredBuffer(_gpuObstacleDataList.Count > 0 ? _gpuObstacleDataList.ToArray() : new ObstacleData[] { new ObstacleData() });
-                buffersNeedStructuralUpdate = true;
-            }
-            else if (_gpuObstacleDataList.Count > 0 && (anyObstacleTransformChanged || forceBufferRecreation))
+            // Create the obstacle data buffer
+            int obstacleBufferSize = Mathf.Max(1, _gpuObstacleDataList.Count);
+            obstacleBuffer = ComputeHelper.CreateStructuredBuffer<ObstacleData>(obstacleBufferSize);
+            if (_gpuObstacleDataList.Count > 0)
             {
                 obstacleBuffer.SetData(_gpuObstacleDataList);
             }
-            else if (_gpuObstacleDataList.Count == 0 && (obstacleBuffer == null || !obstacleBuffer.IsValid() || obstacleBuffer.count != 1))
-            {
-                ComputeHelper.Release(obstacleBuffer); obstacleBuffer = ComputeHelper.CreateStructuredBuffer<ObstacleData>(1);
-                obstacleBuffer.SetData(new ObstacleData[] { new ObstacleData() }); buffersNeedStructuralUpdate = true;
-            }
 
-            if (compute != null && buffersNeedStructuralUpdate)
-            { // If buffers were re-created, they need to be re-bound
-                if (vertexBuffer != null && vertexBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "VerticesBuffer_Wall", vertexBuffer);
-                if (obstacleBuffer != null && obstacleBuffer.IsValid()) compute.SetBuffer(updatePositionKernel, "ObstaclesBuffer_Wall", obstacleBuffer);
-            }
-            if (compute != null) compute.SetInt("numObstacles_Wall", _gpuObstacleDataList.Count);
+            // Bind the new buffers and set the count for the shader
+            compute.SetBuffer(updatePositionKernel, "VerticesBuffer_Wall", vertexBuffer);
+            compute.SetBuffer(updatePositionKernel, "ObstaclesBuffer_Wall", obstacleBuffer);
+            Debug.Log("Vertices: " + _gpuVerticesData.Count + ", Obstacles: " + _gpuObstacleDataList.Count);
+            compute.SetInt("numObstacles_Wall", _gpuObstacleDataList.Count);
         }
 
         void OnDestroy()

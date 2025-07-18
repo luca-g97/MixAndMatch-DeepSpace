@@ -301,20 +301,13 @@ void HandleCollisions_Wall(uint particleIndex)
 
 		bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
         
-        // --- THIS IS THE CORRECTED LOGIC BLOCK ---
-        // It handles highlighting and removal flagging independently to prevent conflicts.
-        
         // Check only for colored particles
         if (particleType > 0)
         {
             if (obstacle.obstacleType == 2 && particleProcessFlag == -1 && isInside)
             {
                 ParticleTypeBuffer_Wall[particleIndex][1] = obstacleIdx;
-                RemovedParticlesBuffer_Wall[particleIndex][0] = particleType;
-                RemovedParticlesBuffer_Wall[particleIndex][1] = Positions_Wall[particleIndex][0];
-                RemovedParticlesBuffer_Wall[particleIndex][2] = Velocities_Wall[particleIndex][0];
-                RemovedParticlesBuffer_Wall[particleIndex][3] = Velocities_Wall[particleIndex][1];
-                break;
+                break; // Exit loop once flagged, since it's going to be removed.
             }
         }
 
@@ -630,13 +623,19 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
     if (id.x >= numParticles_Wall)
         return;
 
+    int removalFlag = Source_ParticleType_Wall[id.x][1];
+    
     // Compaction Step...
     uint newIndex;
-    if (ParticleTypeBuffer_Wall[id.x][1] != -1)
+    if (removalFlag != -1)
     {
-        //Increment counter for removing particles
         InterlockedAdd(CompactionInfoBuffer_Wall[0][1], 1, newIndex);
-        RemovedParticlesBuffer_Wall[newIndex] = RemovedParticlesBuffer_Wall[id.x];
+
+        float particleType = Source_ParticleType_Wall[id.x][0];
+        float2 pos = Source_Positions_Wall[id.x];
+        float2 vel = Source_Velocities_Wall[id.x];
+    
+        RemovedParticlesBuffer_Wall[newIndex] = float4(particleType, pos.x, vel.x, vel.y);
     }
     else
     {
