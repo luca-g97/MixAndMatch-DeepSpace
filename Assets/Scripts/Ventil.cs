@@ -18,6 +18,8 @@ public class Ventil : ValidatedMonoBehaviour
 
     private Sequence _currentSpawnSequence;
     private Sequence _currentColorSequence;
+    private Sequence _currentDamageSequence;
+    
     private float _defaultScale;
     private static List<Color> _colorPalette = ColorPalette.colorPalette;
 
@@ -48,20 +50,25 @@ public class Ventil : ValidatedMonoBehaviour
         }
     }
 
-    public void UpdateHealth(int particlesReachedThisFrame)
+    public void TakeDamage(int particlesReachedThisFrame)
     {
         if (IsNotAlive) return;
         currentHealthPoints -= particlesReachedThisFrame;
 
         if (currentHealthPoints <= 0)
         {
+            _currentDamageSequence?.Kill();
             DestroyedSequence();
+        }
+        else
+        {
+            DamageSequence();
         }
     }
 
     public void Kill()
     {
-        UpdateHealth(10000);
+        TakeDamage(10000);
     }
 
     public void UpdateTintByParticleType(int type)
@@ -105,6 +112,19 @@ public class Ventil : ValidatedMonoBehaviour
         _currentColorSequence?.Kill();
         _currentColorSequence = DOTween.Sequence()
             .AppendCallback((() => _materialPropertyBlock.SetColor(_TINT, color)));
+    }
+    
+    private void DamageSequence()
+    {
+        if (_currentDamageSequence != null && _currentDamageSequence.IsActive())
+        {
+            return;
+        }
+        
+        _currentDamageSequence?.Kill();
+        _currentDamageSequence = DOTween.Sequence()
+            .Append(transform.DOScale(_defaultScale * 0.95f, 0.5f).SetEase(Ease.OutCubic))
+            .Append(transform.DOScale(_defaultScale, 0.5f).SetEase(Ease.OutCubic));
     }
 
     private void OnDestroy()

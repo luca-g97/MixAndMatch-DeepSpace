@@ -226,7 +226,6 @@ namespace Seb.Fluid2D.Simulation
             currentsBuffer = ComputeHelper.CreateStructuredBuffer<CurrentData>(1);
             currentVerticesBuffer = ComputeHelper.CreateStructuredBuffer<Vector2>(1);
 
-            UpdateAutoPlayers();
             UpdateObstacleBuffer(true); // Force initial creation/update
             SetupComputeShaderPersistent();
             BindComputeShaderBuffers();
@@ -447,7 +446,6 @@ namespace Seb.Fluid2D.Simulation
                 fluidSim_Wall = GameObject.FindAnyObjectByType<FluidSim2D_Wall>();
             }
 
-            UpdateAutoPlayers();
             UpdateObstacleBuffer(_forceObstacleBufferUpdate);
             _forceObstacleBufferUpdate = false;
 
@@ -535,7 +533,7 @@ namespace Seb.Fluid2D.Simulation
                         else if (obstacle.CompareTag("Ventil"))
                         {
                             audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
-                            obstacle.GetComponent<Ventil>().UpdateHealth(entry.Value);
+                            obstacle.GetComponent<Ventil>().TakeDamage(entry.Value);
                         }
 
                         if (audioSource != null && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
@@ -768,7 +766,6 @@ namespace Seb.Fluid2D.Simulation
                     spatialHash = new SpatialHash(capacity);
                     numParticles = newNumParticles;
                     if (numParticles > 0) SetInitialBufferData(initialSpawnData);
-                    UpdateAutoPlayers();
                     UpdateObstacleBuffer(true);
                 }
                 else
@@ -822,77 +819,71 @@ namespace Seb.Fluid2D.Simulation
             compute.SetInt("numCurrents", currentDataList.Count);
         }
 
-        void UpdateAutoPlayers()
+        public void RegisterObstacle(GameObject obstacleGO)
+        {
+            if (!obstacles.Contains(obstacleGO))
+            {
+                obstacles.Add(obstacleGO);
+                // A change occurred, so we need to re-evaluate the obstacle state
+                // and tell the GPU buffers to update on the next frame.
+                UpdateObstacleAndPlayerState();
+            }
+        }
+
+        public void UnregisterObstacle(GameObject obstacleGO)
+        {
+            if (obstacles.Remove(obstacleGO) && obstacleGO != null)
+            {
+                _obstacleCache.Remove(obstacleGO);
+                playerColors.Remove(obstacleGO);
+                // A change occurred, so again, we update the state.
+                UpdateObstacleAndPlayerState();
+            }
+        }
+
+        private void UpdateObstacleAndPlayerState()
         {
             if (!Application.isPlaying) return;
-            var allGameObjectsInScene = GameObject.FindObjectsOfType<GameObject>();
-            HashSet<GameObject> currentPlayersInScene = new HashSet<GameObject>();
-            HashSet<GameObject> currentObstaclesInScene = new HashSet<GameObject>();
-            HashSet<GameObject> currentVentilsInScene = new HashSet<GameObject>();
 
-            foreach (GameObject go in allGameObjectsInScene)
-            {
-                if (!go.activeInHierarchy) continue;
-                if (go.CompareTag("Player")) currentPlayersInScene.Add(go);
-                else if (go.CompareTag("Obstacle")) currentObstaclesInScene.Add(go);
-                else if (go.CompareTag("Ventil")) currentVentilsInScene.Add(go);
-            }
-
+            // A flag to track if any significant changes require deeper updates.
             bool listActuallyChanged = false;
-            List<GameObject> newMasterObstaclesList = new List<GameObject>();
-            List<int> assignedIndices = new List<int>();
 
-            System.Action<HashSet<GameObject>> processSet = (set) =>
+            // --- Cache Management: Ensure all current obstacles are cached ---
+            foreach (GameObject go in obstacles)
             {
-                foreach (GameObject go in set)
+                // If an obstacle isn't in our cache, add it.
+                if (!_obstacleCache.ContainsKey(go))
                 {
-                    if (!newMasterObstaclesList.Contains(go)) newMasterObstaclesList.Add(go);
-                    if (!_obstacleCache.ContainsKey(go))
+                    var info = new CachedObstacleInfo { transform = go.transform };
+                    info.polyCol = go.GetComponent<PolygonCollider2D>();
+
+                    if (!go.TryGetComponent<LineRenderer>(out info.lineRend))
                     {
-                        var info = new CachedObstacleInfo { transform = go.transform };
-                        info.polyCol = go.GetComponent<PolygonCollider2D>();
-
-                        if (!go.TryGetComponent<LineRenderer>(out info.lineRend))
-                        {
-                            info.lineRend = go.AddComponent<LineRenderer>();
-                            info.lineRend.useWorldSpace = true;
-                        }
-                        // Ensure material on LineRenderer (new or existing)
-                        if (info.lineRend != null)
-                        {
-                            info.lineRend.sharedMaterial = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
-                        }
-
-                        if (go.CompareTag("Player"))
-                        {
-                            info.obstacleType = 0;
-                        }
-                        else if (go.CompareTag("Ventil"))
-                        {
-                            info.obstacleType = 2;
-                        }
-
-                        _obstacleCache[go] = info;
-                        listActuallyChanged = true;
+                        info.lineRend = go.AddComponent<LineRenderer>();
+                        info.lineRend.useWorldSpace = true;
                     }
+
+                    if (info.lineRend != null)
+                    {
+                        info.lineRend.sharedMaterial = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
+                    }
+
+                    // Assign obstacle type based on tag
+                    if (go.CompareTag("Player")) info.obstacleType = 0;
+                    else if (go.CompareTag("Ventil")) info.obstacleType = 2;
+                    else info.obstacleType = 1; // Default obstacle
+
+                    _obstacleCache[go] = info;
+                    listActuallyChanged = true;
                 }
-            };
-            processSet(currentObstaclesInScene);
-            processSet(currentVentilsInScene);
-            processSet(currentPlayersInScene);
-
-            List<GameObject> toRemoveFromCache = _obstacleCache.Keys.Where(go => go == null || !go.activeInHierarchy || !newMasterObstaclesList.Contains(go)).ToList();
-            foreach (var go in toRemoveFromCache)
-            {
-                _obstacleCache.Remove(go);
-                listActuallyChanged = true;
             }
 
-            if (listActuallyChanged || obstacles.Count != newMasterObstaclesList.Count)
-            { // Check if underlying list needs update
-                obstacles = newMasterObstaclesList;
-                _forceObstacleBufferUpdate = true;
-            }
+            obstacles.RemoveAll(item => item == null);
+
+            // --- Sorting: Keep the obstacle list in a deterministic order ---
+            var currentPlayersInScene = new HashSet<GameObject>(obstacles.Where(o => o.CompareTag("Player")));
+            var currentObstaclesInScene = new HashSet<GameObject>(obstacles.Where(o => o.CompareTag("Obstacle")));
+            var currentVentilsInScene = new HashSet<GameObject>(obstacles.Where(o => o.CompareTag("Ventil")));
 
             int GetPriority(GameObject go, HashSet<GameObject> players, HashSet<GameObject> staticObs, HashSet<GameObject> ventils)
             {
@@ -901,16 +892,14 @@ namespace Seb.Fluid2D.Simulation
                 if (ventils.Contains(go)) return 2;
                 return 3;
             }
-            // Always re-sort the current obstacles list. If it was re-assigned, this sorts the new list.
-            // If not re-assigned but items were removed from cache (which implies they should be removed from obstacles too),
-            // this sort will operate on the potentially stale 'obstacles' list before it's fully synced with 'newMasterObstaclesList'
-            // if 'listActuallyChanged' was only due to cache removal but not count difference.
-            // A safer approach is to always build 'obstacles' fresh from 'newMasterObstaclesList' after cache management.
-            obstacles = newMasterObstaclesList.OrderBy(o => GetPriority(o, currentPlayersInScene, currentObstaclesInScene, currentVentilsInScene))
-                                             .ThenBy(o => o.GetInstanceID())
-                                             .ToList();
-            if (listActuallyChanged) _forceObstacleBufferUpdate = true; // Ensure if the list order/content changed, buffers update.
 
+            obstacles = obstacles
+                .OrderBy(o => GetPriority(o, currentPlayersInScene, currentObstaclesInScene, currentVentilsInScene))
+                .ThenBy(o => o.GetInstanceID())
+                .ToList();
+
+
+            // --- Color Assignment Logic ---
             List<GameObject> sortedPlayersForColoring = obstacles
                 .Where(o => _obstacleCache.ContainsKey(o) && o.CompareTag("Player"))
                 .ToList();
@@ -918,31 +907,27 @@ namespace Seb.Fluid2D.Simulation
             if (listActuallyChanged || sortedPlayersForColoring.Count != lastPlayerCount)
             {
                 Dictionary<GameObject, int> tempPlayerColors = new Dictionary<GameObject, int>();
-
+                List<int> assignedIndices = new List<int>();
                 int numPaletteColors = colorPalette.Count;
                 int colorLimit = Mathf.Min(maxPlayerColors, numPaletteColors);
 
-                // 1. Categorize players from sortedPlayersForColoring
                 List<KeyValuePair<GameObject, int>> existingPlayersWithOldColor = new List<KeyValuePair<GameObject, int>>();
                 List<GameObject> newPlayersInSortedOrder = new List<GameObject>();
 
                 foreach (GameObject player in sortedPlayersForColoring)
                 {
-                    // playerColors here refers to its state *before* this update
                     if (playerColors.TryGetValue(player, out int oldColorIndex))
                     {
                         existingPlayersWithOldColor.Add(new KeyValuePair<GameObject, int>(player, oldColorIndex));
                     }
                     else
                     {
-                        newPlayersInSortedOrder.Add(player); // Order of new players preserved from sortedPlayersForColoring
+                        newPlayersInSortedOrder.Add(player);
                     }
                 }
 
-                // 2. Sort existing players by their old color index
                 existingPlayersWithOldColor.Sort((a, b) => a.Value.CompareTo(b.Value));
 
-                // 3.a. Assign new colors to sorted existing players
                 foreach (var playerEntry in existingPlayersWithOldColor)
                 {
                     GameObject player = playerEntry.Key;
@@ -952,7 +937,6 @@ namespace Seb.Fluid2D.Simulation
                 }
 
                 int nextColorIndex = lastPlayerCount;
-                // 3.b. Assign new colors to new players
                 foreach (GameObject player in newPlayersInSortedOrder)
                 {
                     bool uniqueSlotFound = false;
@@ -961,13 +945,12 @@ namespace Seb.Fluid2D.Simulation
                         if (!assignedIndices.Contains(k))
                         {
                             tempPlayerColors[player] = k;
-                            assignedIndices.Add(k); // This unique slot is now taken
+                            assignedIndices.Add(k);
                             uniqueSlotFound = true;
                             break;
                         }
                     }
 
-                    // IF no slot was found, simply use next available color
                     if (!uniqueSlotFound)
                     {
                         tempPlayerColors[player] = nextColorIndex % maxPlayerColors;
@@ -975,8 +958,7 @@ namespace Seb.Fluid2D.Simulation
                     }
                 }
 
-                _forceObstacleBufferUpdate = true;
-                playerColors = tempPlayerColors; // Update the main playerColors dictionary
+                playerColors = tempPlayerColors;
 
                 foreach (GameObject player in playerColors.Keys)
                 {
@@ -984,11 +966,10 @@ namespace Seb.Fluid2D.Simulation
                     player.GetComponentInChildren<PlayerColor>().UpdateColor(colorToUse);
                 }
 
-                // Update lastPlayerCount based on the number of players considered for coloring
                 lastPlayerCount = sortedPlayersForColoring.Count;
                 mixableColors.Clear();
-
                 assignedIndices = assignedIndices.OrderBy(i => i).ToList();
+
                 for (int i = 0; i < colorPalette.Count; i++)
                 {
                     if (assignedIndices.Contains(i))
@@ -997,10 +978,9 @@ namespace Seb.Fluid2D.Simulation
                     }
                     else
                     {
-                        // 0=Red, 1=Yellow, 2=Blue, 3=Orange, 4=Violet, 5=LimeGreen, 6=RedOrange, 7=YellowOrange, 8=RedViolet, 9=BlueViolet, 10=YellowGreen, 11=BlueGreen
-                        if ((i == 3 && assignedIndices.Contains(0) && assignedIndices.Contains(1) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
-                            (i == 4 && assignedIndices.Contains(0) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
-                            (i == 5 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) || //Only assign if not player
+                        if ((i == 3 && assignedIndices.Contains(0) && assignedIndices.Contains(1) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) ||
+                            (i == 4 && assignedIndices.Contains(0) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) ||
+                            (i == 5 && assignedIndices.Contains(1) && assignedIndices.Contains(2) && (maxPlayerColors <= 3 || lastPlayerCount <= 3)) ||
                             (i == 6 && assignedIndices.Contains(0) && assignedIndices.Contains(3)) ||
                             (i == 7 && assignedIndices.Contains(1) && assignedIndices.Contains(3)) ||
                             (i == 8 && assignedIndices.Contains(0) && assignedIndices.Contains(4)) ||
@@ -1012,7 +992,7 @@ namespace Seb.Fluid2D.Simulation
                         }
                         else
                         {
-                            mixableColors.Add(-1); // Using new Color(-1,-1,-1,-1) as a distinct invalid/placeholder
+                            mixableColors.Add(-1);
                         }
                     }
                 }
@@ -1026,8 +1006,7 @@ namespace Seb.Fluid2D.Simulation
                         if (mixableColors[i] == -1)
                         {
                             mixableColors[i] = assignedIndices[currentIndex];
-                            currentIndex++;
-                            currentIndex = currentIndex % assignedIndices.Count;
+                            currentIndex = (currentIndex + 1) % assignedIndices.Count;
                         }
                         mixableColorsForShader.Add(colorPalette[mixableColors[i]]);
                     }
@@ -1040,6 +1019,9 @@ namespace Seb.Fluid2D.Simulation
                     }
                 }
             }
+
+            // Finally, flag that the GPU obstacle buffers need to be rebuilt.
+            _forceObstacleBufferUpdate = true;
         }
 
         void UpdateObstacleBuffer(bool forceBufferRecreation = false)

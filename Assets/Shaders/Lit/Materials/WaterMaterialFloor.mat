@@ -83,7 +83,7 @@ Material:
     - _Depth: -0.25
     - _Displacement: 0
     - _Displacement_Noise_Scale: 10
-    - _Displacement_Strength: 0.2
+    - _Displacement_Strength: 0
     - _Displacement_Strength_Sensitivity: 0.1
     - _DstBlend: 10
     - _Normal_Strength: 0.25
@@ -102,7 +102,7 @@ Material:
     - _Deep_Water_Color: {r: 0.07647059, g: 0.08496732, b: 0.101960786, a: 0.9490196}
     - _Main_Normal_Tiling: {r: 10, g: 10, b: 0, a: 0}
     - _Secondary_Normal_Tiling: {r: 5, g: 5, b: 0, a: 0}
-    - _Shallow_Water_Color: {r: 0.24087498, g: 0.32312497, b: 0.376, a: 0.8}
+    - _Shallow_Water_Color: {r: 0.24087498, g: 0.32312497, b: 0.376, a: 0.9019608}
     - _Specular_Color: {r: 0.02, g: 0.02, b: 0.02, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
