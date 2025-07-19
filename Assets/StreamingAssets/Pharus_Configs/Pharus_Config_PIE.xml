@@ -2,11 +2,11 @@
 <pharus>
 	<useXML>true</useXML>
 
-	<zeroAbsoluteX>0.75</zeroAbsoluteX>
+	<zeroAbsoluteX>75</zeroAbsoluteX>
 
-	<zeroAbsoluteY>1.95</zeroAbsoluteY>
+	<zeroAbsoluteY>195</zeroAbsoluteY>
 
-	<fullAbsoluteX>5.5</fullAbsoluteX>
+	<fullAbsoluteX>550</fullAbsoluteX>
 
-	<fullAbsoluteY>5.7</fullAbsoluteY>
+	<fullAbsoluteY>570</fullAbsoluteY>
 </pharus>

@@ -71,24 +71,24 @@ namespace Assets.Tracking_Example.Scripts
                 if (updateNode != null && bool.TryParse(updateNode.InnerText, out bool shouldUpdate) && shouldUpdate)
                 {
                     XmlNode zxNode = root.SelectSingleNode("zeroAbsoluteX");
-                    if (zxNode != null && float.TryParse(zxNode.InnerText, out float zx))
+                    if (zxNode != null && float.TryParse((zxNode.InnerText), out float zx))
                     {
-                        zeroAbsoluteX = zx;
+                        zeroAbsoluteX = zx / 100.0f;
                     }
                     XmlNode zyNode = root.SelectSingleNode("zeroAbsoluteY");
                     if (zyNode != null && float.TryParse(zyNode.InnerText, out float zy))
                     {
-                        zeroAbsoluteY = zy;
+                        zeroAbsoluteY = zy / 100.0f;
                     }
                     XmlNode fxNode = root.SelectSingleNode("fullAbsoluteX");
                     if (fxNode != null && float.TryParse(fxNode.InnerText, out float fx))
                     {
-                        fullAbsoluteX = fx;
+                        fullAbsoluteX = fx / 100.0f;
                     }
                     XmlNode fyNode = root.SelectSingleNode("fullAbsoluteY");
                     if (fyNode != null && float.TryParse(fyNode.InnerText, out float fy))
                     {
-                        fullAbsoluteY = fy;
+                        fullAbsoluteY = fy / 100.0f;
                     }
                 }
             }
