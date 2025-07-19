@@ -94,13 +94,6 @@ StructuredBuffer<int4> Source_Collision;
 // Aliases for the REORDERCOPYBACK kernel's source data
 StructuredBuffer<ParticleData> CopySource_Data;
 
-// Buffer Recreation on the GPU instead of the CPU
-#pragma kernel CopyData_float
-#pragma kernel CopyData_float2
-#pragma kernel CopyData_int2
-#pragma kernel CopyData_int4
-#pragma kernel CopyData_ParticleData
-
 // Input buffers (read-only)
 StructuredBuffer<float> Source_float;
 StructuredBuffer<float2> Source_float2;

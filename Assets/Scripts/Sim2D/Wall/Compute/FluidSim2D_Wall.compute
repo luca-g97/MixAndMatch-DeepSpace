@@ -10,12 +10,29 @@
 #pragma kernel CompactAndMoveParticles_Wall
 #pragma kernel CopyParticleTypeBuffer_Wall
 #pragma kernel ClearRemovedParticlesBuffer_Wall
+#pragma kernel CopyData_float_Wall
+#pragma kernel CopyData_float2_Wall
+#pragma kernel CopyData_int2_Wall
+#pragma kernel CopyData_int4_Wall
+#pragma kernel CopyData_ParticleData_Wall
 
 #include "./FluidMaths2D_Wall.hlsl"
 #include "./SpatialHash_Wall.hlsl"
 
 #define FLT_MAX 3.402823466e+38
 #define MAX_OBSTACLES 256
+
+struct ParticleData
+{
+    float2 position;
+    float2 predictedPosition;
+    float2 velocity;
+    int2 particleType;
+    int4 collision;
+    float2 density;
+    float gravityScale;
+    float padding; // To match the C# struct layout
+};
 
 struct Obstacle
 {
@@ -40,6 +57,7 @@ RWStructuredBuffer<float2> Positions_Wall;
 RWStructuredBuffer<float2> PredictedPositions_Wall;
 RWStructuredBuffer<float2> Velocities_Wall;
 RWStructuredBuffer<float2> Densities_Wall;
+RWStructuredBuffer<float> GravityScales_Wall;
 RWStructuredBuffer<int4> CollisionBuffer_Wall;
 RWStructuredBuffer<int2> ParticleTypeBuffer_Wall;
 RWStructuredBuffer<uint> SpatialKeys_Wall;
@@ -47,7 +65,6 @@ RWStructuredBuffer<uint> SpatialOffsets_Wall;
 RWStructuredBuffer<int4> CopiedParticleTypeBuffer_Destination_Wall;
 
 // Buffers that are read-only in most contexts
-StructuredBuffer<float> GravityScales_Wall;
 StructuredBuffer<uint> SortedIndices_Wall;
 StructuredBuffer<Obstacle> ObstaclesBuffer_Wall;
 StructuredBuffer<float2> VerticesBuffer_Wall;
@@ -57,10 +74,7 @@ StructuredBuffer<int4> OriginalParticleTypeBuffer_Source_Wall;
 
 // --- Buffers for Compaction Kernel ---
 // NOTE: These are the destinations, so they MUST be RW (UAVs)
-RWStructuredBuffer<float2> SortTarget_Positions_Wall;
-RWStructuredBuffer<float2> SortTarget_PredictedPositions_Wall;
-RWStructuredBuffer<float2> SortTarget_Velocities_Wall;
-RWStructuredBuffer<int2> SortTarget_ParticleType_Wall;
+RWStructuredBuffer<ParticleData> SortTarget_Data_Wall;
 
 // This is the atomic counter, it MUST be RW (UAV)
 RWStructuredBuffer<int2> CompactionInfoBuffer_Wall;
@@ -69,13 +83,26 @@ RWStructuredBuffer<float4> RemovedParticlesBuffer_Wall;
 StructuredBuffer<float2> Source_Positions_Wall;
 StructuredBuffer<float2> Source_PredictedPositions_Wall;
 StructuredBuffer<float2> Source_Velocities_Wall;
+StructuredBuffer<float2> Source_Densities_Wall;
+StructuredBuffer<float> Source_GravityScales_Wall;
 StructuredBuffer<int2> Source_ParticleType_Wall;
 
 // Aliases for the REORDERCOPYBACK kernel's source data
-StructuredBuffer<float2> CopySource_Positions_Wall;
-StructuredBuffer<float2> CopySource_PredictedPositions_Wall;
-StructuredBuffer<float2> CopySource_Velocities_Wall;
-StructuredBuffer<int2> CopySource_ParticleType_Wall;
+StructuredBuffer<ParticleData> CopySource_Data_Wall;
+
+// Input buffers (read-only)
+StructuredBuffer<float> Source_float_Wall;
+StructuredBuffer<float2> Source_float2_Wall;
+StructuredBuffer<int2> Source_int2_Wall;
+StructuredBuffer<int4> Source_int4_Wall;
+StructuredBuffer<ParticleData> Source_ParticleData_Wall;
+
+// Output buffers (writable)
+RWStructuredBuffer<float> Destination_float_Wall;
+RWStructuredBuffer<float2> Destination_float2_Wall;
+RWStructuredBuffer<int2> Destination_int2_Wall;
+RWStructuredBuffer<int4> Destination_int4_Wall;
+RWStructuredBuffer<ParticleData> Destination_ParticleData_Wall;
 
 int numObstacles_Wall;
 static const int NumThreads_Wall = 64;
@@ -423,15 +450,20 @@ void Reorder_Wall(uint3 id : SV_DispatchThreadID)
     if (id.x >= numParticles_Wall)
         return;
     
-    // The index of the particle we need to move into this slot
     uint sortedIndex = SortedIndices_Wall[id.x];
 
-    // Write to the RW "SortTarget" buffers
-    // Read from the read-only "Source" aliases (which point to the main buffers)
-    SortTarget_Positions_Wall[id.x] = Source_Positions_Wall[sortedIndex];
-    SortTarget_PredictedPositions_Wall[id.x] = Source_PredictedPositions_Wall[sortedIndex];
-    SortTarget_Velocities_Wall[id.x] = Source_Velocities_Wall[sortedIndex];
-    SortTarget_ParticleType_Wall[id.x] = Source_ParticleType_Wall[sortedIndex];
+    // Assemble the struct and write it once
+    ParticleData p;
+    p.position = Source_Positions_Wall[sortedIndex];
+    p.predictedPosition = Source_PredictedPositions_Wall[sortedIndex];
+    p.velocity = Source_Velocities_Wall[sortedIndex];
+    p.particleType = Source_ParticleType_Wall[sortedIndex];
+    p.collision = int4(-1, -1, -1, -1);
+    p.density = Source_Densities_Wall[sortedIndex];
+    p.gravityScale = Source_GravityScales_Wall[sortedIndex];
+    p.padding = 0;
+    
+    SortTarget_Data_Wall[id.x] = p;
 }
 
 [numthreads(NumThreads_Wall, 1, 1)]
@@ -440,12 +472,15 @@ void ReorderCopyback_Wall(uint3 id : SV_DispatchThreadID)
     if (id.x >= numParticles_Wall)
         return;
 
-    // Write to the RW main buffers
-    // Read from the read-only "CopySource" aliases (which point to the SortTarget buffers)
-    Positions_Wall[id.x] = CopySource_Positions_Wall[id.x];
-    PredictedPositions_Wall[id.x] = CopySource_PredictedPositions_Wall[id.x];
-    Velocities_Wall[id.x] = CopySource_Velocities_Wall[id.x];
-    ParticleTypeBuffer_Wall[id.x] = CopySource_ParticleType_Wall[id.x];
+    // Read the struct once and unpack it
+    ParticleData p = CopySource_Data_Wall[id.x];
+    
+    Positions_Wall[id.x] = p.position;
+    PredictedPositions_Wall[id.x] = p.predictedPosition;
+    Velocities_Wall[id.x] = p.velocity;
+    ParticleTypeBuffer_Wall[id.x] = p.particleType;
+    Densities_Wall[id.x] = p.density;
+    GravityScales_Wall[id.x] = p.gravityScale;
 }
 
 [numthreads(NumThreads_Wall, 1, 1)]
@@ -639,13 +674,20 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
     {
         //Increment counter for staying particles
         InterlockedAdd(CompactionInfoBuffer_Wall[0][0], 1, newIndex);
-        SortTarget_Positions_Wall[newIndex] = Source_Positions_Wall[id.x];
-        SortTarget_PredictedPositions_Wall[newIndex] = Source_PredictedPositions_Wall[id.x];
-        SortTarget_Velocities_Wall[newIndex] = Source_Velocities_Wall[id.x];
         
-        int2 currentParticleTypeInfo = Source_ParticleType_Wall[id.x];
-        currentParticleTypeInfo.y = -1;
-        SortTarget_ParticleType_Wall[newIndex] = currentParticleTypeInfo;
+        // Assemble the struct and write it once for the kept particle
+        ParticleData p;
+        p.position = Source_Positions_Wall[id.x];
+        p.predictedPosition = Source_PredictedPositions_Wall[id.x];
+        p.velocity = Source_Velocities_Wall[id.x];
+        p.particleType = Source_ParticleType_Wall[id.x];
+        p.particleType.y = -1; // Reset removal flag
+        p.collision = int4(-1, -1, -1, -1);
+        p.density = Source_Densities_Wall[id.x];
+        p.gravityScale = Source_GravityScales_Wall[id.x];
+        p.padding = 0;
+        
+        SortTarget_Data_Wall[newIndex] = p;
     }
 }
 
@@ -665,4 +707,34 @@ void CopyParticleTypeBuffer_Wall(uint3 id : SV_DispatchThreadID)
 void ClearRemovedParticlesBuffer_Wall(uint3 id : SV_DispatchThreadID)
 {
     RemovedParticlesBuffer_Wall[id.x] = float4(-1, -1, -1, -1);
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_float_Wall(uint3 id : SV_DispatchThreadID)
+{
+    Destination_float_Wall[id.x] = Source_float_Wall[id.x];
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_float2_Wall(uint3 id : SV_DispatchThreadID)
+{
+    Destination_float2_Wall[id.x] = Source_float2_Wall[id.x];
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_int2_Wall(uint3 id : SV_DispatchThreadID)
+{
+    Destination_int2_Wall[id.x] = Source_int2_Wall[id.x];
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_int4_Wall(uint3 id : SV_DispatchThreadID)
+{
+    Destination_int4_Wall[id.x] = Source_int4_Wall[id.x];
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_ParticleData_Wall(uint3 id : SV_DispatchThreadID)
+{
+    Destination_ParticleData_Wall[id.x] = Source_ParticleData_Wall[id.x];
 }
