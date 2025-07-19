@@ -57,11 +57,19 @@ namespace Seb.Fluid2D.Simulation
         public ComputeBuffer collisionBuffer { get; private set; }
         public ComputeBuffer particleTypeBuffer { get; private set; }
 
-        ComputeBuffer sortTarget_Position;
-        ComputeBuffer sortTarget_PredicitedPosition;
-        ComputeBuffer sortTarget_Velocity;
-        ComputeBuffer sortTarget_ParticleType;
-        ComputeBuffer sortTarget_Collision;
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ParticleData
+        {
+            public float2 position;
+            public float2 predictedPosition;
+            public float2 velocity;
+            public int2 particleType;
+            public int4 collision;
+            public float2 density;
+            public float gravityScale;
+            public float padding; // To make the struct size 64 bytes for GPU alignment
+        }
+        ComputeBuffer sortTarget_DataBuffer;
 
         ComputeBuffer vertexBuffer;
         ComputeBuffer compactionInfoBuffer;
@@ -85,6 +93,11 @@ namespace Seb.Fluid2D.Simulation
         const int compactAndMoveKernel = 9;
         const int copyCollisionKernel = 10;
         const int clearRemovedParticlesBuffer = 11;
+        const int copyFloatKernel = 12;
+        const int copyFloat2Kernel = 13;
+        const int copyInt2Kernel = 14;
+        const int copyInt4Kernel = 15;
+        const int copyParticleDataKernel = 16;
 
         bool isPaused;
         Spawner2D.ParticleSpawnData initialSpawnData;
@@ -233,11 +246,7 @@ namespace Seb.Fluid2D.Simulation
             collisionBuffer = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
             particleTypeBuffer = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
 
-            sortTarget_Position = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
-            sortTarget_PredicitedPosition = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
-            sortTarget_Velocity = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
-            sortTarget_ParticleType = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
-            sortTarget_Collision = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
+            sortTarget_DataBuffer = ComputeHelper.CreateStructuredBuffer<ParticleData>(safeCapacity);
 
             collisionBufferCopy = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
             removedParticlesBuffer = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
@@ -246,13 +255,11 @@ namespace Seb.Fluid2D.Simulation
         void ReleaseParticleBuffers()
         {
             ComputeHelper.Release(positionBuffer, predictedPositionBuffer, velocityBuffer, densityBuffer,
-                gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_Position,
-                sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType,
-                compactionInfoBuffer, removedParticlesBuffer, sortTarget_Collision, collisionBufferCopy);
+                gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_DataBuffer,
+                compactionInfoBuffer, removedParticlesBuffer, collisionBufferCopy);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
-            gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; sortTarget_Position = null;
-            sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
-            compactionInfoBuffer = null; removedParticlesBuffer = null; sortTarget_Collision = null; collisionBufferCopy = null;
+            gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; sortTarget_DataBuffer = null;
+            compactionInfoBuffer = null; removedParticlesBuffer = null; collisionBufferCopy = null;
             spatialHash?.Release();
             spatialHash = null;
         }
@@ -292,18 +299,6 @@ namespace Seb.Fluid2D.Simulation
             compute.SetFloat("areaToColorAroundObstacles", areaToColorAroundObstacles);
             compute.SetFloat("minDistanceToRemoveParticles", minDistanceToRemoveParticles);
             compute.SetFloat("coloredAreaAroundObstaclesDivider", coloredAreaAroundObstaclesDivider);
-
-            // The Compute Shader needs the MASTER palette for its removal logic.
-            if (colorPalette != null && colorPalette.Count > 0)
-            {
-                Vector4[] paletteForShader = colorPalette.Select(c => (Vector4)c).ToArray();
-                compute.SetVectorArray("colorPalette", paletteForShader);
-                compute.SetInt("colorPaletteSize", paletteForShader.Length);
-            }
-            else
-            {
-                compute.SetInt("colorPaletteSize", 0);
-            }
         }
 
         void BindComputeShaderBuffers()
@@ -336,26 +331,20 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions", reorderKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", reorderKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", reorderKernel);
+            ComputeHelper.SetBuffer(compute, densityBuffer, "Source_Densities", reorderKernel);
+            ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "Source_GravityScales", reorderKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", reorderKernel);
             ComputeHelper.SetBuffer(compute, collisionBuffer, "Source_Collision", reorderKernel);
             ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", reorderKernel);
-            // Set RW write targets
-            ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", reorderKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", reorderKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", reorderKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", reorderKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_Collision, "SortTarget_Collision", reorderKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_DataBuffer, "SortTarget_Data", reorderKernel);
 
             // Copyback: Reads SortTarget buffers (via CopySource aliases), writes to main buffers
-            ComputeHelper.SetBuffer(compute, sortTarget_Position, "CopySource_Positions", copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "CopySource_PredictedPositions", copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "CopySource_Velocities", copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "CopySource_ParticleType", copybackKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_Collision, "CopySource_Collision", copybackKernel);
-            // Set RW write targets
+            ComputeHelper.SetBuffer(compute, sortTarget_DataBuffer, "CopySource_Data", copybackKernel);
             ComputeHelper.SetBuffer(compute, positionBuffer, "Positions", copybackKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "PredictedPositions", copybackKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Velocities", copybackKernel);
+            ComputeHelper.SetBuffer(compute, densityBuffer, "Densities", copybackKernel);
+            ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "GravityScales", copybackKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", copybackKernel);
             ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", copybackKernel);
 
@@ -366,15 +355,13 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, densityBuffer, "Source_Densities", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "Source_GravityScales", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, collisionBufferCopy, "Source_Collision", compactAndMoveKernel);
             if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", compactAndMoveKernel);
             // Set RW write targets
-            ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", compactAndMoveKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", compactAndMoveKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", compactAndMoveKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", compactAndMoveKernel);
-            ComputeHelper.SetBuffer(compute, sortTarget_Collision, "SortTarget_Collision", compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, sortTarget_DataBuffer, "SortTarget_Data", compactAndMoveKernel);
 
             // --- KERNEL GROUP 4: OBSTACLES & MISC ---
             if (vertexBuffer != null) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer", updatePositionKernel);
@@ -622,53 +609,64 @@ namespace Seb.Fluid2D.Simulation
             }
         }
 
-        // Fallback CPU-based buffer resizing (used if Graphics.CopyBuffer is problematic)
-        ComputeBuffer FallbackResizeAndAppendBuffer<T>(ComputeBuffer buffer, int oldCount, T[] newDataToAppend) where T : struct
+        ComputeBuffer GPUSideResizeAndAppend<T>(ComputeBuffer oldBuffer, T[] newData) where T : struct
         {
-            int newElementsCount = (newDataToAppend == null) ? 0 : newDataToAppend.Length;
-            int newTotalCount = oldCount + newElementsCount;
+            int oldCount = oldBuffer != null ? oldBuffer.count : 0;
+            int newCount = newData?.Length ?? 0;
+            int totalCount = oldCount + newCount;
+            if (totalCount == 0) { oldBuffer?.Release(); return null; }
 
-            if (newElementsCount == 0 && buffer != null && buffer.IsValid() && buffer.count == oldCount)
-            {
-                return buffer; // No change needed if no new elements and old buffer matches oldCount
-            }
-            if (newTotalCount <= 0 && oldCount == 0 && newElementsCount == 0)
-            {
-                buffer?.Release();
-                return new ComputeBuffer(1, Marshal.SizeOf(typeof(T)), ComputeBufferType.Structured);
-            }
+            // --- Logic to select the correct kernel and buffer names ---
+            string typeName = typeof(T).Name;
+            int kernel;
 
-            ComputeBuffer newBuffer = new ComputeBuffer(Mathf.Max(1, newTotalCount), Marshal.SizeOf(typeof(T)), ComputeBufferType.Structured);
-
-            if (oldCount > 0 && buffer != null && buffer.IsValid())
+            switch (typeName)
             {
-                int countToRead = Mathf.Min(oldCount, buffer.count);
-                if (countToRead > 0 && newBuffer.count >= countToRead)
-                {
-                    T[] oldData = new T[countToRead];
-                    buffer.GetData(oldData, 0, 0, countToRead);
-                    newBuffer.SetData(oldData, 0, 0, countToRead);
-                }
-                else if (countToRead > 0)
-                { // newBuffer is too small, indicates logic error
-                    Debug.LogError($"FallbackResizeAndAppendBuffer: newBuffer (count {newBuffer.count}) is smaller than old data to copy ({countToRead}). This should not happen.");
-                }
-            }
-
-            if (newElementsCount > 0 && newDataToAppend != null)
-            {
-                if (newBuffer.count >= oldCount + newElementsCount)
-                {
-                    newBuffer.SetData(newDataToAppend, 0, oldCount, newElementsCount);
-                }
-                else
-                {
-                    Debug.LogError($"FallbackResizeAndAppendBuffer: newBuffer (count {newBuffer.count}) too small to append {newElementsCount} elements at offset {oldCount}. Required: {oldCount + newElementsCount}");
-                }
+                case "Single":
+                    typeName = "float";
+                    kernel = copyFloatKernel;
+                    break;
+                case "float2":
+                    kernel = copyFloat2Kernel;
+                    break;
+                case "int2":
+                    kernel = copyInt2Kernel;
+                    break;
+                case "int4":
+                    kernel = copyInt4Kernel;
+                    break;
+                case "ParticleData":
+                    kernel = copyParticleDataKernel;
+                    break;
+                default:
+                    Debug.LogError($"GPUSideResizeAndAppend_V2 does not support type: {typeName}");
+                    return oldBuffer; // Return the original buffer to avoid errors
             }
 
-            buffer?.Release();
-            return newBuffer;
+            string sourceName = $"Source_{typeName}";
+            string destName = $"Destination_{typeName}";
+            // --- End of selection logic ---
+
+            // 1. Create the final destination buffer.
+            ComputeBuffer destinationBuffer = new ComputeBuffer(totalCount, Marshal.SizeOf(typeof(T)));
+
+            // 2. If there's old data, perform a GPU-side copy.
+            if (oldCount > 0)
+            {
+                compute.SetBuffer(kernel, sourceName, oldBuffer);
+                compute.SetBuffer(kernel, destName, destinationBuffer);
+                ComputeHelper.Dispatch(compute, oldCount, kernelIndex: kernel);
+            }
+
+            // 3. Append the new data directly using the fast SetData command.
+            if (newCount > 0)
+            {
+                destinationBuffer.SetData(newData, 0, oldCount, newCount);
+            }
+
+            // 4. Clean up.
+            oldBuffer?.Release();
+            return destinationBuffer;
         }
 
         void HandleAddingNewParticles(Spawner2D.ParticleSpawnData newParticleData)
@@ -679,28 +677,31 @@ namespace Seb.Fluid2D.Simulation
             int oldNumParticles = numParticles;
             numParticles += newSpawnCount;
 
-            // --- USING FALLBACK RESIZE METHOD TO RESOLVE COMPILER ERRORS ---
-            positionBuffer = FallbackResizeAndAppendBuffer(positionBuffer, oldNumParticles, newParticleData.positions);
-            predictedPositionBuffer = FallbackResizeAndAppendBuffer(predictedPositionBuffer, oldNumParticles, newParticleData.positions);
-            velocityBuffer = FallbackResizeAndAppendBuffer(velocityBuffer, oldNumParticles, newParticleData.velocities);
-            particleTypeBuffer = FallbackResizeAndAppendBuffer(particleTypeBuffer, oldNumParticles, newParticleData.particleTypes);
+            // Resize all buffers on the GPU using the single generic V2 helper
+            positionBuffer = GPUSideResizeAndAppend(positionBuffer, newParticleData.positions);
+            predictedPositionBuffer = GPUSideResizeAndAppend(predictedPositionBuffer, newParticleData.positions);
+            velocityBuffer = GPUSideResizeAndAppend(velocityBuffer, newParticleData.velocities);
+            particleTypeBuffer = GPUSideResizeAndAppend(particleTypeBuffer, newParticleData.particleTypes);
 
-            float[] newGravityScales = new float[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newGravityScales[i] = 1f;
-            gravityScaleBuffer = FallbackResizeAndAppendBuffer(gravityScaleBuffer, oldNumParticles, newGravityScales);
+            // Create default data for the new particles
+            float[] newGravityScales = new float[newSpawnCount];
+            int4[] newCollisionData = new int4[newSpawnCount];
+            float2[] newDensityData = new float2[newSpawnCount];
+            ParticleData[] newSortData = new ParticleData[newSpawnCount];
 
-            int4[] newCollisionData = new int4[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newCollisionData[i] = new int4(-1, -1, -1, -1);
-            collisionBuffer = FallbackResizeAndAppendBuffer(collisionBuffer, oldNumParticles, newCollisionData);
-            collisionBufferCopy = FallbackResizeAndAppendBuffer(collisionBufferCopy, oldNumParticles, new int4[newSpawnCount]);
+            for (int i = 0; i < newSpawnCount; i++)
+            {
+                newGravityScales[i] = 1f;
+                newCollisionData[i] = new int4(-1, -1, -1, -1);
+            }
 
-            densityBuffer = FallbackResizeAndAppendBuffer(densityBuffer, oldNumParticles, new float2[newSpawnCount]);
+            gravityScaleBuffer = GPUSideResizeAndAppend(gravityScaleBuffer, newGravityScales);
+            collisionBuffer = GPUSideResizeAndAppend(collisionBuffer, newCollisionData);
+            collisionBufferCopy = GPUSideResizeAndAppend(collisionBufferCopy, new int4[newSpawnCount]);
+            densityBuffer = GPUSideResizeAndAppend(densityBuffer, newDensityData);
+            sortTarget_DataBuffer = GPUSideResizeAndAppend(sortTarget_DataBuffer, newSortData);
 
-            sortTarget_Position = FallbackResizeAndAppendBuffer(sortTarget_Position, oldNumParticles, new float2[newSpawnCount]);
-            sortTarget_PredicitedPosition = FallbackResizeAndAppendBuffer(sortTarget_PredicitedPosition, oldNumParticles, new float2[newSpawnCount]);
-            sortTarget_Velocity = FallbackResizeAndAppendBuffer(sortTarget_Velocity, oldNumParticles, new float2[newSpawnCount]);
-            sortTarget_ParticleType = FallbackResizeAndAppendBuffer(sortTarget_ParticleType, oldNumParticles, new int2[newSpawnCount]);
-            sortTarget_Collision = FallbackResizeAndAppendBuffer(sortTarget_Collision, oldNumParticles, new int4[newSpawnCount]);
-            // --- END OF USING FALLBACK ---
-
+            // The rest of the function
             spatialHash?.Release();
             spatialHash = new SpatialHash(numParticles);
 
@@ -1180,11 +1181,25 @@ namespace Seb.Fluid2D.Simulation
             if (compute != null) compute.SetInt("numObstacles", _gpuObstacleDataList.Count);
         }
 
-        void OnDestroy()
+        void OnEnable()
         {
+            // Re-initialize if buffers are null (which they will be after OnDisable)
+            if (positionBuffer == null)
+            {
+                InitSimulation();
+            }
+        }
+
+        void OnDisable()
+        {
+            // Release all compute buffers and managed resources here
             ComputeHelper.Release(currentsBuffer, currentVerticesBuffer);
             ReleaseParticleBuffers();
             ReleaseObstacleBuffers();
+        }
+
+        void OnDestroy()
+        {
             if (_sharedUnlitMaterial != null && lineRendererMaterial == null)
             {
                 if (Application.isEditor && !Application.isPlaying) DestroyImmediate(_sharedUnlitMaterial);

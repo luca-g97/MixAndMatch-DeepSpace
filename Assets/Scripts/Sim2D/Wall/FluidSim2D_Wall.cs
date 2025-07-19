@@ -714,11 +714,25 @@ namespace Seb.Fluid2D.Simulation
             compute.SetInt("numObstacles_Wall", _gpuObstacleDataList.Count);
         }
 
-        void OnDestroy()
+        void OnEnable()
         {
+            // Re-initialize if buffers are null (which they will be after OnDisable)
+            if (positionBuffer == null)
+            {
+                InitSimulation();
+            }
+        }
+
+        void OnDisable()
+        {
+            // Release all compute buffers and managed resources here
             ComputeHelper.Release(currentsBuffer, currentVerticesBuffer);
             ReleaseParticleBuffers();
             ReleaseObstacleBuffers();
+        }
+
+        void OnDestroy()
+        {
             if (obstacles != null)
             {
                 foreach (var obstacleGO in obstacles.Where(o => o != null))

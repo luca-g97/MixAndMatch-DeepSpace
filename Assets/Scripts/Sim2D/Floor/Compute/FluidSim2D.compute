@@ -10,12 +10,29 @@
 #pragma kernel CompactAndMoveParticles
 #pragma kernel CopyCollisionBuffer
 #pragma kernel ClearRemovedParticlesBuffer
+#pragma kernel CopyData_float
+#pragma kernel CopyData_float2
+#pragma kernel CopyData_int2
+#pragma kernel CopyData_int4
+#pragma kernel CopyData_ParticleData
 
 #include "./FluidMaths2D.hlsl"
 #include "./SpatialHash.hlsl"
 
 #define FLT_MAX 3.402823466e+38
 #define MAX_OBSTACLES 256
+
+struct ParticleData
+{
+    float2 position;
+    float2 predictedPosition;
+    float2 velocity;
+    int2 particleType;
+    int4 collision;
+    float2 density;
+    float gravityScale;
+    float padding; // To match the C# struct layout
+};
 
 struct Obstacle
 {
@@ -40,6 +57,7 @@ RWStructuredBuffer<float2> Positions;
 RWStructuredBuffer<float2> PredictedPositions;
 RWStructuredBuffer<float2> Velocities;
 RWStructuredBuffer<float2> Densities;
+RWStructuredBuffer<float> GravityScales;
 RWStructuredBuffer<int4> CollisionBuffer;
 RWStructuredBuffer<int2> ParticleTypeBuffer;
 RWStructuredBuffer<uint> SpatialKeys;
@@ -47,7 +65,6 @@ RWStructuredBuffer<uint> SpatialOffsets;
 RWStructuredBuffer<int4> CopiedCollisionBuffer_Destination;
 
 // Buffers that are read-only in most contexts
-StructuredBuffer<float> GravityScales;
 StructuredBuffer<uint> SortedIndices;
 StructuredBuffer<Obstacle> ObstaclesBuffer;
 StructuredBuffer<float2> VerticesBuffer;
@@ -57,11 +74,7 @@ StructuredBuffer<int4> OriginalCollisionBuffer_Source;
 
 // --- Buffers for Compaction Kernel ---
 // NOTE: These are the destinations, so they MUST be RW (UAVs)
-RWStructuredBuffer<float2> SortTarget_Positions;
-RWStructuredBuffer<float2> SortTarget_PredictedPositions;
-RWStructuredBuffer<float2> SortTarget_Velocities;
-RWStructuredBuffer<int2> SortTarget_ParticleType;
-RWStructuredBuffer<int4> SortTarget_Collision;
+RWStructuredBuffer<ParticleData> SortTarget_Data;
 
 // This is the atomic counter, it MUST be RW (UAV)
 RWStructuredBuffer<int2> CompactionInfoBuffer;
@@ -73,20 +86,34 @@ StructuredBuffer<float4> ObstacleColorsBuffer;
 StructuredBuffer<float2> Source_Positions;
 StructuredBuffer<float2> Source_PredictedPositions;
 StructuredBuffer<float2> Source_Velocities;
+StructuredBuffer<float2> Source_Densities;
+StructuredBuffer<float> Source_GravityScales;
 StructuredBuffer<int2> Source_ParticleType;
 StructuredBuffer<int4> Source_Collision;
 
 // Aliases for the REORDERCOPYBACK kernel's source data
-StructuredBuffer<float2> CopySource_Positions;
-StructuredBuffer<float2> CopySource_PredictedPositions;
-StructuredBuffer<float2> CopySource_Velocities;
-StructuredBuffer<int2> CopySource_ParticleType;
-StructuredBuffer<int4> CopySource_Collision;
+StructuredBuffer<ParticleData> CopySource_Data;
 
-RWStructuredBuffer<int> intBufferToClear;
-RWStructuredBuffer<int4> int4BufferToClear;
-RWStructuredBuffer<int> removedParticlesThisFrame;
-RWStructuredBuffer<int4> particlesReachedDestinationThisFrame;
+// Buffer Recreation on the GPU instead of the CPU
+#pragma kernel CopyData_float
+#pragma kernel CopyData_float2
+#pragma kernel CopyData_int2
+#pragma kernel CopyData_int4
+#pragma kernel CopyData_ParticleData
+
+// Input buffers (read-only)
+StructuredBuffer<float> Source_float;
+StructuredBuffer<float2> Source_float2;
+StructuredBuffer<int2> Source_int2;
+StructuredBuffer<int4> Source_int4;
+StructuredBuffer<ParticleData> Source_ParticleData;
+
+// Output buffers (writable)
+RWStructuredBuffer<float> Destination_float;
+RWStructuredBuffer<float2> Destination_float2;
+RWStructuredBuffer<int2> Destination_int2;
+RWStructuredBuffer<int4> Destination_int4;
+RWStructuredBuffer<ParticleData> Destination_ParticleData;
 
 int numObstacles;
 float areaToColorAroundObstacles;
@@ -97,8 +124,6 @@ int numCurrents;
 
 float4 mixableColors[12];
 int mixableColorsSize;
-float4 colorPalette[12];
-int colorPaletteSize;
 
 const uint numParticles;
 const float gravity;
@@ -514,16 +539,20 @@ void Reorder(uint3 id : SV_DispatchThreadID)
     if (id.x >= numParticles)
         return;
     
-    // The index of the particle we need to move into this slot
     uint sortedIndex = SortedIndices[id.x];
 
-    // Write to the RW "SortTarget" buffers
-    // Read from the read-only "Source" aliases (which point to the main buffers)
-    SortTarget_Positions[id.x] = Source_Positions[sortedIndex];
-    SortTarget_PredictedPositions[id.x] = Source_PredictedPositions[sortedIndex];
-    SortTarget_Velocities[id.x] = Source_Velocities[sortedIndex];
-    SortTarget_ParticleType[id.x] = Source_ParticleType[sortedIndex];
-    SortTarget_Collision[id.x] = Source_Collision[sortedIndex];
+    // Assemble the struct and write it once
+    ParticleData p;
+    p.position = Source_Positions[sortedIndex];
+    p.predictedPosition = Source_PredictedPositions[sortedIndex];
+    p.velocity = Source_Velocities[sortedIndex];
+    p.particleType = Source_ParticleType[sortedIndex];
+    p.collision = Source_Collision[sortedIndex];
+    p.density = Source_Densities[sortedIndex];
+    p.gravityScale = Source_GravityScales[sortedIndex];
+    p.padding = 0;
+    
+    SortTarget_Data[id.x] = p;
 }
 
 [numthreads(NumThreads, 1, 1)]
@@ -532,13 +561,16 @@ void ReorderCopyback(uint3 id : SV_DispatchThreadID)
     if (id.x >= numParticles)
         return;
 
-    // Write to the RW main buffers
-    // Read from the read-only "CopySource" aliases (which point to the SortTarget buffers)
-    Positions[id.x] = CopySource_Positions[id.x];
-    PredictedPositions[id.x] = CopySource_PredictedPositions[id.x];
-    Velocities[id.x] = CopySource_Velocities[id.x];
-    ParticleTypeBuffer[id.x] = CopySource_ParticleType[id.x];
-    CollisionBuffer[id.x] = CopySource_Collision[id.x];
+    // Read the struct once and unpack it
+    ParticleData p = CopySource_Data[id.x];
+    
+    Positions[id.x] = p.position;
+    PredictedPositions[id.x] = p.predictedPosition;
+    Velocities[id.x] = p.velocity;
+    ParticleTypeBuffer[id.x] = p.particleType;
+    CollisionBuffer[id.x] = p.collision;
+    Densities[id.x] = p.density;
+    GravityScales[id.x] = p.gravityScale;
 }
 
 [numthreads(NumThreads, 1, 1)]
@@ -801,17 +833,24 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
     {
         //Increment counter for staying particles
         InterlockedAdd(CompactionInfoBuffer[0][0], 1, newIndex);
-        SortTarget_Positions[newIndex] = Source_Positions[id.x];
-        SortTarget_PredictedPositions[newIndex] = Source_PredictedPositions[id.x];
-        SortTarget_Velocities[newIndex] = Source_Velocities[id.x];
-        SortTarget_Collision[newIndex] = Source_Collision[id.x];
         
-        currentParticleTypeInfo.y = -1;
-        SortTarget_ParticleType[newIndex] = currentParticleTypeInfo;
+        // Assemble the struct and write it once for the kept particle
+        ParticleData p;
+        p.position = Source_Positions[id.x];
+        p.predictedPosition = Source_PredictedPositions[id.x];
+        p.velocity = Source_Velocities[id.x];
+        p.particleType = Source_ParticleType[id.x];
+        p.particleType.y = -1; // Reset removal flag
+        p.collision = Source_Collision[id.x];
+        p.density = Source_Densities[id.x];
+        p.gravityScale = Source_GravityScales[id.x];
+        p.padding = 0;
+        
+        SortTarget_Data[newIndex] = p;
     }
 }
 
-[numthreads(64, 1, 1)]
+[numthreads(256, 1, 1)]
 void CopyCollisionBuffer(uint3 id : SV_DispatchThreadID)
 {
     // Use the existing global 'numParticles' constant for the check.
@@ -823,8 +862,38 @@ void CopyCollisionBuffer(uint3 id : SV_DispatchThreadID)
     CopiedCollisionBuffer_Destination[id.x] = OriginalCollisionBuffer_Source[id.x];
 }
 
-[numthreads(64, 1, 1)]
+[numthreads(256, 1, 1)]
 void ClearRemovedParticlesBuffer(uint3 id : SV_DispatchThreadID)
 {
     RemovedParticlesBuffer[id.x] = int2(-1, -1);
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_float(uint3 id : SV_DispatchThreadID)
+{
+    Destination_float[id.x] = Source_float[id.x];
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_float2(uint3 id : SV_DispatchThreadID)
+{
+    Destination_float2[id.x] = Source_float2[id.x];
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_int2(uint3 id : SV_DispatchThreadID)
+{
+    Destination_int2[id.x] = Source_int2[id.x];
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_int4(uint3 id : SV_DispatchThreadID)
+{
+    Destination_int4[id.x] = Source_int4[id.x];
+}
+
+[numthreads(256, 1, 1)]
+void CopyData_ParticleData(uint3 id : SV_DispatchThreadID)
+{
+    Destination_ParticleData[id.x] = Source_ParticleData[id.x];
 }
