@@ -11,6 +11,7 @@ public class Current : MonoBehaviour
     [Min(0.001f)] public float currentWidth = 5f;
     [Range(-1, 1)] public float linearFactor = 0f;
 
+    [SerializeField] private float _currentVelocityMultiplier = 1f;
     [SerializeField] private float _minVelocity = 0.01f;
     [SerializeField] private float _maxVelocity = 0.1f;
     [SerializeField] private float _minWidth = 0.25f;
@@ -119,6 +120,7 @@ public class Current : MonoBehaviour
     private void SetCurrentVelocity(float velocity)
     {
         currentVelocity = Mathf.Clamp(velocity, _minVelocity, _maxVelocity);
+        currentVelocity *= _currentVelocityMultiplier;
         //UpdateVisual();
     }
 

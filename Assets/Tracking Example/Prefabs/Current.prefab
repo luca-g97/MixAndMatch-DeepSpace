@@ -159,10 +159,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c9cee81970255c14e93fd4165f0c4092, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  currentVelocity: 50
+  currentVelocity: 0.1
   currentWidth: 5
   linearFactor: 0
-  _minVelocity: 0.01
+  _currentVelocityMultiplier: 0.1
+  _minVelocity: 0.05
   _maxVelocity: 0.1
   _minWidth: 0.25
   _maxWidth: 0.75

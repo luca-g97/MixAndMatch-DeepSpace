@@ -123,8 +123,8 @@ public class Ventil : ValidatedMonoBehaviour
         
         _currentDamageSequence?.Kill();
         _currentDamageSequence = DOTween.Sequence()
-            .Append(transform.DOScale(_defaultScale * 0.95f, 0.5f).SetEase(Ease.OutCubic))
-            .Append(transform.DOScale(_defaultScale, 0.5f).SetEase(Ease.OutCubic));
+            .Append(transform.DOScale(_defaultScale * 0.95f, 0.05f).SetEase(Ease.OutCubic))
+            .Append(transform.DOScale(_defaultScale, 0.05f).SetEase(Ease.OutCubic));
     }
 
     private void OnDestroy()
