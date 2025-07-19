@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2183178950863814865}
   - component: {fileID: 4643652022948423365}
   - component: {fileID: 5317987948804977229}
+  - component: {fileID: 5337454575188139523}
   m_Layer: 0
   m_Name: Coral_Ventil_02
   m_TagString: Ventil
@@ -191,6 +192,18 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &5337454575188139523
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4004849568307100376}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d067856d977184f41ae27b24e5537c70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &4919653959046156476
 PrefabInstance:
   m_ObjectHideFlags: 0
