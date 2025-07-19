@@ -113,6 +113,16 @@ namespace Seb.Fluid2D.Simulation
         private float autoUpdateInterval = 0.5f;
         private float nextAutoUpdateTime;
 
+        private struct PendingRemovalRequest
+        {
+            public AsyncGPUReadbackRequest request;
+            public List<GameObject> obstaclesSnapshot;
+            public List<int> mixableColorsSnapshot;
+        }
+
+        private Queue<PendingRemovalRequest> _pendingRemovalRequests = new Queue<PendingRemovalRequest>();
+
+
         void Start()
         {
             //Debug.Log("Controls: Space = Play/Pause, R = Reset, LMB = Attract, RMB = Repel, G + Mouse = Gravity Well");
@@ -375,21 +385,36 @@ namespace Seb.Fluid2D.Simulation
             HandleInput();
         }
 
-        // In FluidSim2D_Wall.cs
 
         void ProcessParticleRemovals()
         {
-            if (numParticles == 0 || compute == null || isProcessingRemovals)
+            // --- Step 1: Process all completed requests from the front of the queue ---
+            while (_pendingRemovalRequests.Count > 0 && _pendingRemovalRequests.Peek().request.done)
             {
-                return;
+                // Get the oldest pending request
+                PendingRemovalRequest completedRequest = _pendingRemovalRequests.Dequeue();
+
+                if (completedRequest.request.hasError)
+                {
+                    Debug.LogError("GPU readback error on removed particles buffer!");
+                }
+                else
+                {
+                    var removedParticlesData = completedRequest.request.GetData<float4>();
+                    if (fluidSim_Floor != null)
+                    {
+                        fluidSim_Floor.SpawnParticles(removedParticlesData.ToList());
+                    }
+                }
             }
+
+            // --- Step 2: Run the compaction for the CURRENT frame ---
+            if (numParticles == 0 || compute == null || isProcessingRemovals) return;
             isProcessingRemovals = true;
 
-            // Dispatch kernels to separate particles and count them.
             ComputeHelper.Dispatch(compute, 1, 1, 1, kernelIndex: resetCompactionCounterKernel);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: compactAndMoveKernel);
 
-            // Asynchronously request the counts using a callback.
             AsyncGPUReadback.Request(compactionInfoBuffer, (request) =>
             {
                 if (request.hasError)
@@ -405,7 +430,6 @@ namespace Seb.Fluid2D.Simulation
                     int keptCount = counters[0].x;
                     int removedCount = counters[0].y;
 
-                    // If the GPU reports that particles were removed, we do everything here.
                     if (removedCount > 0)
                     {
                         // Ensure the buffer is still valid
@@ -415,39 +439,19 @@ namespace Seb.Fluid2D.Simulation
                             return;
                         }
 
-                        // 1. Finalize the compaction on the GPU by copying the "kept" particles back.
                         ComputeHelper.Dispatch(compute, keptCount, kernelIndex: copybackKernel);
-
-                        // 2. Update the CPU's particle count. This is the critical step.
                         numParticles = keptCount;
 
-                        // Ensure the buffer is still valid
-                        if (removedParticlesBuffer == null || !removedParticlesBuffer.IsValid())
+                        // Create a new request package with its context
+                        var newPendingRequest = new PendingRemovalRequest
                         {
-                            isProcessingRemovals = false;
-                            return;
-                        }
+                            request = AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<int2>(), 0)
+                        };
 
-                        // 3. Now, handle transferring the removed particles to the other simulation.
-                        AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<float4>(), 0, (listRequest) =>
-                        {
-                            if (listRequest.hasError)
-                            {
-                                isProcessingRemovals = false;
-                                return;
-                            }
-                            else
-                            {
-                                var removedParticlesData = listRequest.GetData<float4>();
-                                if (fluidSim_Floor != null)
-                                {
-                                    fluidSim_Floor.SpawnParticles(removedParticlesData.ToList());
-                                }
-                            }
-                        });
+                        // Add it to the queue to be processed in a future frame
+                        _pendingRemovalRequests.Enqueue(newPendingRequest);
                     }
                 }
-                // Update the shader parameters with the new count for the next frame.
                 UpdateComputeShaderDynamicParams();
                 isProcessingRemovals = false;
             });
