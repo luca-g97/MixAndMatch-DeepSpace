@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class VentilManager : ValidatedMonoBehaviour
+public class VentilManager : MonoBehaviour
 {
     [SerializeField] private FluidSim2D _fluidSimulation;
     [SerializeField] private List<Ventil> _ventilList = new List<Ventil>();
@@ -17,8 +17,6 @@ public class VentilManager : ValidatedMonoBehaviour
 
     private void Update()
     {
-        //EvaluateParticlesReached(); // not working yet
-
         if (Input.GetKeyDown(KeyCode.Space))
         {
             SpawnVentilWave();

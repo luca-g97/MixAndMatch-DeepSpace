@@ -533,7 +533,7 @@ namespace Seb.Fluid2D.Simulation
                         else if (obstacle.CompareTag("Ventil"))
                         {
                             audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
-                            obstacle.GetComponent<Ventil>().UpdateHealth(entry.Value);
+                            obstacle.GetComponent<Ventil>().TakeDamage(entry.Value);
                         }
 
                         if (audioSource != null && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
