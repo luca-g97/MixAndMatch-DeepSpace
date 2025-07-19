@@ -405,7 +405,7 @@ void HandleCollisions(uint particleIndex)
 
         // --- Collision Response (only for physical obstacles: type 0 Player, type 1 Static Obstacle) ---
         // And only if particle is still considered active (ParticleTypeBuffer[particleIndex] >= 0)
-        float collisionPadding = obstacle.lineWidth;
+        float collisionPadding = 0;
         bool collisionDetected = isInside || (minDistSq < collisionPadding * collisionPadding);
 
         if (particleType >= 0 && collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1))

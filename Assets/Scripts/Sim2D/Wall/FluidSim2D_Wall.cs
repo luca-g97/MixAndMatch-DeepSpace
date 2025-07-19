@@ -449,7 +449,7 @@ namespace Seb.Fluid2D.Simulation
                         // Create a new request package with its context
                         var newPendingRequest = new PendingRemovalRequest
                         {
-                            request = AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<int2>(), 0)
+                            request = AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<float4>(), 0)
                         };
 
                         // Add it to the queue to be processed in a future frame
