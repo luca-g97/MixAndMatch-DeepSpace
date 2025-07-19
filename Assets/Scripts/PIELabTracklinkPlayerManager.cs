@@ -71,7 +71,7 @@ namespace Assets.Tracking_Example.Scripts
                 if (updateNode != null && bool.TryParse(updateNode.InnerText, out bool shouldUpdate) && shouldUpdate)
                 {
                     XmlNode zxNode = root.SelectSingleNode("zeroAbsoluteX");
-                    if (zxNode != null && float.TryParse((zxNode.InnerText), out float zx))
+                    if (zxNode != null && float.TryParse(zxNode.InnerText, out float zx))
                     {
                         zeroAbsoluteX = zx / 100.0f;
                     }
