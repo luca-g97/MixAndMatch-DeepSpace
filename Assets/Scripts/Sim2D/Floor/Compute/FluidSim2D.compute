@@ -381,7 +381,7 @@ void HandleCollisions(uint particleIndex)
             // --- Ventil Obstacle Interaction (type 2) ---
             else if (obstacle.obstacleType == 2 && particleProcessFlag == -1 && isInside)
             {
-                ParticleTypeBuffer[particleIndex][1] = -obstacleIdx-10; // Mark for removal by Ventil
+                ParticleTypeBuffer[particleIndex][1] = -obstacleIdx - 10; // Mark for removal by Ventil
             }
         }
 
@@ -723,10 +723,10 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
     // --- Step 1: Get the particle's CURRENT VISUAL color from mixableColors ---
     int particleColorIndex = particleTypeIndex - 1;
 
-    if (removalFlag <= -2) // Ventil removal
+    if (removalFlag <= -10) // Ventil removal
     {
         shouldKeep = false;
-        removalFlag = removalFlag + 10;
+        removalFlag = abs(removalFlag + 10);
     }
     else if (removalFlag >= 0) // Player flagged this particle
     {
@@ -788,7 +788,16 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
 
     // Compaction Step...
     uint newIndex;
-    if (shouldKeep)
+    int2 currentParticleTypeInfo = Source_ParticleType[id.x];
+    
+    if (!shouldKeep)
+    {
+        //Increment counter for removing particles
+        InterlockedAdd(CompactionInfoBuffer[0][1], 1, newIndex);
+        currentParticleTypeInfo.y = removalFlag;
+        RemovedParticlesBuffer[newIndex] = currentParticleTypeInfo;
+    }
+    else
     {
         //Increment counter for staying particles
         InterlockedAdd(CompactionInfoBuffer[0][0], 1, newIndex);
@@ -797,15 +806,8 @@ void CompactAndMoveParticles(uint3 id : SV_DispatchThreadID)
         SortTarget_Velocities[newIndex] = Source_Velocities[id.x];
         SortTarget_Collision[newIndex] = Source_Collision[id.x];
         
-        int2 currentParticleTypeInfo = Source_ParticleType[id.x];
         currentParticleTypeInfo.y = -1;
         SortTarget_ParticleType[newIndex] = currentParticleTypeInfo;
-    }
-    else
-    {
-        //Increment counter for removing particles
-        InterlockedAdd(CompactionInfoBuffer[0][1], 1, newIndex);
-        RemovedParticlesBuffer[newIndex] = Source_ParticleType[id.x];
     }
 }
 

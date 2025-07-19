@@ -509,6 +509,13 @@ namespace Seb.Fluid2D.Simulation
                     // If the GPU reports that particles were removed, we do everything here.
                     if (removedCount > 0)
                     {
+                        // Ensure the buffer is still valid
+                        if (removedParticlesBuffer == null || !removedParticlesBuffer.IsValid() || compute == null)
+                        {
+                            isProcessingRemovals = false;
+                            return;
+                        }
+
                         // 1. Finalize the compaction on the GPU by copying the "kept" particles back.
                         ComputeHelper.Dispatch(compute, keptCount, kernelIndex: copybackKernel);
 
@@ -533,43 +540,51 @@ namespace Seb.Fluid2D.Simulation
                                 {
                                     int2 particleData = removedParticlesData[particleNr];
                                     int particleType = particleData.x - 1;
-                                    int actualParticleColor = mixableColorsSnapshot[particleType];
                                     int obstacleId = particleData.y;
-                                    GameObject obstacle = obstaclesSnapshot[obstacleId];
 
-                                    if (!interactingObstacles.ContainsKey(obstacle))
+                                    if (obstacleId >= 0 && obstacleId < obstaclesSnapshot.Count &&
+                                        particleType >= 0 && particleType < mixableColorsSnapshot.Count)
                                     {
-                                        interactingObstacles.Add(obstacle, 1);
-                                    }
-                                    else
-                                    {
-                                        interactingObstacles[obstacle]++;
-                                    }
+                                        GameObject obstacle = obstaclesSnapshot[obstacleId];
+                                        int actualParticleColor = mixableColorsSnapshot[particleType];
 
-                                    if (obstacle.tag.Equals("Player"))
-                                    {
-                                        removedParticlesPerColor[actualParticleColor][0]++;
-                                    }
-                                    else if (obstacle.tag.Equals("Ventil"))
-                                    {
-                                        removedParticlesPerColor[actualParticleColor][1]++;
+                                        if (!interactingObstacles.ContainsKey(obstacle))
+                                        {
+                                            interactingObstacles.Add(obstacle, 1);
+                                        }
+                                        else
+                                        {
+                                            interactingObstacles[obstacle]++;
+                                        }
+
+                                        if (obstacle.CompareTag("Player"))
+                                        {
+                                            removedParticlesPerColor[actualParticleColor][0]++;
+                                        }
+                                        else if (obstacle.CompareTag("Ventil"))
+                                        {
+                                            removedParticlesPerColor[actualParticleColor][1]++;
+                                        }
                                     }
                                 }
 
                                 foreach (GameObject obstacle in interactingObstacles.Keys)
                                 {
                                     AudioSource audioSource = obstacle.GetComponent<AudioSource>();
-                                    if (obstacle.tag.Equals("Player"))
+                                    if (obstacle.CompareTag("Player"))
                                     {
                                         audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
                                     }
-                                    else if (obstacle.tag.Equals("Ventil"))
+                                    else if (obstacle.CompareTag("Ventil"))
                                     {
                                         audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
                                         obstacle.GetComponent<Ventil>().UpdateHealth(interactingObstacles[obstacle]);
                                     }
 
-                                    audioSource.Play();
+                                    if (audioSource != null && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
+                                    {
+                                        audioSource.Play();
+                                    }
                                 }
                             }
                         });
@@ -804,9 +819,9 @@ namespace Seb.Fluid2D.Simulation
             foreach (GameObject go in allGameObjectsInScene)
             {
                 if (!go.activeInHierarchy) continue;
-                if (go.tag.Equals("Player")) currentPlayersInScene.Add(go);
-                else if (go.tag.Equals("Obstacle")) currentObstaclesInScene.Add(go);
-                else if (go.tag.Equals("Ventil")) currentVentilsInScene.Add(go);
+                if (go.CompareTag("Player")) currentPlayersInScene.Add(go);
+                else if (go.CompareTag("Obstacle")) currentObstaclesInScene.Add(go);
+                else if (go.CompareTag("Ventil")) currentVentilsInScene.Add(go);
             }
 
             bool listActuallyChanged = false;
@@ -834,11 +849,11 @@ namespace Seb.Fluid2D.Simulation
                             info.lineRend.sharedMaterial = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
                         }
 
-                        if (go.tag.Equals("Player"))
+                        if (go.CompareTag("Player"))
                         {
                             info.obstacleType = 0;
                         }
-                        else if (go.tag.Equals("Ventil"))
+                        else if (go.CompareTag("Ventil"))
                         {
                             info.obstacleType = 2;
                         }
@@ -883,7 +898,7 @@ namespace Seb.Fluid2D.Simulation
             if (listActuallyChanged) _forceObstacleBufferUpdate = true; // Ensure if the list order/content changed, buffers update.
 
             List<GameObject> sortedPlayersForColoring = obstacles
-                .Where(o => _obstacleCache.ContainsKey(o) && o.tag.Equals("Player"))
+                .Where(o => _obstacleCache.ContainsKey(o) && o.CompareTag("Player"))
                 .ToList();
 
             if (listActuallyChanged || sortedPlayersForColoring.Count != lastPlayerCount)
@@ -1056,11 +1071,11 @@ namespace Seb.Fluid2D.Simulation
                 lr.SetPositions(worldLinePoints);
 
                 int obsType = 1;
-                if (obstacleGO.tag.Equals("Player"))
+                if (obstacleGO.CompareTag("Player"))
                 {
                     obsType = 0;
                 }
-                else if (obstacleGO.tag.Equals("Ventil"))
+                else if (obstacleGO.CompareTag("Ventil"))
                 {
                     obsType = 2;
                 }

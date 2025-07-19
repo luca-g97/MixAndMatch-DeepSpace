@@ -408,11 +408,25 @@ namespace Seb.Fluid2D.Simulation
                     // If the GPU reports that particles were removed, we do everything here.
                     if (removedCount > 0)
                     {
+                        // Ensure the buffer is still valid
+                        if (removedParticlesBuffer == null || !removedParticlesBuffer.IsValid() || compute == null)
+                        {
+                            isProcessingRemovals = false;
+                            return;
+                        }
+
                         // 1. Finalize the compaction on the GPU by copying the "kept" particles back.
                         ComputeHelper.Dispatch(compute, keptCount, kernelIndex: copybackKernel);
 
                         // 2. Update the CPU's particle count. This is the critical step.
                         numParticles = keptCount;
+
+                        // Ensure the buffer is still valid
+                        if (removedParticlesBuffer == null || !removedParticlesBuffer.IsValid())
+                        {
+                            isProcessingRemovals = false;
+                            return;
+                        }
 
                         // 3. Now, handle transferring the removed particles to the other simulation.
                         AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<float4>(), 0, (listRequest) =>
