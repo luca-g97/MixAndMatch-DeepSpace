@@ -137,7 +137,7 @@ namespace Assets.UnityPharusAPI.Managers
                 yield return new WaitForSeconds(1f);
                 if (tracklinkService.IsActivelyReceiving && tuioService.IsActivelyReceiving)
                 {
-                    Debug.LogWarning($"There's more than one tracking service active. Automatically defaulting to Tracklink, no TUIO data will be received! If you want to use a specific tracking service, set it in the trackingConfig.xml in the Streaming Assets.");
+                    //Debug.LogWarning($"There's more than one tracking service active. Automatically defaulting to Tracklink, no TUIO data will be received! If you want to use a specific tracking service, set it in the trackingConfig.xml in the Streaming Assets.");
                     tuioService.Shutdown();
                 }
             }

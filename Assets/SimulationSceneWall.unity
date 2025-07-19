@@ -541,6 +541,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sim: {fileID: 271053326}
+  sim_Floor: {fileID: 0}
   mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
   shader: {fileID: 4800000, guid: 39dca3ffdafb3034f88c5b8575ae2f4d, type: 3}
   scale: 0.03
@@ -605,26 +606,9 @@ MonoBehaviour:
   oilPressureMultiplier: 1
   oilNearPressureMultiplier: 1
   oilViscosityStrength: 0.4
-  interactionRadius: 0
-  interactionStrength: 0
-  mouseGravityStrength: 0
-  mouseGravityRadius: 0
-  invertMouseGravity: 1
   compute: {fileID: 7200000, guid: 2d342f91ee800f140958be6ec301e94a, type: 3}
   spawner2D: {fileID: 271053327}
   obstacles: []
-  areaToColorAroundObstacles: 1
-  minDistanceToRemoveParticles: 0.2
-  coloredAreaAroundObstaclesDivider: 0
-  transferedParticles: []
-  mixableColorsForShader: []
-  maxPlayerColors: 6
-  colorSymbolizingNoPlayer: {r: 1, g: 1, b: 1, a: 1}
-  lastPlayerCount: -1
-  obstacleLineColor: {r: 0, g: 1, b: 0, a: 0}
-  ventilLineColor: {r: 0, g: 1, b: 0, a: 0}
-  obstacleLineWidth: 0.1
-  lineRendererMaterial: {fileID: 2100000, guid: b1780e872401318468408c9ab0951307, type: 2}
 --- !u!114 &271053327
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1063,6 +1047,10 @@ PrefabInstance:
     - target: {fileID: 7564270855486431386, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7564270855486431386, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
+      propertyPath: m_TagString
+      value: Ventil_Wall
       objectReference: {fileID: 0}
     - target: {fileID: 7683150311040050117, guid: e5fe8f1da054e184d94523b5c72dd833, type: 3}
       propertyPath: m_LocalPosition.x

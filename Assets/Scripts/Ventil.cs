@@ -1,7 +1,6 @@
-using System;
-using System.Collections.Generic;
 using DG.Tweening;
 using KBCore.Refs;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Ventil : ValidatedMonoBehaviour
@@ -10,10 +9,10 @@ public class Ventil : ValidatedMonoBehaviour
     [SerializeField, Child] private MeshRenderer[] ventilMeshRenderers;
     [SerializeField] private int currentHealthPoints;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    
+
     private MaterialPropertyBlock _materialPropertyBlock;
     [HideInInspector] public bool IsNotAlive => currentHealthPoints <= 0;
-    
+
     private static readonly int _SATURATION = Shader.PropertyToID("_Saturation");
     private static readonly int _TINT = Shader.PropertyToID("_Tint");
 
@@ -39,7 +38,7 @@ public class Ventil : ValidatedMonoBehaviour
     void Update()
     {
         UpdateSaturationByHealth();
-        
+
         foreach (MeshRenderer ventilMeshRenderer in ventilMeshRenderers)
         {
             if (ventilMeshRenderer != null)
@@ -48,36 +47,36 @@ public class Ventil : ValidatedMonoBehaviour
             }
         }
     }
-    
+
     public void UpdateHealth(int particlesReachedThisFrame)
     {
         if (IsNotAlive) return;
         currentHealthPoints -= particlesReachedThisFrame;
-        
+
         if (currentHealthPoints <= 0)
         {
             DestroyedSequence();
         }
     }
-    
+
     public void Kill()
     {
-       UpdateHealth(10000);
+        UpdateHealth(10000);
     }
-    
+
     public void UpdateTintByParticleType(int type)
     {
         if (IsNotAlive) return;
-        
+
         if (type < 0 || type >= _colorPalette.Count)
         {
             return;
         }
-        
+
         Color color = _colorPalette[type];
         ColoringSequence(color);
     }
-    
+
     private void UpdateSaturationByHealth()
     {
         float saturationByHealth = Helper.RemapRange(currentHealthPoints, 0, maxHealthPoints, 0f, 1f);
@@ -92,7 +91,7 @@ public class Ventil : ValidatedMonoBehaviour
         .OnComplete((() => gameObject.SetActive(false)));
     }
 
-    public void SpawnSequence ()
+    public void SpawnSequence()
     {
         currentHealthPoints = maxHealthPoints;
         _currentSpawnSequence?.Kill();
@@ -107,7 +106,7 @@ public class Ventil : ValidatedMonoBehaviour
         _currentColorSequence = DOTween.Sequence()
             .AppendCallback((() => _materialPropertyBlock.SetColor(_TINT, color)));
     }
-    
+
     private void OnDestroy()
     {
         _currentSpawnSequence?.Kill();

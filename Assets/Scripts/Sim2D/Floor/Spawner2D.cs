@@ -94,27 +94,28 @@ public class Spawner2D : MonoBehaviour
         };
     }
 
-    public ParticleSpawnData GetNewlySpawnedParticles(int currentTotalParticles, int maxTotalParticles)
+    public ParticleSpawnData SpawnTransferedParticles(List<float4> particlesToSpawn)
     {
-        if (!fluidSimulation_Wall || !allowContinuousSpawning || currentTotalParticles >= maxTotalParticles)
+        int currentTotalParticles = fluidSimulation.numParticles;
+        int maxTotalParticles = fluidSimulation.maxTotalParticles;
+
+        if (!allowContinuousSpawning || currentTotalParticles >= maxTotalParticles)
         {
             return new ParticleSpawnData(0);
         }
+
         List<float2> newPoints = new();
         List<float2> newVelocities = new();
         List<int> newSpawnIndices = new();
         List<int2> newParticleTypes = new();
-        int particlesAddedThisFrame = 0;
 
-        foreach (Vector4 particle in fluidSimulation_Wall.transferedParticles)
+        foreach (float4 particle in particlesToSpawn)
         {
             newPoints.Add(new float2(particle[1], 3.75f));
             newVelocities.Add(new float2(particle[2], particle[3] * 3.0f));
             newSpawnIndices.Add((int)particle[0]);
             newParticleTypes.Add(new int2((int)particle[0], -1));
         }
-
-        fluidSimulation_Wall.transferedParticles = new List<Vector4>();
 
         return new ParticleSpawnData
         {
@@ -191,7 +192,7 @@ public class Spawner2D : MonoBehaviour
         {
             Vector2Int spawnCountPerAxis = CalculateSpawnCountPerAxisBox2D(region.size, region.spawnDensity);
             initialSpawnParticleCount += spawnCountPerAxis.x * spawnCountPerAxis.y;
-            
+
             region.name = region.particleType.ToString();
         }
     }

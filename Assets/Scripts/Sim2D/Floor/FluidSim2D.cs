@@ -4,7 +4,6 @@ using System.Linq;
 using System.Runtime.InteropServices; // For Marshal.SizeOf
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Audio;
 using UnityEngine.Rendering; // Required for AsyncGPUReadback
 
 namespace Seb.Fluid2D.Simulation
@@ -48,19 +47,15 @@ namespace Seb.Fluid2D.Simulation
         [Header("References")]
         public ComputeShader compute;
         public Spawner2D spawner2D;
+        private FluidSim2D_Wall fluidSim_Wall;
 
         public ComputeBuffer positionBuffer { get; private set; }
         ComputeBuffer predictedPositionBuffer;
-        ComputeBuffer particleFlagsBuffer;
         public ComputeBuffer velocityBuffer { get; private set; }
         public ComputeBuffer densityBuffer { get; private set; }
         public ComputeBuffer gravityScaleBuffer { get; private set; }
         public ComputeBuffer collisionBuffer { get; private set; }
         public ComputeBuffer particleTypeBuffer { get; private set; }
-
-        public ComputeBuffer removedParticlesPositionBuffer { get; private set; }
-        ComputeBuffer removedParticlesPositionCounter;
-        private Vector2[] _removedPositionsCache;
 
         ComputeBuffer sortTarget_Position;
         ComputeBuffer sortTarget_PredicitedPosition;
@@ -71,12 +66,10 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer vertexBuffer;
         ComputeBuffer compactionInfoBuffer;
         ComputeBuffer collisionBufferCopy;
+        ComputeBuffer removedParticlesBuffer;
 
         public ComputeBuffer obstacleBuffer { get; private set; }
         public ComputeBuffer obstacleColorsBuffer { get; private set; }
-
-        ComputeBuffer gpu_removedParticlesCounter;
-        ComputeBuffer gpu_particlesReachedDestinationCounter;
 
         SpatialHash spatialHash;
 
@@ -91,14 +84,13 @@ namespace Seb.Fluid2D.Simulation
         const int resetCompactionCounterKernel = 8;
         const int compactAndMoveKernel = 9;
         const int copyCollisionKernel = 10;
-        const int clearIntBufferKernel = 11;
-        const int clearInt4BufferKernel = 12;
-        const int flagParticlesKernel = 13;
+        const int clearRemovedParticlesBuffer = 11;
 
         bool isPaused;
         Spawner2D.ParticleSpawnData initialSpawnData;
         bool pauseNextFrame;
         public int numParticles { get; private set; }
+        private bool isProcessingRemovals = false;
 
         [Header("Obstacles")]
         public List<GameObject> obstacles = new List<GameObject>();
@@ -138,16 +130,13 @@ namespace Seb.Fluid2D.Simulation
             public PolygonCollider2D polyCol;
             public LineRenderer lineRend;
             public Transform transform;
+            public int obstacleType;
         }
         private Dictionary<GameObject, CachedObstacleInfo> _obstacleCache = new Dictionary<GameObject, CachedObstacleInfo>();
 
         private static List<Color> colorPalette = ColorPalette.colorPalette;
 
-        private int[] removedParticlesThisFrame = new int[colorPalette.Count];
-        public int4[] particlesReachedDestinationThisFrame = new int4[colorPalette.Count];
-
-        private int[] removedParticlesPerColor = new int[colorPalette.Count];
-        public int4[] particlesReachedDestination = new int4[colorPalette.Count];
+        private int2[] removedParticlesPerColor = new int2[colorPalette.Count];
 
         List<Vector2> _gpuVerticesData = new List<Vector2>();
         List<ObstacleData> _gpuObstacleDataList = new List<ObstacleData>();
@@ -166,20 +155,14 @@ namespace Seb.Fluid2D.Simulation
         public float obstacleLineWidth = 0.1f;
         public Material lineRendererMaterial;
 
-
         private float autoUpdateInterval = 0.5f;
         private float nextAutoUpdateTime;
         private bool _forceObstacleBufferUpdate = false;
 
         void Start()
         {
-            Debug.Log("Controls: Space = Play/Pause, R = Reset, LMB = Attract, RMB = Repel, G + Mouse = Gravity Well");
+            //Debug.Log("Controls: Space = Play/Pause, R = Reset, LMB = Attract, RMB = Repel, G + Mouse = Gravity Well");
             InitSimulation();
-        }
-
-        void LateUpdate()
-        {
-            PlaySoundAtPosition(GetRemovedParticlePositions());
         }
 
         void InitSimulation()
@@ -200,14 +183,7 @@ namespace Seb.Fluid2D.Simulation
 
             int initialCapacity = Mathf.Max(1, numParticles);
             CreateParticleBuffers(initialCapacity);
-            compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<uint>(1);
-
-            removedParticlesPositionCounter = ComputeHelper.CreateStructuredBuffer<uint>(1);
-
-            gpu_removedParticlesCounter = ComputeHelper.CreateStructuredBuffer<int>(colorPalette.Count);
-            gpu_particlesReachedDestinationCounter = ComputeHelper.CreateStructuredBuffer<int4>(colorPalette.Count);
-            gpu_removedParticlesCounter.SetData(new int[colorPalette.Count]);
-            gpu_particlesReachedDestinationCounter.SetData(new int4[colorPalette.Count]);
+            compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<int2>(1);
 
             if (numParticles > 0)
             {
@@ -241,8 +217,6 @@ namespace Seb.Fluid2D.Simulation
             ReleaseParticleBuffers();
             int safeCapacity = Mathf.Max(1, capacity);
 
-            removedParticlesPositionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(Mathf.Max(1, maxTotalParticles));
-
             positionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             predictedPositionBuffer = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
             velocityBuffer = ComputeHelper.CreateStructuredBuffer<float2>(safeCapacity);
@@ -258,8 +232,7 @@ namespace Seb.Fluid2D.Simulation
             sortTarget_Collision = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
 
             collisionBufferCopy = ComputeHelper.CreateStructuredBuffer<int4>(safeCapacity);
-
-            particleFlagsBuffer = ComputeHelper.CreateStructuredBuffer<int>(safeCapacity);
+            removedParticlesBuffer = ComputeHelper.CreateStructuredBuffer<int2>(safeCapacity);
         }
 
         void ReleaseParticleBuffers()
@@ -267,19 +240,13 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.Release(positionBuffer, predictedPositionBuffer, velocityBuffer, densityBuffer,
                 gravityScaleBuffer, collisionBuffer, particleTypeBuffer, sortTarget_Position,
                 sortTarget_PredicitedPosition, sortTarget_Velocity, sortTarget_ParticleType,
-                compactionInfoBuffer, sortTarget_Collision, collisionBufferCopy,
-                gpu_removedParticlesCounter, gpu_particlesReachedDestinationCounter,
-                removedParticlesPositionBuffer, removedParticlesPositionCounter,
-                particleFlagsBuffer);
+                compactionInfoBuffer, removedParticlesBuffer, sortTarget_Collision, collisionBufferCopy);
             positionBuffer = null; predictedPositionBuffer = null; velocityBuffer = null; densityBuffer = null;
             gravityScaleBuffer = null; collisionBuffer = null; particleTypeBuffer = null; sortTarget_Position = null;
             sortTarget_PredicitedPosition = null; sortTarget_Velocity = null; sortTarget_ParticleType = null;
-            compactionInfoBuffer = null; sortTarget_Collision = null; collisionBufferCopy = null;
-            gpu_removedParticlesCounter = null; gpu_particlesReachedDestinationCounter = null;
-            removedParticlesPositionBuffer = null; removedParticlesPositionCounter = null;
+            compactionInfoBuffer = null; removedParticlesBuffer = null; sortTarget_Collision = null; collisionBufferCopy = null;
             spatialHash?.Release();
             spatialHash = null;
-            particleFlagsBuffer = null;
         }
 
         void ReleaseObstacleBuffers()
@@ -384,88 +351,29 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer", copybackKernel);
             ComputeHelper.SetBuffer(compute, collisionBuffer, "CollisionBuffer", copybackKernel);
 
-            // --- KERNEL GROUP 3: PARTICLE REMOVAL / COMPACTION (NOW A 2-PASS SYSTEM) ---
-
-            // PASS 1: FlagParticlesForCompaction Kernel
-            // This kernel reads original particle data and writes to the flag buffer and statistical counters.
-            ComputeHelper.SetBuffer(compute, particleFlagsBuffer, "ParticleFlags", flagParticlesKernel);
-            ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", flagParticlesKernel);
-            ComputeHelper.SetBuffer(compute, collisionBuffer, "Source_Collision", flagParticlesKernel);
-            ComputeHelper.SetBuffer(compute, gpu_removedParticlesCounter, "removedParticlesThisFrame", flagParticlesKernel);
-            ComputeHelper.SetBuffer(compute, gpu_particlesReachedDestinationCounter, "particlesReachedDestinationThisFrame", flagParticlesKernel);
-            if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", flagParticlesKernel);
-
-
-            // ResetCompactionCounter Kernel
-            // This resets the counters used by the compaction/removal pass.
-            ComputeHelper.SetBuffer(compute, compactionInfoBuffer, "CompactionInfoBuffer", resetCompactionCounterKernel);
-            ComputeHelper.SetBuffer(compute, removedParticlesPositionCounter, "RemovedParticlesPositionCounter", resetCompactionCounterKernel);
-
-
-            // PASS 2: CompactAndMoveParticles Kernel
-            // This kernel reads the flags and original data, then moves particles to their final destinations.
-            ComputeHelper.SetBuffer(compute, compactionInfoBuffer, "CompactionInfoBuffer", compactAndMoveKernel);
-            ComputeHelper.SetBuffer(compute, removedParticlesPositionCounter, "RemovedParticlesPositionCounter", compactAndMoveKernel);
-            ComputeHelper.SetBuffer(compute, removedParticlesPositionBuffer, "RemovedParticlesPositionBuffer", compactAndMoveKernel);
-
-            // Set read-only sources for Pass 2
-            ComputeHelper.SetBuffer(compute, particleFlagsBuffer, "Source_ParticleFlags", compactAndMoveKernel);
+            // --- KERNEL GROUP 3: PARTICLE REMOVAL / COMPACTION ---
+            ComputeHelper.SetBuffer(compute, compactionInfoBuffer, "CompactionInfoBuffer", resetCompactionCounterKernel, compactAndMoveKernel);
+            ComputeHelper.SetBuffer(compute, removedParticlesBuffer, "RemovedParticlesBuffer", resetCompactionCounterKernel, compactAndMoveKernel, clearRemovedParticlesBuffer);
+            // Set read-only sources
             ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", compactAndMoveKernel);
-            ComputeHelper.SetBuffer(compute, collisionBuffer, "Source_Collision", compactAndMoveKernel);
-
-            // Set RW write targets for Pass 2
+            ComputeHelper.SetBuffer(compute, collisionBufferCopy, "Source_Collision", compactAndMoveKernel);
+            if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", compactAndMoveKernel);
+            // Set RW write targets
             ComputeHelper.SetBuffer(compute, sortTarget_Position, "SortTarget_Positions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_PredicitedPosition, "SortTarget_PredictedPositions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_Velocity, "SortTarget_Velocities", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_ParticleType, "SortTarget_ParticleType", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_Collision, "SortTarget_Collision", compactAndMoveKernel);
 
-            // --- KERNEL GROUP 4: BUFFER CLEARING & MISC ---
-            ComputeHelper.SetBuffer(compute, gpu_removedParticlesCounter, "intBufferToClear", clearIntBufferKernel);
-            ComputeHelper.SetBuffer(compute, gpu_particlesReachedDestinationCounter, "int4BufferToClear", clearInt4BufferKernel);
-
-            // CopyCollisionKernel
-            ComputeHelper.SetBuffer(compute, collisionBuffer, "OriginalCollisionBuffer_Source", copyCollisionKernel);
-            ComputeHelper.SetBuffer(compute, collisionBufferCopy, "CopiedCollisionBuffer_Destination", copyCollisionKernel);
-
-            // --- KERNEL GROUP 5: OBSTACLES & CURRENTS ---
+            // --- KERNEL GROUP 4: OBSTACLES & MISC ---
             if (vertexBuffer != null) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer", updatePositionKernel);
             if (obstacleBuffer != null) ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
             if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", updatePositionKernel);
             if (currentsBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentsBuffer", currentsBuffer);
             if (currentVerticesBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer", currentVerticesBuffer);
-        }
-
-        public Vector2[] GetRemovedParticlePositions()
-        {
-            if (removedParticlesPositionCounter == null || !removedParticlesPositionCounter.IsValid() || removedParticlesPositionBuffer == null || !removedParticlesPositionBuffer.IsValid())
-            {
-                return System.Array.Empty<Vector2>();
-            }
-
-            uint[] countData = { 0 };
-            removedParticlesPositionCounter.GetData(countData);
-            int count = (int)countData[0];
-
-            if (count == 0)
-            {
-                return System.Array.Empty<Vector2>();
-            }
-
-            if (_removedPositionsCache == null || _removedPositionsCache.Length < count)
-            {
-                _removedPositionsCache = new Vector2[count];
-            }
-
-            removedParticlesPositionBuffer.GetData(_removedPositionsCache, 0, 0, count);
-
-            Vector2[] result = new Vector2[count];
-            System.Array.Copy(_removedPositionsCache, 0, result, 0, count);
-
-            return result;
         }
 
         void UpdateComputeShaderDynamicParams()
@@ -539,6 +447,11 @@ namespace Seb.Fluid2D.Simulation
                 nextAutoUpdateTime = Time.time + autoUpdateInterval;
             }
 
+            if (!fluidSim_Wall)
+            {
+                fluidSim_Wall = GameObject.FindAnyObjectByType<FluidSim2D_Wall>();
+            }
+
             UpdateAutoPlayers();
             UpdateObstacleBuffer(_forceObstacleBufferUpdate);
             _forceObstacleBufferUpdate = false;
@@ -546,119 +459,154 @@ namespace Seb.Fluid2D.Simulation
             if (!isPaused && numParticles > 0)
             {
                 RunSimulationFrame(cappedSimDeltaTime);
-                // This still forces the GPU to finish all writes to collisionBuffer
-                // and eliminates the Read-After-Write hazard.
+
                 if (collisionBuffer != null && collisionBufferCopy != null && collisionBuffer.count == collisionBufferCopy.count && numParticles > 0)
                 {
                     compute.SetBuffer(copyCollisionKernel, "OriginalCollisionBuffer_Source", collisionBuffer);
                     compute.SetBuffer(copyCollisionKernel, "CopiedCollisionBuffer_Destination", collisionBufferCopy);
                     ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copyCollisionKernel);
                 }
-                ProcessParticleRemovalsGPU();
-                ReadbackAndResetGpuCounters();
+
+                ProcessParticleRemovals();
             }
 
             if (pauseNextFrame) { isPaused = true; pauseNextFrame = false; }
             HandleInput();
         }
 
-        public void SpawnParticles()
+        void ProcessParticleRemovals()
+        {
+            if (numParticles == 0 || compute == null || isProcessingRemovals)
+            {
+                return;
+            }
+            isProcessingRemovals = true;
+
+            //Create a snapshot to ensure the data has not changed meanwhile
+            List<GameObject> obstaclesSnapshot = obstacles;
+            List<int> mixableColorsSnapshot = mixableColors;
+
+            // 1. Dispatch kernels to classify particles and populate the counter buffer.
+            ComputeHelper.Dispatch(compute, 1, 1, 1, kernelIndex: resetCompactionCounterKernel);
+            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: compactAndMoveKernel);
+
+            // 2. Request the counter data ONCE.
+            AsyncGPUReadback.Request(compactionInfoBuffer, (request) =>
+            {
+                if (request.hasError)
+                {
+                    Debug.LogError("GPU readback error on compaction info buffer!");
+                    isProcessingRemovals = false;
+                    return;
+                }
+
+                var counters = request.GetData<int2>();
+                if (counters.Length > 0)
+                {
+                    int keptCount = counters[0].x;
+                    int removedCount = counters[0].y;
+
+                    // If the GPU reports that particles were removed, we do everything here.
+                    if (removedCount > 0)
+                    {
+                        // Ensure the buffer is still valid
+                        if (removedParticlesBuffer == null || !removedParticlesBuffer.IsValid() || compute == null)
+                        {
+                            isProcessingRemovals = false;
+                            return;
+                        }
+
+                        // 1. Finalize the compaction on the GPU by copying the "kept" particles back.
+                        ComputeHelper.Dispatch(compute, keptCount, kernelIndex: copybackKernel);
+
+                        // 2. Update the CPU's particle count. This is the critical step.
+                        numParticles = keptCount;
+
+                        // 3. Now, handle transferring the removed particles to the other simulation.
+                        AsyncGPUReadback.Request(removedParticlesBuffer, removedCount * Marshal.SizeOf<int2>(), 0, (listRequest) =>
+                        {
+                            if (listRequest.hasError)
+                            {
+                                isProcessingRemovals = false;
+                                return;
+                            }
+                            else
+                            {
+                                var removedParticlesData = listRequest.GetData<int2>();
+                                Dictionary<GameObject, int> interactingObstacles = new Dictionary<GameObject, int>();
+
+                                // Process the list of removed particles
+                                for (int particleNr = 0; particleNr < removedCount; particleNr++)
+                                {
+                                    int2 particleData = removedParticlesData[particleNr];
+                                    int particleType = particleData.x - 1;
+                                    int obstacleId = particleData.y;
+
+                                    if (obstacleId >= 0 && obstacleId < obstaclesSnapshot.Count &&
+                                        particleType >= 0 && particleType < mixableColorsSnapshot.Count)
+                                    {
+                                        GameObject obstacle = obstaclesSnapshot[obstacleId];
+                                        int actualParticleColor = mixableColorsSnapshot[particleType];
+
+                                        if (!interactingObstacles.ContainsKey(obstacle))
+                                        {
+                                            interactingObstacles.Add(obstacle, 1);
+                                        }
+                                        else
+                                        {
+                                            interactingObstacles[obstacle]++;
+                                        }
+
+                                        if (obstacle.CompareTag("Player"))
+                                        {
+                                            removedParticlesPerColor[actualParticleColor][0]++;
+                                        }
+                                        else if (obstacle.CompareTag("Ventil"))
+                                        {
+                                            removedParticlesPerColor[actualParticleColor][1]++;
+                                        }
+                                    }
+                                }
+
+                                foreach (GameObject obstacle in interactingObstacles.Keys)
+                                {
+                                    AudioSource audioSource = obstacle.GetComponent<AudioSource>();
+                                    if (obstacle.CompareTag("Player"))
+                                    {
+                                        audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
+                                    }
+                                    else if (obstacle.CompareTag("Ventil"))
+                                    {
+                                        audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
+                                        obstacle.GetComponent<Ventil>().UpdateHealth(interactingObstacles[obstacle]);
+                                    }
+
+                                    if (audioSource != null && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
+                                    {
+                                        audioSource.Play();
+                                    }
+                                }
+                            }
+                        });
+
+                    }
+                }
+                // Update the shader parameters with the new count for the next frame.
+                UpdateComputeShaderDynamicParams();
+                isProcessingRemovals = false;
+            });
+        }
+
+        public void SpawnParticles(List<float4> particlesToSpawn)
         {
             if (spawner2D != null && spawner2D.allowContinuousSpawning && numParticles < maxTotalParticles)
             {
-                Spawner2D.ParticleSpawnData newParticleInfo = spawner2D.GetNewlySpawnedParticles(numParticles, maxTotalParticles);
+                Spawner2D.ParticleSpawnData newParticleInfo = spawner2D.SpawnTransferedParticles(particlesToSpawn);
                 if (newParticleInfo.positions != null && newParticleInfo.positions.Length > 0)
                 {
                     HandleAddingNewParticles(newParticleInfo);
                 }
             }
-        }
-
-        void ProcessParticleRemovalsGPU()
-        {
-            if (numParticles == 0 || compute == null || !particleTypeBuffer.IsValid()) return;
-
-            // 1. Reset the atomic counters on the GPU to 0. (This now resets three counters)
-            ComputeHelper.Dispatch(compute, 1, 1, 1, kernelIndex: resetCompactionCounterKernel);
-
-            // 2. RUN PASS 1: Flag all particles for keep/remove.
-            // This populates particleFlagsBuffer and updates statistical counters.
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: flagParticlesKernel);
-
-            // 3. RUN PASS 2: Move particles based on the flags.
-            // This reads particleFlagsBuffer and moves data to the SortTarget buffers
-            // and the RemovedParticlesPositionBuffer.
-            ComputeHelper.Dispatch(compute, numParticles, kernelIndex: compactAndMoveKernel);
-
-            // 4. Read back the final count of surviving particles.
-            uint[] newCountData = new uint[1];
-            compactionInfoBuffer.GetData(newCountData);
-            int newNumParticles = (int)newCountData[0];
-
-            // If all particles were removed
-            if (newNumParticles <= 0)
-            {
-                numParticles = 0;
-                // Optionally clear/recreate buffers if you want to free memory,
-                // but just setting the count to 0 is sufficient and fast.
-                Debug.Log("All particles removed.");
-            }
-            else
-            {
-                numParticles = newNumParticles;
-                // 5. Copy the compacted data from SortTarget buffers back to the main buffers.
-                // We can reuse the existing copyback kernel for this.
-                ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
-            }
-
-            // 6. Update the particle count on the shader for the next frame.
-            UpdateComputeShaderDynamicParams();
-        }
-
-        async void ReadbackAndResetGpuCounters()
-        {
-            if (gpu_removedParticlesCounter == null || gpu_particlesReachedDestinationCounter == null || (lastPlayerCount == 0)) return;
-
-            int actualColor = 0;
-            // Asynchronously request data from the GPU. The code in the lambda (=>) runs when the data is ready.
-            AsyncGPUReadback.Request(gpu_removedParticlesCounter, (request) =>
-            {
-                if (!request.hasError && (lastPlayerCount > 0))
-                {
-                    // Copy the GPU data directly into your existing C# array.
-                    request.GetData<int>().CopyTo(removedParticlesThisFrame);
-
-                    for (int color = 0; color < removedParticlesThisFrame.Length; color++)
-                    {
-                        actualColor = mixableColors[color];
-                        removedParticlesPerColor[actualColor] += removedParticlesThisFrame[color];
-                    }
-                }
-            });
-
-            AsyncGPUReadback.Request(gpu_particlesReachedDestinationCounter, (request) =>
-            {
-                if (!request.hasError && (lastPlayerCount > 0))
-                {
-                    // Copy the GPU data directly into your existing C# array.
-                    request.GetData<int4>().CopyTo(particlesReachedDestinationThisFrame);
-
-                    for (int color = 0; color < particlesReachedDestinationThisFrame.Length; color++)
-                    {
-                        actualColor = mixableColors[color];
-                        for (int ventilNumber = 0; ventilNumber < 4; ventilNumber++)
-                        {
-                            particlesReachedDestination[actualColor][ventilNumber] += particlesReachedDestinationThisFrame[color][ventilNumber];
-                        }
-                    }
-                }
-            });
-
-            // Immediately dispatch the clear kernels for the next frame.
-            // This happens in parallel with the readback request.
-            int numGroupsToClear = Mathf.CeilToInt(colorPalette.Count / 64f);
-            ComputeHelper.Dispatch(compute, numGroupsToClear, 1, 1, kernelIndex: clearIntBufferKernel);
-            ComputeHelper.Dispatch(compute, numGroupsToClear, 1, 1, kernelIndex: clearInt4BufferKernel);
         }
 
         // Fallback CPU-based buffer resizing (used if Graphics.CopyBuffer is problematic)
@@ -871,10 +819,9 @@ namespace Seb.Fluid2D.Simulation
             foreach (GameObject go in allGameObjectsInScene)
             {
                 if (!go.activeInHierarchy) continue;
-                if (go.name.Contains("PharusPlayer")) currentPlayersInScene.Add(go);
-                else if (go.name.Contains("TouchPlayer")) currentPlayersInScene.Add(go);
-                else if (go.name.Contains("Obstacle")) currentObstaclesInScene.Add(go);
-                else if (go.name.Contains("Ventil")) currentVentilsInScene.Add(go);
+                if (go.CompareTag("Player")) currentPlayersInScene.Add(go);
+                else if (go.CompareTag("Obstacle")) currentObstaclesInScene.Add(go);
+                else if (go.CompareTag("Ventil")) currentVentilsInScene.Add(go);
             }
 
             bool listActuallyChanged = false;
@@ -900,6 +847,15 @@ namespace Seb.Fluid2D.Simulation
                         if (info.lineRend != null)
                         {
                             info.lineRend.sharedMaterial = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
+                        }
+
+                        if (go.CompareTag("Player"))
+                        {
+                            info.obstacleType = 0;
+                        }
+                        else if (go.CompareTag("Ventil"))
+                        {
+                            info.obstacleType = 2;
                         }
 
                         _obstacleCache[go] = info;
@@ -942,7 +898,7 @@ namespace Seb.Fluid2D.Simulation
             if (listActuallyChanged) _forceObstacleBufferUpdate = true; // Ensure if the list order/content changed, buffers update.
 
             List<GameObject> sortedPlayersForColoring = obstacles
-                .Where(o => _obstacleCache.ContainsKey(o) && (o.name.Contains("PharusPlayer") || o.name.Contains("TouchPlayer")))
+                .Where(o => _obstacleCache.ContainsKey(o) && o.CompareTag("Player"))
                 .ToList();
 
             if (listActuallyChanged || sortedPlayersForColoring.Count != lastPlayerCount)
@@ -1115,7 +1071,15 @@ namespace Seb.Fluid2D.Simulation
                 lr.SetPositions(worldLinePoints);
 
                 int obsType = 1;
-                if (obstacleGO.name.Contains("PharusPlayer") || obstacleGO.name.Contains("TouchPlayer")) obsType = 0; else if (obstacleGO.name.Contains("Ventil")) obsType = 2;
+                if (obstacleGO.CompareTag("Player"))
+                {
+                    obsType = 0;
+                }
+                else if (obstacleGO.CompareTag("Ventil"))
+                {
+                    obsType = 2;
+                }
+
                 _gpuObstacleDataList.Add(new ObstacleData
                 {
                     centre = cachedInfo.transform.TransformPoint(polyCol.offset),
@@ -1201,29 +1165,6 @@ namespace Seb.Fluid2D.Simulation
                 }
             }
             if (compute != null) compute.SetInt("numObstacles", _gpuObstacleDataList.Count);
-        }
-
-        [SerializeField] private float _minLoopedSoundPitch = 0.8f;
-        [SerializeField] private float _maxLoopedSoundPitch = 1.2f;
-        [SerializeField] private float _oilCollectedPitchDelta = 0.1f;
-        [SerializeField] private AudioClip _oilCollectedSound;
-        [SerializeField] private AudioMixerGroup _audioMixerOil;
-        void PlaySoundAtPosition(Vector2[] positions)
-        {
-            foreach (Vector2 position in positions)
-            {
-                GameObject tempAudio = new GameObject("TempOilAudio");
-                tempAudio.transform.position = new Vector3(position.x, position.y, 0);
-
-                AudioSource audioSource = tempAudio.AddComponent<AudioSource>();
-                audioSource.clip = _oilCollectedSound;
-                audioSource.outputAudioMixerGroup = _audioMixerOil;
-                audioSource.pitch = UnityEngine.Random.Range(1.0f - _oilCollectedPitchDelta, 1.0f + _oilCollectedPitchDelta);
-                audioSource.spatialBlend = 1.0f;
-                audioSource.Play();
-
-                Destroy(tempAudio, _oilCollectedSound.length);
-            }
         }
 
         void OnDestroy()
