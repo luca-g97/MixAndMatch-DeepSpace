@@ -1,3 +1,4 @@
+using System;
 using DG.Tweening;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -19,8 +20,6 @@ namespace Seb.Fluid2D.Simulation
         [Header("Oil Spawn Settings")]
         [SerializeField] private ParticleType _particleType;
 
-        [SerializeField] private float _preDelayMin = 0.5f;
-        [SerializeField] private float _preDelayMax = 5f;
         [SerializeField] private float _minSpawnRate = 15f;
         [SerializeField] private float _maxSpawnRate = 25f;
         [SerializeField] private float _minSpawnPeriod = 1f;
@@ -58,12 +57,21 @@ namespace Seb.Fluid2D.Simulation
         private Sequence _currentSpawnSequence;
         private bool _isSpawning = false;
 
+        private float _randomSpawnRate;
+        private float _randomSpawnPeriod;
+        private float _randomSpawnPauseDuration;
+
         private void Awake()
         {
             _fluidSim = GameObject.FindFirstObjectByType<FluidSim2D>();
             _barrelColorByParticleTypeBlock = new MaterialPropertyBlock();
             _volumetricSphereBlock = new MaterialPropertyBlock();
             AssignSpawnRegionByParticleTyp(_particleType);
+        }
+
+        private void Start()
+        {
+            RerollValues();
         }
 
         private void OnEnable()
@@ -99,12 +107,16 @@ namespace Seb.Fluid2D.Simulation
             bool shouldBeSpawning = _fluidSim.lastPlayerCount > 0;
 
             // If we should be spawning but we aren't, start the process
-            if (shouldBeSpawning && !_isSpawning)
+            if (shouldBeSpawning)
             {
-                StartSpawning();
+                if (_currentSpawnSequence == null || !_currentSpawnSequence.IsActive() || !_currentSpawnSequence.IsPlaying())
+                {
+                    _currentSpawnSequence?.Kill();
+                    _currentSpawnSequence = SpawnSequence();
+                }
             }
             // If we shouldn't be spawning but we are, stop the process
-            else if (!shouldBeSpawning && _isSpawning)
+            else
             {
                 StopSpawning();
             }
@@ -122,9 +134,9 @@ namespace Seb.Fluid2D.Simulation
         private Color GetColorByParticleType(ParticleType type)
         {
             List<int> mixableColors = _fluidSim.mixableColors;
-            int colorIdx = mixableColors[(int)type - 1];
+            int colorIdx = mixableColors[(int) type - 1];
 
-            if ((int)type <= 0 || (int)type > mixableColors.Count || colorIdx < 0)
+            if ((int) type <= 0 || (int) type > mixableColors.Count || colorIdx < 0)
             {
                 return _fluidSim.colorSymbolizingNoPlayer; // Default color
             }
@@ -132,26 +144,27 @@ namespace Seb.Fluid2D.Simulation
             return _colorPalette[colorIdx];
         }
 
-        private void SpawnSequence()
+        private Sequence SpawnSequence()
         {
-            _currentSpawnSequence?.Kill();
-
-            _currentSpawnSequence = DOTween.Sequence()
+            return DOTween.Sequence()
+                .AppendCallback(RerollValues)
+                .AppendInterval(_randomSpawnPauseDuration)
                 .Append(WarningSequence().SetLoops(_warningBlinkRepetitions, LoopType.Restart))
                 .AppendCallback((delegate
                 {
                     _fireAudioSource.PlayOneShot(_explosionSound);
                     _fireAudioSource.PlayOneShot(_fireSound);
-                    _warningAudioSource.pitch = Random.Range(1f - _warningSoundPitchDelta, 1f + _warningSoundPitchDelta);
+                    _warningAudioSource.pitch =
+                        Random.Range(1f - _warningSoundPitchDelta, 1f + _warningSoundPitchDelta);
                     _warningAudioSource.PlayOneShot(_oilDripSound);
 
                     _explosionEffect.Play();
                     _fireEffect.Play();
-                    _currentSpawnRegion.particlesPerSecond = Random.Range(_minSpawnRate, _maxSpawnRate);
+                    _currentSpawnRegion.particlesPerSecond = _randomSpawnRate;
                     _barrelColorByParticleTypeBlock.SetVector(_EMISSION_COLOR,
                         _currentColor * _emissionIntensityWhileSpawningParticles);
                 }))
-                .AppendInterval(Random.Range(_minSpawnPeriod, _maxSpawnPeriod))
+                .AppendInterval(_randomSpawnPeriod)
                 .AppendCallback((delegate
                 {
                     _fireAudioSource.Stop();
@@ -159,29 +172,12 @@ namespace Seb.Fluid2D.Simulation
                     _fireEffect.Stop();
                     _currentSpawnRegion.particlesPerSecond = 0f;
                     _barrelColorByParticleTypeBlock.SetVector(_EMISSION_COLOR, _currentColor * 0f);
-                }))
-                .AppendInterval(Random.Range(_minSpawnPauseDuration, _maxSpawnPauseDuration)).Pause();
+                }));
         }
-
-        private async void StartSpawning()
-        {
-            if (_isSpawning) return; // Prevent multiple starts
-            _isSpawning = true;     // Set state to active
-
-            await Task.Delay((int)Random.Range(_preDelayMin * 1000, _preDelayMax * 1000));
-
-            // Ensure we should still be spawning after the delay
-            if (!_isSpawning) return;
-
-            SpawnSequence();
-            _currentSpawnSequence.Play().SetLoops(-1, LoopType.Restart);
-        }
-
         private void StopSpawning()
         {
-            _isSpawning = false; // Set state to inactive
-
             _currentSpawnSequence?.Kill();
+            _currentSpawnSequence = null;
             _currentSpawnRegion.particlesPerSecond = 0f;
             _fireAudioSource.Stop();
             _fireEffect.Stop();
@@ -194,9 +190,9 @@ namespace Seb.Fluid2D.Simulation
             return DOTween.Sequence()
                 .AppendCallback(delegate
                 {
-                    _warningAudioSource.pitch = Random.Range(1f - _warningSoundPitchDelta, 1f + _warningSoundPitchDelta);
+                    _warningAudioSource.pitch =
+                        Random.Range(1f - _warningSoundPitchDelta, 1f + _warningSoundPitchDelta);
                     _warningAudioSource.PlayOneShot(_warningSound);
-
                 })
                 .AppendCallback((() =>
                     _barrelColorByParticleTypeBlock.SetVector(_EMISSION_COLOR,
@@ -205,6 +201,13 @@ namespace Seb.Fluid2D.Simulation
                 .AppendCallback((() =>
                     _barrelColorByParticleTypeBlock.SetVector(_EMISSION_COLOR, _currentColor * 0f)))
                 .AppendInterval(_warningBlinkSpeed);
+        }
+
+        private void RerollValues()
+        {
+            _randomSpawnRate = Random.Range(_minSpawnRate, _maxSpawnRate);
+            _randomSpawnPeriod = Random.Range(_minSpawnPeriod, _maxSpawnPeriod);
+            _randomSpawnPauseDuration = Random.Range(_minSpawnPauseDuration, _maxSpawnPauseDuration);
         }
     }
 }

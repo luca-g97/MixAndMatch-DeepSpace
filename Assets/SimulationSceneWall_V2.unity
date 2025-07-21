@@ -886,12 +886,24 @@ PrefabInstance:
       value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -992,12 +1004,24 @@ PrefabInstance:
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -1098,12 +1122,24 @@ PrefabInstance:
       value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -1374,12 +1410,24 @@ PrefabInstance:
       value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -1676,12 +1724,24 @@ PrefabInstance:
       value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -1962,12 +2022,24 @@ PrefabInstance:
       value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -2169,12 +2241,24 @@ PrefabInstance:
       value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -2404,12 +2488,24 @@ PrefabInstance:
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -9488,12 +9584,24 @@ PrefabInstance:
       value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -9692,12 +9800,24 @@ PrefabInstance:
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -11229,12 +11349,24 @@ PrefabInstance:
       value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
@@ -11519,12 +11651,24 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _maxSpawnPeriod
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _minSpawnPeriod
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
-      value: 10
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
+      propertyPath: _warningBlinkRepetitions
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6410214348941156437, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: m_Enabled
