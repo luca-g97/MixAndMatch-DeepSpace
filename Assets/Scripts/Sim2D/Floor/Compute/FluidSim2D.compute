@@ -724,9 +724,8 @@ void UpdatePositions(uint3 id : SV_DispatchThreadID)
         return;
 
     ApplyCurrentForces(id.x, Positions[id.x]);
-    HandleCollisions(id.x);
-    
     Positions[id.x] += Velocities[id.x] * deltaTime;
+    HandleCollisions(id.x);
 }
 
 [numthreads(1, 1, 1)]
