@@ -10,11 +10,6 @@
 #pragma kernel CompactAndMoveParticles_Wall
 #pragma kernel CopyParticleTypeBuffer_Wall
 #pragma kernel ClearRemovedParticlesBuffer_Wall
-#pragma kernel CopyData_float_Wall
-#pragma kernel CopyData_float2_Wall
-#pragma kernel CopyData_int2_Wall
-#pragma kernel CopyData_int4_Wall
-#pragma kernel CopyData_ParticleData_Wall
 
 #include "./FluidMaths2D_Wall.hlsl"
 #include "./SpatialHash_Wall.hlsl"
@@ -89,20 +84,6 @@ StructuredBuffer<int2> Source_ParticleType_Wall;
 
 // Aliases for the REORDERCOPYBACK kernel's source data
 StructuredBuffer<ParticleData> CopySource_Data_Wall;
-
-// Input buffers (read-only)
-StructuredBuffer<float> Source_float_Wall;
-StructuredBuffer<float2> Source_float2_Wall;
-StructuredBuffer<int2> Source_int2_Wall;
-StructuredBuffer<int4> Source_int4_Wall;
-StructuredBuffer<ParticleData> Source_ParticleData_Wall;
-
-// Output buffers (writable)
-RWStructuredBuffer<float> Destination_float_Wall;
-RWStructuredBuffer<float2> Destination_float2_Wall;
-RWStructuredBuffer<int2> Destination_int2_Wall;
-RWStructuredBuffer<int4> Destination_int4_Wall;
-RWStructuredBuffer<ParticleData> Destination_ParticleData_Wall;
 
 int numObstacles_Wall;
 static const int NumThreads_Wall = 64;
@@ -706,34 +687,4 @@ void CopyParticleTypeBuffer_Wall(uint3 id : SV_DispatchThreadID)
 void ClearRemovedParticlesBuffer_Wall(uint3 id : SV_DispatchThreadID)
 {
     RemovedParticlesBuffer_Wall[id.x] = float4(-1, -1, -1, -1);
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_float_Wall(uint3 id : SV_DispatchThreadID)
-{
-    Destination_float_Wall[id.x] = Source_float_Wall[id.x];
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_float2_Wall(uint3 id : SV_DispatchThreadID)
-{
-    Destination_float2_Wall[id.x] = Source_float2_Wall[id.x];
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_int2_Wall(uint3 id : SV_DispatchThreadID)
-{
-    Destination_int2_Wall[id.x] = Source_int2_Wall[id.x];
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_int4_Wall(uint3 id : SV_DispatchThreadID)
-{
-    Destination_int4_Wall[id.x] = Source_int4_Wall[id.x];
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_ParticleData_Wall(uint3 id : SV_DispatchThreadID)
-{
-    Destination_ParticleData_Wall[id.x] = Source_ParticleData_Wall[id.x];
 }
