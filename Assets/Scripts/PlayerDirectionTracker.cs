@@ -15,6 +15,9 @@ public class PlayerDirectionTracker : MonoBehaviour
     private List<Vector2> recentPositions = new List<Vector2>();
     private float currentSpeed = 0f;
 
+    [SerializeField] private float rotationInterpolationSpeed = 10f;
+    private float smoothVelocity = 0f;
+
     void FixedUpdate()
     {
         // Add the current position to our list
@@ -73,7 +76,10 @@ public class PlayerDirectionTracker : MonoBehaviour
             Quaternion targetRotation = Quaternion.Euler(0f, 0f, angle - 90.0f);
 
             // Apply the rotation to the player's local transform
-            transform.localRotation = targetRotation;
+            // transform.localRotation = targetRotation;
+            
+            // Smoothly rotate towards the target rotation
+            transform.localRotation = Quaternion.Lerp(transform.localRotation, targetRotation, rotationInterpolationSpeed * Time.fixedDeltaTime);
         }
     }
 
