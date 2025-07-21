@@ -16,7 +16,6 @@ public class PlayerDirectionTracker : MonoBehaviour
     private float currentSpeed = 0f;
 
     [SerializeField] private float rotationInterpolationSpeed = 10f;
-    private float smoothVelocity = 0f;
 
     void FixedUpdate()
     {

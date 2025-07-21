@@ -2906,8 +2906,8 @@ GameObject:
   - component: {fileID: 1130227695}
   - component: {fileID: 1130227694}
   m_Layer: 0
-  m_Name: Island_Parent
-  m_TagString: Untagged
+  m_Name: Island_Ventil
+  m_TagString: Ventil
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
