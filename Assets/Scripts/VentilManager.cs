@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using KBCore.Refs;
 using Seb.Fluid2D.Simulation;
 using System.Collections.Generic;
@@ -7,6 +9,7 @@ using Random = UnityEngine.Random;
 
 public class VentilManager : MonoBehaviour
 {
+    [SerializeField] private float _spawnWaveDelayAfterVentilDestroyed = 10f;
     [SerializeField] private FluidSim2D _fluidSimulation;
     [SerializeField] private List<Ventil> _ventilList = new List<Ventil>();
     [SerializeField] private Transform[] _ventilSpawnPoints;
@@ -14,6 +17,8 @@ public class VentilManager : MonoBehaviour
     private Dictionary<Transform, Ventil> _ventilAtSpawnPoint = new Dictionary<Transform, Ventil>();
     private Dictionary<Ventil, Transform> _spawnPointForVentil = new Dictionary<Ventil, Transform>();
 
+    private Coroutine _currentSpawnWaveCoroutine;
+    private bool _spawnWaveCoroutineRunning;
 
     private void Update()
     {
@@ -37,6 +42,38 @@ public class VentilManager : MonoBehaviour
         }
 
         SpawnVentilWave();
+    }
+
+    private void OnEnable()
+    {
+        foreach (Ventil ventil in _ventilList)
+        {
+            ventil.VentilDestroyed += OnVentilDestroyed;
+        }
+    }
+
+    private void OnDisable()
+    {
+        foreach (Ventil ventil in _ventilList)
+        {
+            ventil.VentilDestroyed -= OnVentilDestroyed;
+        }
+
+        if (_currentSpawnWaveCoroutine != null)
+        {
+            StopCoroutine(_currentSpawnWaveCoroutine);
+            _currentSpawnWaveCoroutine = null;
+        }
+    }
+
+    private void OnVentilDestroyed(Ventil ventilDestroyed)
+    {
+        if (!_spawnWaveCoroutineRunning)
+        {
+            _currentSpawnWaveCoroutine = StartCoroutine(SpawnWaveCoroutine());
+        }
+
+        _ventilAtSpawnPoint.Remove(_spawnPointForVentil[ventilDestroyed]);
     }
 
     private void SpawnVentilWave()
@@ -108,38 +145,15 @@ public class VentilManager : MonoBehaviour
             }
 
             ventilToKill = _ventilList[randomIndex];
-            _ventilAtSpawnPoint.Remove(_spawnPointForVentil[ventilToKill]);
-
             ventilToKill.Kill();
         }
     }
-
-    private void EvaluateParticlesReached()
+    
+    private IEnumerator SpawnWaveCoroutine()
     {
-        /*if (!_fluidSimulation)
-        {
-            return;
-        }
-
-        int4[] particlesReachedDestinationThisFrame = _fluidSimulation.particlesReachedDestinationThisFrame;
-        int4 accumulatedParticlesPerVentil = new int4(0, 0, 0, 0);
-
-        foreach (int4 particleType in particlesReachedDestinationThisFrame)
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                accumulatedParticlesPerVentil[i] += particleType[i];
-            }
-        }
-
-        for (int i = 0; i < 4; i++)
-        {
-            if (_ventilList.Count <= i)
-            {
-                break;
-            }
-
-            _ventilList[i].UpdateHealth(accumulatedParticlesPerVentil[i]);
-        }*/
+        _spawnWaveCoroutineRunning = true;
+        yield return new WaitForSeconds(_spawnWaveDelayAfterVentilDestroyed);
+        SpawnVentilWave();
+        _spawnWaveCoroutineRunning = false;
     }
 }

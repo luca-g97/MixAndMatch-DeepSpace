@@ -8,6 +8,8 @@ using UnityUtils;
 
 public class Ventil : ValidatedMonoBehaviour
 {
+    public event Action<Ventil> VentilDestroyed;
+    
     [Header("References")]
     [SerializeField, Child] private MeshRenderer[] _ventilMeshRenderers;
     [SerializeField, Child] private VisualEffect _oilSplashEffect;
@@ -67,6 +69,7 @@ public class Ventil : ValidatedMonoBehaviour
         {
             _currentDamageSequence?.Kill();
             DestroyedSequence();
+            VentilDestroyed?.Invoke(this);
         }
         else
         {
