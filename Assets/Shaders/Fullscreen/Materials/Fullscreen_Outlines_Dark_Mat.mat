@@ -62,7 +62,7 @@ Material:
     - _OutlineFadeOutDistance: 50
     - _OutlineFadeOutStartDistance: 5
     - _OutlineScale: 1
-    - _Outline_Scale: 1
+    - _Outline_Scale: 2
     - _Reference_Resolution_Height: 1080
     - _RobertsCrossMultiplier: 100
     - _Roberts_Cross_Multiplier: 100

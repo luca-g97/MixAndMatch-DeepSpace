@@ -530,11 +530,11 @@ namespace Seb.Fluid2D.Simulation
                         AudioSource audioSource = obstacle.GetComponent<AudioSource>();
                         if (obstacle.CompareTag("Player"))
                         {
-                            audioSource.pitch = Random.Range(1f, 1.25f);
+                            if (audioSource) audioSource.pitch = Random.Range(1f, 1.25f);
                         }
                         else if (obstacle.CompareTag("Ventil"))
                         {
-                            audioSource.pitch = Random.Range(0.5f, 0.75f);
+                            if (audioSource) audioSource.pitch = Random.Range(0.5f, 0.75f);
 
                             Ventil ventil = obstacle.GetComponent<Ventil>();
                             if (ventil != null)

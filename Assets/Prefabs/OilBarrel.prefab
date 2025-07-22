@@ -51,15 +51,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _fluidSim: {fileID: 0}
   _spawner: {fileID: 0}
+  _difficultySettingsObject: {fileID: 11400000, guid: e5ae8aa523c769143875b8e9708cbc96, type: 2}
   _barrelMeshRenderer: {fileID: 5349329936830076729}
   _volumetricSphereMeshRenderer: {fileID: 2861251897945176240}
   _particleType: 1
-  _preDelayMin: 3
-  _preDelayMax: 15
-  _minSpawnRate: 50
-  _maxSpawnRate: 100
+  _minSpawnRate: 35
+  _maxSpawnRate: 70
   _minSpawnPeriod: 0.5
-  _maxSpawnPeriod: 3
+  _maxSpawnPeriod: 2
   _minSpawnPauseDuration: 7.5
   _maxSpawnPauseDuration: 15
   _warningBlinkSpeed: 0.1

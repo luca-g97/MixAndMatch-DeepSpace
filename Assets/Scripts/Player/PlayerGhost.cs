@@ -10,11 +10,14 @@ public class PlayerGhost : MonoBehaviour
     [SerializeField] private float _ghostMoveZ = 1f; // Distance to move the ghost model along Z axis
     
     private Sequence _currentSequence;
+    
+    private int _numberOfCollisions;
 
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Ventil") || other.CompareTag("Obstacle"))
         {
+            _numberOfCollisions++;
             // Switch to ghost model
             ShowGhostSequence();
         }
@@ -24,7 +27,12 @@ public class PlayerGhost : MonoBehaviour
     {
         if (other.CompareTag("Ventil") || other.CompareTag("Obstacle"))
         {
-            HideGhostSequence();
+            _numberOfCollisions--;
+
+            if (_numberOfCollisions <= 0)
+            {
+                HideGhostSequence();
+            }
         }
     }
 

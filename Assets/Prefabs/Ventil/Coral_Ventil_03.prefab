@@ -255,8 +255,12 @@ MonoBehaviour:
   - {fileID: 1109053262809597162}
   - {fileID: 8722513793728670140}
   _oilSplashEffect: {fileID: 746749239619576975}
+  _canvas: {fileID: 7903993762500934512}
   _deathIconCanvasGroup: {fileID: 1109220657753632805}
+  _shieldIconCanvasGroup: {fileID: 1749502837860896172}
+  _shieldFillImage: {fileID: 8710966218128155101}
   _modelTransform: {fileID: 8173063004780596639}
+  _timeInvulnerableAfterSpawn: 5
   _maxHealthPoints: 100
 --- !u!1001 &1010163121930889876
 PrefabInstance:
@@ -364,11 +368,32 @@ CanvasGroup:
   m_CorrespondingSourceObject: {fileID: 99198275895024305, guid: 058c566ad3de6644ab12baaea438d249, type: 3}
   m_PrefabInstance: {fileID: 1010163121930889876}
   m_PrefabAsset: {fileID: 0}
+--- !u!225 &1749502837860896172 stripped
+CanvasGroup:
+  m_CorrespondingSourceObject: {fileID: 1604312319890777912, guid: 058c566ad3de6644ab12baaea438d249, type: 3}
+  m_PrefabInstance: {fileID: 1010163121930889876}
+  m_PrefabAsset: {fileID: 0}
 --- !u!224 &4531242609642749179 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 3523757902504220271, guid: 058c566ad3de6644ab12baaea438d249, type: 3}
   m_PrefabInstance: {fileID: 1010163121930889876}
   m_PrefabAsset: {fileID: 0}
+--- !u!223 &7903993762500934512 stripped
+Canvas:
+  m_CorrespondingSourceObject: {fileID: 7184493143661122020, guid: 058c566ad3de6644ab12baaea438d249, type: 3}
+  m_PrefabInstance: {fileID: 1010163121930889876}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8710966218128155101 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8567891165034515273, guid: 058c566ad3de6644ab12baaea438d249, type: 3}
+  m_PrefabInstance: {fileID: 1010163121930889876}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1776023200126441582
 PrefabInstance:
   m_ObjectHideFlags: 0

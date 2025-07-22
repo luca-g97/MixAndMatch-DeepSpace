@@ -11,6 +11,8 @@ using Random = UnityEngine.Random;
 public class VentilManager : MonoBehaviour
 {
     [SerializeField] private float _spawnWaveDelayAfterVentilDestroyed = 10f;
+    [SerializeField] private bool _useRandomRotation = true;
+    [SerializeField] private bool _useYOfSpawnPoint;
     [SerializeField] private FluidSim2D _fluidSimulation;
     [SerializeField] private List<Ventil> _ventilList = new List<Ventil>();
     [SerializeField] private Transform[] _ventilSpawnPoints;
@@ -109,8 +111,18 @@ public class VentilManager : MonoBehaviour
                     {
                         _ventilAtSpawnPoint[randomSpawnPoint] = ventil;
                         _spawnPointForVentil[ventil] = randomSpawnPoint;
-                        ventil.transform.position = ventil.transform.position.With(x: spawnPoint.position.x, y: spawnPoint.position.y);
-                        ventil.transform.localEulerAngles = new Vector3(0, 0, Random.Range(0f, 360f));
+                        
+                        ventil.transform.position = !_useYOfSpawnPoint ? ventil.transform.position.With(x: spawnPoint.position.x, y: spawnPoint.position.y) : spawnPoint.position; // Use the spawn point's position
+
+                        if (_useRandomRotation)
+                        {
+                            ventil.transform.localEulerAngles = new Vector3(0, 0, Random.Range(0f, 360f));
+                        }
+                        else
+                        {
+                            ventil.transform.rotation = spawnPoint.rotation; // Use the spawn point's rotation
+                        }
+                        
                         ventil.SpawnSequence(); // Start spawn sequence
                         break; // Exit the loop after spawning one ventil
                     }

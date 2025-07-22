@@ -14,6 +14,7 @@ namespace Seb.Fluid2D.Simulation
         [Header("References")]
         [SerializeField] private FluidSim2D _fluidSim;
         [SerializeField] private Spawner2D_Wall _spawner;
+        [SerializeField] private DifficultySettingsObject _difficultySettingsObject;
         [SerializeField] private MeshRenderer _barrelMeshRenderer;
         [SerializeField] private MeshRenderer _volumetricSphereMeshRenderer;
 
@@ -114,7 +115,8 @@ namespace Seb.Fluid2D.Simulation
             // If we should be spawning but we aren't, start the process
             if (shouldBeSpawning)
             {
-                if (_currentSpawnSequence == null || !_currentSpawnSequence.IsActive() || !_currentSpawnSequence.IsPlaying())
+                if (_currentSpawnSequence == null || !_currentSpawnSequence.IsActive() ||
+                    !_currentSpawnSequence.IsPlaying())
                 {
                     _currentSpawnSequence?.Kill();
                     _currentSpawnSequence = SpawnSequence();
@@ -125,6 +127,17 @@ namespace Seb.Fluid2D.Simulation
             {
                 StopSpawning();
             }
+        }
+
+        private float GetDifficultyMultiplierByPlayerCount(float difficultyInfluence = 1f)
+        {
+            difficultyInfluence = Mathf.Clamp(difficultyInfluence, 0f, 1f);
+
+            // This method can be used to adjust spawn rates based on player count
+            return Mathf.Lerp(1f,
+                Mathf.Clamp((float) _fluidSim.lastPlayerCount / _difficultySettingsObject.basePlayerCount,
+                    _difficultySettingsObject.minDifficultyMultiplier,
+                    _difficultySettingsObject.maxDifficultyMultiplier), difficultyInfluence);
         }
 
         private void SetColorByParticleType(ParticleType type)
@@ -179,6 +192,7 @@ namespace Seb.Fluid2D.Simulation
                     _barrelColorByParticleTypeBlock.SetVector(_EMISSION_COLOR, _currentColor * 0f);
                 }));
         }
+
         private void StopSpawning()
         {
             _currentSpawnSequence?.Kill();
@@ -210,9 +224,11 @@ namespace Seb.Fluid2D.Simulation
 
         private void RerollValues()
         {
-            _randomSpawnRate = Random.Range(_minSpawnRate, _maxSpawnRate);
-            _randomSpawnPeriod = Random.Range(_minSpawnPeriod, _maxSpawnPeriod);
-            _randomSpawnPauseDuration = Random.Range(_minSpawnPauseDuration, _maxSpawnPauseDuration);
+            _randomSpawnRate = Random.Range(_minSpawnRate, _maxSpawnRate) * GetDifficultyMultiplierByPlayerCount();
+            _randomSpawnPeriod = Random.Range(_minSpawnPeriod, _maxSpawnPeriod) *
+                                 GetDifficultyMultiplierByPlayerCount(0.5f);
+                _randomSpawnPauseDuration =
+                Random.Range(_minSpawnPauseDuration, _maxSpawnPauseDuration);
         }
     }
 }
