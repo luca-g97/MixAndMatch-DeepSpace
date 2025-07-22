@@ -4,7 +4,8 @@ using System.Linq;
 using System.Runtime.InteropServices; // For Marshal.SizeOf
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Rendering; // Required for AsyncGPUReadback
+using UnityEngine.Rendering;
+using Random = UnityEngine.Random; // Required for AsyncGPUReadback
 
 namespace Seb.Fluid2D.Simulation
 {
@@ -528,17 +529,17 @@ namespace Seb.Fluid2D.Simulation
                         AudioSource audioSource = obstacle.GetComponent<AudioSource>();
                         if (obstacle.CompareTag("Player"))
                         {
-                            audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
+                            audioSource.pitch = UnityEngine.Random.Range(1f, 1.25f);
                         }
                         else if (obstacle.CompareTag("Ventil"))
                         {
-                            audioSource.pitch = UnityEngine.Random.Range(0.5f, 1.5f);
-                            obstacle.GetComponent<Ventil>().TakeDamage(entry.Value);
+                            audioSource.pitch = UnityEngine.Random.Range(0.5f, 0.75f);
+                            obstacle.GetComponent<Ventil>().TakeDamage(entry.Value, mixableColorsForShader[Random.Range(0, mixableColorsForShader.Count)]);
                         }
 
                         if (audioSource != null && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
                         {
-                            audioSource.Play();
+                            audioSource.PlayOneShot(audioSource.clip);
                         }
                     }
                 }

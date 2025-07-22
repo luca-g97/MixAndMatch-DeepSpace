@@ -3,45 +3,53 @@ using DG.Tweening;
 using KBCore.Refs;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.VFX;
+using UnityUtils;
 
 public class Ventil : ValidatedMonoBehaviour
 {
-    [SerializeField] private int maxHealthPoints = 100;
-    [SerializeField, Child] private MeshRenderer[] ventilMeshRenderers;
-    [SerializeField] private int currentHealthPoints;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    [Header("References")]
+    [SerializeField, Child] private MeshRenderer[] _ventilMeshRenderers;
+    [SerializeField, Child] private VisualEffect _oilSplashEffect;
+    [SerializeField, Child] private CanvasGroup _deathIconCanvasGroup;
+    [SerializeField] private Transform _modelTransform;
+    
+    [Header("Settings")]
+    [SerializeField] private int _maxHealthPoints = 100;
+    private int _currentHealthPoints;
+    
+    [HideInInspector] public bool IsNotAlive => _currentHealthPoints <= 0;
 
     private MaterialPropertyBlock _materialPropertyBlock;
-    [HideInInspector] public bool IsNotAlive => currentHealthPoints <= 0;
-
     private static readonly int _SATURATION = Shader.PropertyToID("_Saturation");
     private static readonly int _TINT = Shader.PropertyToID("_Tint");
 
     private Sequence _currentSpawnSequence;
     private Sequence _currentColorSequence;
     private Sequence _currentDamageSequence;
-
-    private float _defaultScale;
+    
     private static List<Color> _colorPalette = ColorPalette.colorPalette;
+    
+    private RectTransform _deathIconRectTransform;
 
 
     private void Awake()
     {
-        _defaultScale = transform.localScale.x; // Assuming uniform scale
+        _deathIconRectTransform = _deathIconCanvasGroup.GetComponent<RectTransform>();
     }
 
     private void Start()
     {
         _materialPropertyBlock = new MaterialPropertyBlock();
-        transform.localScale = Vector3.zero;
+        _modelTransform.localScale = Vector3.zero;
         SpawnSequence();
     }
-    
+
     private void Update()
     {
         UpdateSaturationByHealth();
 
-        foreach (MeshRenderer ventilMeshRenderer in ventilMeshRenderers)
+        foreach (MeshRenderer ventilMeshRenderer in _ventilMeshRenderers)
         {
             if (ventilMeshRenderer != null)
             {
@@ -50,12 +58,12 @@ public class Ventil : ValidatedMonoBehaviour
         }
     }
 
-    public void TakeDamage(int particlesReachedThisFrame)
+    public void TakeDamage(int particlesReachedThisFrame, Color particleColor)
     {
         if (IsNotAlive) return;
-        currentHealthPoints -= particlesReachedThisFrame;
+        _currentHealthPoints -= particlesReachedThisFrame;
 
-        if (currentHealthPoints <= 0)
+        if (_currentHealthPoints <= 0)
         {
             _currentDamageSequence?.Kill();
             DestroyedSequence();
@@ -63,12 +71,18 @@ public class Ventil : ValidatedMonoBehaviour
         else
         {
             DamageSequence();
+
+            if (_oilSplashEffect)
+            {
+                _oilSplashEffect.SetVector4("Splash Color", particleColor);
+                _oilSplashEffect.Play();
+            }
         }
     }
 
     public void Kill()
     {
-        TakeDamage(10000);
+        TakeDamage(10000, Color.black);
     }
 
     public void UpdateTintByParticleType(int type)
@@ -86,25 +100,37 @@ public class Ventil : ValidatedMonoBehaviour
 
     private void UpdateSaturationByHealth()
     {
-        float saturationByHealth = Helper.RemapRange(currentHealthPoints, 0, maxHealthPoints, 0f, 1f);
+        float saturationByHealth = Helper.RemapRange(_currentHealthPoints, 0, _maxHealthPoints, 0f, 1f);
         _materialPropertyBlock.SetFloat(_SATURATION, saturationByHealth);
     }
 
     private void DestroyedSequence()
     {
+        _deathIconCanvasGroup.alpha = 0f;
+        _deathIconRectTransform.localScale = Vector3.one * 3f;
+        
         _currentSpawnSequence?.Kill();
         _currentSpawnSequence = DOTween.Sequence()
-            .Append(transform.DOScale(0, 0.5f).SetEase(Ease.InBack))
+            .Append(_modelTransform.DOScale(0, 0.5f).SetEase(Ease.InBack))
+            .Join(_deathIconCanvasGroup.DOFade(1f, 0.5f).SetEase(Ease.OutCubic))
+            .Join(_deathIconRectTransform.DOScale(1f, 0.5f).SetEase(Ease.OutCubic))
+            .Join(_deathIconRectTransform.DOShakeRotation(strength: 45f, duration:0.75f))
+            .Append(_deathIconRectTransform.DOScale(0, 0.25f).SetEase(Ease.InBack))
             .OnComplete((() => gameObject.SetActive(false)));
     }
 
     public void SpawnSequence()
     {
-        currentHealthPoints = maxHealthPoints;
+        _currentHealthPoints = _maxHealthPoints;
         _currentSpawnSequence?.Kill();
         gameObject.SetActive(true);
         _currentSpawnSequence = DOTween.Sequence()
-            .Append(transform.DOScale(_defaultScale, 0.5f).SetEase(Ease.OutBack));
+            .Append(_modelTransform.DOScale(1, 0.5f).SetEase(Ease.OutBack));
+        
+        _deathIconCanvasGroup.alpha = 0f;
+        
+        Canvas canvas = _deathIconCanvasGroup.GetComponentInParent<Canvas>();
+        canvas.transform.eulerAngles = new Vector3(0, 0, 0);
     }
 
     private void ColoringSequence(Color color)
@@ -123,8 +149,8 @@ public class Ventil : ValidatedMonoBehaviour
 
         _currentDamageSequence?.Kill();
         _currentDamageSequence = DOTween.Sequence()
-            .Append(transform.DOScale(_defaultScale * 0.95f, 0.1f).SetEase(Ease.OutCubic))
-            .Append(transform.DOScale(_defaultScale, 0.1f).SetEase(Ease.OutCubic));
+            .Append(_modelTransform.DOScale(0.95f, 0.1f).SetEase(Ease.OutCubic))
+            .Append(_modelTransform.DOScale(1, 0.1f).SetEase(Ease.OutCubic));
     }
 
     private void OnDestroy()

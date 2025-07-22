@@ -22,9 +22,6 @@
             "m_Id": "dc992c2d213d4979b7796f187aa33a9b"
         },
         {
-            "m_Id": "60f670b710274dcb91450383d2116258"
-        },
-        {
             "m_Id": "d0c3cd84d84b4b2abfb4dee6a78f32db"
         }
     ],
@@ -1139,34 +1136,6 @@
 }
 
 {
-    "m_SGVersion": 1,
-    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector2ShaderProperty",
-    "m_ObjectId": "60f670b710274dcb91450383d2116258",
-    "m_Guid": {
-        "m_GuidSerialized": "5314eecb-9271-4634-b9f5-fcb99d22cd53"
-    },
-    "m_Name": "Distortion Scale",
-    "m_DefaultRefNameVersion": 1,
-    "m_RefNameGeneratedByDisplayName": "Distortion Scale",
-    "m_DefaultReferenceName": "_Distortion_Scale",
-    "m_OverrideReferenceName": "",
-    "m_GeneratePropertyBlock": true,
-    "m_UseCustomSlotLabel": false,
-    "m_CustomSlotLabel": "",
-    "m_DismissedVersion": 0,
-    "m_Precision": 0,
-    "overrideHLSLDeclaration": false,
-    "hlslDeclarationOverride": 0,
-    "m_Hidden": false,
-    "m_Value": {
-        "x": 50.0,
-        "y": 50.0,
-        "z": 0.0,
-        "w": 0.0
-    }
-}
-
-{
     "m_SGVersion": 0,
     "m_Type": "UnityEditor.ShaderGraph.DynamicVectorMaterialSlot",
     "m_ObjectId": "61453e08a0b1410bb55c96301e957d4c",
@@ -1841,9 +1810,6 @@
         },
         {
             "m_Id": "dc992c2d213d4979b7796f187aa33a9b"
-        },
-        {
-            "m_Id": "60f670b710274dcb91450383d2116258"
         },
         {
             "m_Id": "d0c3cd84d84b4b2abfb4dee6a78f32db"
