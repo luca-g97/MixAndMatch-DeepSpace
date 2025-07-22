@@ -800,11 +800,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -812,7 +812,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -898,11 +898,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -910,7 +910,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -996,11 +996,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -1008,7 +1008,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -1264,11 +1264,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -1276,7 +1276,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -1558,11 +1558,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -1570,7 +1570,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -1836,11 +1836,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -1848,7 +1848,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -2035,11 +2035,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -2047,7 +2047,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -2262,11 +2262,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -2274,7 +2274,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -9234,11 +9234,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -9246,7 +9246,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -9430,11 +9430,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -9442,7 +9442,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -10347,11 +10347,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -10359,7 +10359,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
@@ -10566,11 +10566,11 @@ PrefabInstance:
       objectReference: {fileID: 271053327}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnRate
-      value: 75
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnRate
-      value: 35
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _particleType
@@ -10578,7 +10578,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _maxSpawnPauseDuration
-      value: 15
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 6315654835225515491, guid: 7e1aef11bacc3d248bfa182e0a82e7a2, type: 3}
       propertyPath: _minSpawnPauseDuration
