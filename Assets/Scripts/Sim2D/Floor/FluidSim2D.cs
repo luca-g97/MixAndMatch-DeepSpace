@@ -507,10 +507,8 @@ namespace Seb.Fluid2D.Simulation
                             {
                                 interactingObstacles.Add(obstacle, new int[12]);
                             }
-                            else
-                            {
-                                interactingObstacles[obstacle][particleType]++;
-                            }
+
+                            interactingObstacles[obstacle][particleType]++;
 
                             if (obstacle.CompareTag("Player"))
                             {
@@ -535,13 +533,17 @@ namespace Seb.Fluid2D.Simulation
                         {
                             audioSource.pitch = Random.Range(0.5f, 0.75f);
                             
-                            for (int i = 0; i < 12; i++)
+                            Ventil ventil = obstacle.GetComponent<Ventil>(); // Get once
+                            if (ventil != null) 
                             {
-                                int actualParticleType = mixableColors[i];
-                                Color particleColor = colorPalette[actualParticleType];
+                                for (int i = 0; i < 12; i++)
+                                {
+                                    int actualParticleType = mixableColors[i];
+                                    Color particleColor = colorPalette[actualParticleType];
 
-                                if (entry.Value[i] <= 0) continue; // Skip if no particles of this type were removed
-                                obstacle.GetComponent<Ventil>().TakeDamage(entry.Value[i], particleColor);
+                                    if (entry.Value[i] == 0) continue; // Skip if no particles of this type
+                                    ventil.TakeDamage(entry.Value[i], particleColor);
+                                }
                             }
                         }
 
