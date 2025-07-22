@@ -508,15 +508,18 @@ namespace Seb.Fluid2D.Simulation
                                 interactingObstacles.Add(obstacle, new int[12]);
                             }
 
-                            interactingObstacles[obstacle][particleType]++;
+                            if (actualParticleColor > 0)
+                            {
+                                interactingObstacles[obstacle][actualParticleColor]++;
 
-                            if (obstacle.CompareTag("Player"))
-                            {
-                                removedParticlesPerColor[actualParticleColor][0]++;
-                            }
-                            else if (obstacle.CompareTag("Ventil"))
-                            {
-                                removedParticlesPerColor[actualParticleColor][1]++;
+                                if (obstacle.CompareTag("Player"))
+                                {
+                                    removedParticlesPerColor[actualParticleColor][0]++;
+                                }
+                                else if (obstacle.CompareTag("Ventil"))
+                                {
+                                    removedParticlesPerColor[actualParticleColor][1]++;
+                                }
                             }
                         }
                     }
@@ -532,17 +535,16 @@ namespace Seb.Fluid2D.Simulation
                         else if (obstacle.CompareTag("Ventil"))
                         {
                             audioSource.pitch = Random.Range(0.5f, 0.75f);
-                            
-                            Ventil ventil = obstacle.GetComponent<Ventil>(); // Get once
-                            if (ventil != null) 
+
+                            Ventil ventil = obstacle.GetComponent<Ventil>();
+                            if (ventil != null)
                             {
                                 for (int i = 0; i < 12; i++)
                                 {
-                                    int actualParticleType = mixableColors[i];
-                                    Color particleColor = colorPalette[actualParticleType];
-
-                                    if (entry.Value[i] == 0) continue; // Skip if no particles of this type
-                                    ventil.TakeDamage(entry.Value[i], particleColor);
+                                    if (entry.Value[i] > 0)
+                                    {
+                                        ventil.TakeDamage(entry.Value[i], colorPalette[i]);
+                                    }
                                 }
                             }
                         }
