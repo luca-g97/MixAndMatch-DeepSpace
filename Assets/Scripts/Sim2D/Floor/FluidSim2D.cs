@@ -529,15 +529,15 @@ namespace Seb.Fluid2D.Simulation
                         AudioSource audioSource = obstacle.GetComponent<AudioSource>();
                         if (obstacle.CompareTag("Player"))
                         {
-                            audioSource.pitch = UnityEngine.Random.Range(1f, 1.25f);
+                            audioSource.pitch = Random.Range(1f, 1.25f);
                         }
                         else if (obstacle.CompareTag("Ventil"))
                         {
-                            audioSource.pitch = UnityEngine.Random.Range(0.5f, 0.75f);
+                            audioSource.pitch = Random.Range(0.5f, 0.75f);
                             obstacle.GetComponent<Ventil>().TakeDamage(entry.Value, mixableColorsForShader[Random.Range(0, mixableColorsForShader.Count)]);
                         }
 
-                        if (audioSource != null && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
+                        if (audioSource && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
                         {
                             audioSource.PlayOneShot(audioSource.clip);
                         }

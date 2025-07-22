@@ -5,6 +5,7 @@ using Seb.Fluid2D.Simulation;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityUtils;
 using Random = UnityEngine.Random;
 
 public class VentilManager : MonoBehaviour
@@ -108,7 +109,7 @@ public class VentilManager : MonoBehaviour
                     {
                         _ventilAtSpawnPoint[randomSpawnPoint] = ventil;
                         _spawnPointForVentil[ventil] = randomSpawnPoint;
-                        ventil.transform.position = randomSpawnPoint.position;
+                        ventil.transform.position = ventil.transform.position.With(x: spawnPoint.position.x, y: spawnPoint.position.y);
                         ventil.transform.localEulerAngles = new Vector3(0, 0, Random.Range(0f, 360f));
                         ventil.SpawnSequence(); // Start spawn sequence
                         break; // Exit the loop after spawning one ventil

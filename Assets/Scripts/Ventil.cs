@@ -44,7 +44,6 @@ public class Ventil : ValidatedMonoBehaviour
     {
         _materialPropertyBlock = new MaterialPropertyBlock();
         _modelTransform.localScale = Vector3.zero;
-        SpawnSequence();
     }
 
     private void Update()
