@@ -486,7 +486,7 @@ namespace Seb.Fluid2D.Simulation
                     // Use the snapshots that were correctly bundled with this specific request
                     List<GameObject> obstaclesSnapshot = completedRequest.obstaclesSnapshot;
                     List<int> mixableColorsSnapshot = completedRequest.mixableColorsSnapshot;
-                    Dictionary<GameObject, int> interactingObstacles = new Dictionary<GameObject, int>();
+                    Dictionary<GameObject, int[]> interactingObstacles = new Dictionary<GameObject, int[]>();
 
                     // Process the list of removed particles
                     for (int particleNr = 0; particleNr < removedParticlesData.Length; particleNr++)
@@ -505,11 +505,11 @@ namespace Seb.Fluid2D.Simulation
 
                             if (!interactingObstacles.ContainsKey(obstacle))
                             {
-                                interactingObstacles.Add(obstacle, 1);
+                                interactingObstacles.Add(obstacle, new int[12]);
                             }
                             else
                             {
-                                interactingObstacles[obstacle]++;
+                                interactingObstacles[obstacle][particleType]++;
                             }
 
                             if (obstacle.CompareTag("Player"))
@@ -534,12 +534,20 @@ namespace Seb.Fluid2D.Simulation
                         else if (obstacle.CompareTag("Ventil"))
                         {
                             audioSource.pitch = Random.Range(0.5f, 0.75f);
-                            obstacle.GetComponent<Ventil>().TakeDamage(entry.Value, mixableColorsForShader[Random.Range(0, mixableColorsForShader.Count)]);
+                            
+                            for (int i = 0; i < 12; i++)
+                            {
+                                int actualParticleType = mixableColors[i];
+                                Color particleColor = colorPalette[actualParticleType];
+
+                                if (entry.Value[i] <= 0) continue; // Skip if no particles of this type were removed
+                                obstacle.GetComponent<Ventil>().TakeDamage(entry.Value[i], particleColor);
+                            }
                         }
 
                         if (audioSource && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
                         {
-                            audioSource.PlayOneShot(audioSource.clip);
+                            audioSource.Play();
                         }
                     }
                 }
