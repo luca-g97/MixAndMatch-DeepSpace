@@ -9,4 +9,8 @@
 	<fullAbsoluteX>550</fullAbsoluteX>
 
 	<fullAbsoluteY>570</fullAbsoluteY>
+
+	<xOffset>100</xOffset>
+
+	<yOffset>100</yOffset>
 </pharus>

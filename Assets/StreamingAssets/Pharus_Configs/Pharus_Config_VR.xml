@@ -9,4 +9,8 @@
 	<fullAbsoluteX>40</fullAbsoluteX>
 
 	<fullAbsoluteY>20</fullAbsoluteY>
+
+	<xOffset>0</xOffset>
+
+	<yOffset>0</yOffset>
 </pharus>

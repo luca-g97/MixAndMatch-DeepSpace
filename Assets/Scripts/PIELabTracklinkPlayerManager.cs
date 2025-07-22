@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
+using TMPro;
 using UnityEngine;
 using UnityPharusAPI;
 using UnityPharusAPI.Services;
@@ -19,6 +20,13 @@ namespace Assets.Tracking_Example.Scripts
         [SerializeField] private float zeroAbsoluteY;
         [SerializeField] private float fullAbsoluteX;
         [SerializeField] private float fullAbsoluteY;
+
+        [SerializeField] private float xOffset;
+        [SerializeField] private float yOffset;
+
+        // TODO: Remove Text! Only for Debug!
+        [SerializeField] private TextMeshPro textXOffset;
+        [SerializeField] private TextMeshPro textYOffset;
 
         private FluidSim2D fluidSim;
         private Vector2 simulationBounds;
@@ -38,10 +46,45 @@ namespace Assets.Tracking_Example.Scripts
             }
 
             simulationBounds = fluidSim.boundsSize;
-            factorX = simulationBounds.x / 2 * (-1);
-            factorY = simulationBounds.y / 2 * (-1);
 
             UpdateBoundaries();
+
+            factorX = (simulationBounds.x - xOffset) / 2 * (-1);
+            factorY = (simulationBounds.y - yOffset) / 2 * (-1);
+
+            textXOffset.text = "X-Offset: " + xOffset.ToString("0.0000") + "m";
+            textYOffset.text = "Y-Offset: " + yOffset.ToString("0.0000") + "m";
+        }
+
+        // TODO: INEFFICENT!! Remove the Update Function before the final Build - only for testing in the Deep Space
+        void Update()
+        {
+            if (Input.GetKey(KeyCode.UpArrow))
+            {
+                yOffset += 0.0025f;
+            }
+            else if (Input.GetKey(KeyCode.DownArrow))
+            {
+                yOffset -= 0.0025f;
+            }
+            else if (Input.GetKey(KeyCode.RightArrow))
+            {
+                xOffset += 0.0025f;
+            }
+            else if (Input.GetKey(KeyCode.LeftArrow))
+            {
+                xOffset -= 0.0025f;
+            }
+            else
+            {
+                return;
+            }
+
+            factorX = (simulationBounds.x - xOffset) / 2 * (-1);
+            factorY = (simulationBounds.y - yOffset) / 2 * (-1);
+
+            textXOffset.text = "X-Offset: " + xOffset.ToString("0.00") + "m";
+            textYOffset.text = "Y-Offset: " + yOffset.ToString("0.00") + "m";
         }
 
         private void UpdateBoundaries()
@@ -89,6 +132,16 @@ namespace Assets.Tracking_Example.Scripts
                     if (fyNode != null && float.TryParse(fyNode.InnerText, out float fy))
                     {
                         fullAbsoluteY = fy / 100.0f;
+                    }
+                    XmlNode xNode = root.SelectSingleNode("xOffset");
+                    if (xNode != null && float.TryParse(xNode.InnerText, out float xO))
+                    {
+                        xOffset = xO / 100.0f;
+                    }
+                    XmlNode yNode = root.SelectSingleNode("yOffset");
+                    if (yNode != null && float.TryParse(yNode.InnerText, out float yO))
+                    {
+                        yOffset = yO / 100.0f;
                     }
                 }
             }
@@ -153,8 +206,8 @@ namespace Assets.Tracking_Example.Scripts
                     Vector2 newPlayerPos = new Vector2();
                     float percentX = Mathf.InverseLerp(zeroAbsoluteX, fullAbsoluteX, trackRecord.currentPos.x);
                     float percentY = Mathf.InverseLerp(zeroAbsoluteY, fullAbsoluteY, trackRecord.currentPos.y);
-                    newPlayerPos.x = factorX + percentX * simulationBounds.x;
-                    newPlayerPos.y = factorY + percentY * simulationBounds.y;
+                    newPlayerPos.x = factorX + percentX * (simulationBounds.x - xOffset);
+                    newPlayerPos.y = factorY + percentY * (simulationBounds.y - yOffset);
                     aPlayer.SetPosition(newPlayerPos);
 
                     return;
