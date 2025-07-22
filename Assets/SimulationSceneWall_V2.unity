@@ -674,12 +674,12 @@ MonoBehaviour:
   yOffset: 12
   maxTotalParticles: 100000
   waterTargetDensity: 1
-  waterPressureMultiplier: 45
-  waterNearPressureMultiplier: 45
+  waterPressureMultiplier: 40
+  waterNearPressureMultiplier: 40
   waterViscosityStrength: 0.1
   oilTargetDensity: 0.92
-  oilPressureMultiplier: 1
-  oilNearPressureMultiplier: 1
+  oilPressureMultiplier: 3
+  oilNearPressureMultiplier: 3
   oilViscosityStrength: 0.4
   compute: {fileID: 7200000, guid: 2d342f91ee800f140958be6ec301e94a, type: 3}
   spawner2D: {fileID: 271053327}
@@ -696,7 +696,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 86a3bf7e4cda61940abd3330e4cc86c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  initialVelocity: {x: 2, y: 2}
+  initialVelocity: {x: 4, y: 2}
   useInitialVelocityOnlyForContinuousSpawning: 1
   initialVelocitySineWaveFrequency: 2
   jitterStr: 0

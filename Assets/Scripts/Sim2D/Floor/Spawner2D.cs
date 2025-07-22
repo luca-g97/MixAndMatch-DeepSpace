@@ -111,10 +111,13 @@ public class Spawner2D : MonoBehaviour
 
         foreach (float4 particle in particlesToSpawn)
         {
-            newPoints.Add(new float2(particle[1], 3.75f));
-            newVelocities.Add(new float2(particle[2], particle[3] * 3.0f));
-            newSpawnIndices.Add((int)particle[0]);
-            newParticleTypes.Add(new int2((int)particle[0], -1));
+            if (particle[0] > 0)
+            {
+                newPoints.Add(new float2(particle[1], 3.75f));
+                newVelocities.Add(new float2(particle[2], particle[3] * 3.0f));
+                newSpawnIndices.Add((int)particle[0]);
+                newParticleTypes.Add(new int2((int)particle[0], -1));
+            }
         }
 
         return new ParticleSpawnData
