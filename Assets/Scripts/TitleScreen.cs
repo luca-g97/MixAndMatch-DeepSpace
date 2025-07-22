@@ -60,6 +60,17 @@ public class TitleScreen : MonoBehaviour
         UnityPharusEventProcessor.TrackRemoved -= OnTrackRemoved;
     }
 
+    private void OnDestroy()
+    {
+        _ctaLoopSequence?.Kill();
+        _ctaShineLoopSequence?.Kill();
+        _titleShowSequence?.Kill();
+        _ctaShowTween?.Kill();
+        
+        UnityPharusEventProcessor.TrackAdded -= OnTrackAdded;
+        UnityPharusEventProcessor.TrackRemoved -= OnTrackRemoved;
+    }
+
     private void Start()
     {
         if (_tracklinkPlayerManager.PlayerList.Count > 0)

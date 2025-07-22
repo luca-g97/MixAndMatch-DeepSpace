@@ -84,6 +84,11 @@ namespace Seb.Fluid2D.Simulation
             StopSpawning();
         }
 
+        private void OnDestroy()
+        {
+            _currentSpawnSequence?.Kill();
+        }
+
         private void AssignSpawnRegionByParticleTyp(ParticleType type)
         {
             foreach (SpawnRegion region in _spawner.spawnRegions)

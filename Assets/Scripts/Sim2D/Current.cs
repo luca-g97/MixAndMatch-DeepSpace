@@ -50,6 +50,11 @@ public class Current : MonoBehaviour
         CurrentSequence();
     }
 
+    private void OnDestroy()
+    {
+        _currentSequence?.Kill();
+    }
+
     private void Update()
     {
         if (_currentSequence == null || !_currentSequence.IsActive() || !_currentSequence.IsPlaying())

@@ -1,3 +1,4 @@
+using System;
 using DG.Tweening;
 using KBCore.Refs;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ public class Ventil : ValidatedMonoBehaviour
     private Sequence _currentSpawnSequence;
     private Sequence _currentColorSequence;
     private Sequence _currentDamageSequence;
-    
+
     private float _defaultScale;
     private static List<Color> _colorPalette = ColorPalette.colorPalette;
 
@@ -29,15 +30,14 @@ public class Ventil : ValidatedMonoBehaviour
         _defaultScale = transform.localScale.x; // Assuming uniform scale
     }
 
-    void Start()
+    private void Start()
     {
         _materialPropertyBlock = new MaterialPropertyBlock();
         transform.localScale = Vector3.zero;
         SpawnSequence();
     }
-
-    // Update is called once per frame
-    void Update()
+    
+    private void Update()
     {
         UpdateSaturationByHealth();
 
@@ -90,12 +90,12 @@ public class Ventil : ValidatedMonoBehaviour
         _materialPropertyBlock.SetFloat(_SATURATION, saturationByHealth);
     }
 
-    public void DestroyedSequence()
+    private void DestroyedSequence()
     {
         _currentSpawnSequence?.Kill();
         _currentSpawnSequence = DOTween.Sequence()
             .Append(transform.DOScale(0, 0.5f).SetEase(Ease.InBack))
-        .OnComplete((() => gameObject.SetActive(false)));
+            .OnComplete((() => gameObject.SetActive(false)));
     }
 
     public void SpawnSequence()
@@ -113,14 +113,14 @@ public class Ventil : ValidatedMonoBehaviour
         _currentColorSequence = DOTween.Sequence()
             .AppendCallback((() => _materialPropertyBlock.SetColor(_TINT, color)));
     }
-    
+
     private void DamageSequence()
     {
         if (_currentDamageSequence != null && _currentDamageSequence.IsActive())
         {
             return;
         }
-        
+
         _currentDamageSequence?.Kill();
         _currentDamageSequence = DOTween.Sequence()
             .Append(transform.DOScale(_defaultScale * 0.95f, 0.1f).SetEase(Ease.OutCubic))
