@@ -83,8 +83,8 @@ namespace Assets.Tracking_Example.Scripts
             factorX = (simulationBounds.x - xOffset) / 2 * (-1);
             factorY = (simulationBounds.y - yOffset) / 2 * (-1);
 
-            textXOffset.text = "X-Offset: " + xOffset.ToString("0.00") + "m";
-            textYOffset.text = "Y-Offset: " + yOffset.ToString("0.00") + "m";
+            textXOffset.text = "X-Offset: " + xOffset.ToString("0.0000") + "m";
+            textYOffset.text = "Y-Offset: " + yOffset.ToString("0.0000") + "m";
         }
 
         private void UpdateBoundaries()
