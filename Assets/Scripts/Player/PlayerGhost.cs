@@ -1,10 +1,12 @@
 using System;
 using DG.Tweening;
+using KBCore.Refs;
 using UnityEngine;
 
-public class PlayerGhost : MonoBehaviour
+public class PlayerGhost : ValidatedMonoBehaviour
 {
     [SerializeField] private GameObject _normalModel;
+    [SerializeField, Child] private Canvas _canvas;
     [SerializeField] private GameObject _ghostModel;
     
     [SerializeField] private float _ghostMoveZ = 1f; // Distance to move the ghost model along Z axis
@@ -39,6 +41,7 @@ public class PlayerGhost : MonoBehaviour
     private void ShowGhostSequence()
     {
         _normalModel.SetActive(false);
+        _canvas.enabled = false;
         _ghostModel.SetActive(true);
         
         _ghostModel.transform.localPosition = _normalModel.transform.localPosition;
@@ -52,6 +55,7 @@ public class PlayerGhost : MonoBehaviour
     {
         _normalModel.SetActive(true);
         _ghostModel.SetActive(false);
+        _canvas.enabled = true;
         
         _normalModel.transform.localPosition = _ghostModel.transform.localPosition;
         

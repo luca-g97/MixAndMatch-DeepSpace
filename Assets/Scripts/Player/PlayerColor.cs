@@ -8,6 +8,7 @@ public class PlayerColor : MonoBehaviour
     [SerializeField] private MeshRenderer _volumetricSphereRenderer;
     [SerializeField] private Light _boatPointLight;
     [SerializeField] private Image _lightConeImage;
+    [SerializeField] private Image _lightCircleImage;
 
     private MaterialPropertyBlock _boatColorBlock;
     private MaterialPropertyBlock _boatLightBulbBlock;
@@ -45,6 +46,12 @@ public class PlayerColor : MonoBehaviour
         Color newLightConeColor = color;
         newLightConeColor.a = lightConeAlpha;
         _lightConeImage.color = newLightConeColor;
+        
+        // Light circle color
+        float lightCircleAlpha = _lightCircleImage.color.a;
+        Color newLightCircleColor = color;
+        newLightCircleColor.a = lightCircleAlpha;
+        _lightCircleImage.color = newLightCircleColor;
 
         // Update boat point light color
         _boatPointLight.color = color;

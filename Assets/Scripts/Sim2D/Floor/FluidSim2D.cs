@@ -508,7 +508,7 @@ namespace Seb.Fluid2D.Simulation
                                 interactingObstacles.Add(obstacle, new int[12]);
                             }
 
-                            if (actualParticleColor > 0)
+                            if (actualParticleColor >= 0)
                             {
                                 interactingObstacles[obstacle][actualParticleColor]++;
 
@@ -531,6 +531,19 @@ namespace Seb.Fluid2D.Simulation
                         if (obstacle.CompareTag("Player"))
                         {
                             if (audioSource) audioSource.pitch = Random.Range(1f, 1.25f);
+                            
+                            PlayerEffects playerEffects = obstacle.GetComponentInChildren<PlayerEffects>();
+                            
+                            if (playerEffects != null)
+                            {
+                                for (int i = 0; i < 12; i++)
+                                {
+                                    if (entry.Value[i] > 0)
+                                    {
+                                        playerEffects.CollectOil(colorPalette[i]);
+                                    }
+                                }
+                            }
                         }
                         else if (obstacle.CompareTag("Ventil"))
                         {

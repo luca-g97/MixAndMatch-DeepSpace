@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: DifficultySettings
   m_EditorClassIdentifier: 
   basePlayerCount: 4
-  maxDifficultyMultiplier: 1.25
+  maxDifficultyMultiplier: 1.5
   minDifficultyMultiplier: 0.25

@@ -55,8 +55,8 @@ MonoBehaviour:
   _barrelMeshRenderer: {fileID: 5349329936830076729}
   _volumetricSphereMeshRenderer: {fileID: 2861251897945176240}
   _particleType: 1
-  _minSpawnRate: 35
-  _maxSpawnRate: 70
+  _minSpawnRate: 50
+  _maxSpawnRate: 100
   _minSpawnPeriod: 0.5
   _maxSpawnPeriod: 2
   _minSpawnPauseDuration: 7.5

@@ -264,14 +264,14 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                         }
                         else
                         {
-                            finalColour = multiplyColourLuminance(finalColour, 1.75);
+                            finalColour = multiplyColourLuminance(finalColour, 2.5);
                         }
                     }
                     else
                     {
                         // Not a highlight case, so apply the default dim/desaturated effect.
-                        finalColour = multiplyColourLuminance(particleColor, 0.75f);
-                        finalColour = setColourSaturation(finalColour, 0.75f);
+                        finalColour = multiplyColourLuminance(particleColor, 0.66f);
+                        finalColour = setColourSaturation(finalColour, 0.66f);
                     }
                 }
                 else if (particleType > 0)
