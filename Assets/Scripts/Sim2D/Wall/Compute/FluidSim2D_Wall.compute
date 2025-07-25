@@ -655,19 +655,19 @@ void CompactAndMoveParticles_Wall(uint3 id : SV_DispatchThreadID)
     if (id.x >= numParticles_Wall)
         return;
 
+    int particleType = Source_ParticleType_Wall[id.x][0];
     int removalFlag = Source_ParticleType_Wall[id.x][1];
     
     // Compaction Step...
     uint newIndex;
-    if (removalFlag != -1)
+    if (removalFlag != -1 && particleType > 0)
     {
         InterlockedAdd(CompactionInfoBuffer_Wall[0][1], 1, newIndex);
 
-        float particleType = Source_ParticleType_Wall[id.x][0];
         float2 pos = Source_Positions_Wall[id.x];
         float2 vel = Source_Velocities_Wall[id.x];
     
-        RemovedParticlesBuffer_Wall[newIndex] = float4(particleType, pos.x, vel.x, vel.y);
+        RemovedParticlesBuffer_Wall[newIndex] = float4((float) particleType, pos.x, vel.x, vel.y);
     }
     else
     {
