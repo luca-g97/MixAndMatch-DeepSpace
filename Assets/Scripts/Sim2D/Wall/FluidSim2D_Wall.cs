@@ -466,52 +466,64 @@ namespace Seb.Fluid2D.Simulation
             });
         }
 
-        ComputeBuffer FallbackResizeAndAppendBuffer<T>(ComputeBuffer buffer, int oldCount, T[] newDataToAppend) where T : struct
+        ComputeBuffer GPUSideResizeAndAppend<T>(ComputeBuffer oldBuffer, T[] newData) where T : struct
         {
-            int newElementsCount = (newDataToAppend == null) ? 0 : newDataToAppend.Length;
-            int newTotalCount = oldCount + newElementsCount;
+            int oldCount = oldBuffer != null ? oldBuffer.count : 0;
+            int newCount = newData?.Length ?? 0;
+            int totalCount = oldCount + newCount;
+            if (totalCount == 0) { oldBuffer?.Release(); return null; }
 
-            if (newElementsCount == 0 && buffer != null && buffer.IsValid() && buffer.count == oldCount)
-            {
-                return buffer;
-            }
-            if (newTotalCount <= 0 && oldCount == 0 && newElementsCount == 0)
-            {
-                buffer?.Release();
-                return new ComputeBuffer(1, Marshal.SizeOf(typeof(T)), ComputeBufferType.Structured);
-            }
+            // --- Logic to select the correct kernel and buffer names ---
+            string typeName = typeof(T).Name;
+            int kernel;
 
-            ComputeBuffer newBuffer = new ComputeBuffer(Mathf.Max(1, newTotalCount), Marshal.SizeOf(typeof(T)), ComputeBufferType.Structured);
-
-            if (oldCount > 0 && buffer != null && buffer.IsValid())
+            switch (typeName)
             {
-                int countToRead = Mathf.Min(oldCount, buffer.count);
-                if (countToRead > 0 && newBuffer.count >= countToRead)
-                {
-                    T[] oldData = new T[countToRead];
-                    buffer.GetData(oldData, 0, 0, countToRead);
-                    newBuffer.SetData(oldData, 0, 0, countToRead);
-                }
-                else if (countToRead > 0)
-                {
-                    Debug.LogError($"FallbackResizeAndAppendBuffer: newBuffer (count {newBuffer.count}) is smaller than old data to copy ({countToRead}). This should not happen.");
-                }
-            }
-
-            if (newElementsCount > 0 && newDataToAppend != null)
-            {
-                if (newBuffer.count >= oldCount + newElementsCount)
-                {
-                    newBuffer.SetData(newDataToAppend, 0, oldCount, newElementsCount);
-                }
-                else
-                {
-                    Debug.LogError($"FallbackResizeAndAppendBuffer: newBuffer (count {newBuffer.count}) too small to append {newElementsCount} elements at offset {oldCount}. Required: {oldCount + newElementsCount}");
-                }
+                case "Single":
+                    typeName = "float";
+                    kernel = copyFloatKernel;
+                    break;
+                case "float2":
+                    kernel = copyFloat2Kernel;
+                    break;
+                case "int2":
+                    kernel = copyInt2Kernel;
+                    break;
+                case "int4":
+                    kernel = copyInt4Kernel;
+                    break;
+                case "ParticleData":
+                    kernel = copyParticleDataKernel;
+                    break;
+                default:
+                    Debug.LogError($"GPUSideResizeAndAppend does not support type: {typeName}");
+                    return oldBuffer; // Return the original buffer to avoid errors
             }
 
-            buffer?.Release();
-            return newBuffer;
+            string sourceName = $"Source_{typeName}_Wall";
+            string destName = $"Destination_{typeName}_Wall";
+            // --- End of selection logic ---
+
+            // 1. Create the final destination buffer.
+            ComputeBuffer destinationBuffer = new ComputeBuffer(totalCount, Marshal.SizeOf(typeof(T)));
+
+            // 2. If there's old data, perform a GPU-side copy.
+            if (oldCount > 0)
+            {
+                compute.SetBuffer(kernel, sourceName, oldBuffer);
+                compute.SetBuffer(kernel, destName, destinationBuffer);
+                ComputeHelper.Dispatch(compute, oldCount, kernelIndex: kernel);
+            }
+
+            // 3. Append the new data directly using the fast SetData command.
+            if (newCount > 0)
+            {
+                destinationBuffer.SetData(newData, 0, oldCount, newCount);
+            }
+
+            // 4. Clean up.
+            oldBuffer?.Release();
+            return destinationBuffer;
         }
 
         void HandleAddingNewParticles(Spawner2D_Wall.ParticleSpawnData newParticleData)
@@ -522,21 +534,28 @@ namespace Seb.Fluid2D.Simulation
             int oldNumParticles = numParticles;
             numParticles += newSpawnCount;
 
-            positionBuffer = FallbackResizeAndAppendBuffer(positionBuffer, oldNumParticles, newParticleData.positions);
-            predictedPositionBuffer = FallbackResizeAndAppendBuffer(predictedPositionBuffer, oldNumParticles, newParticleData.positions);
-            velocityBuffer = FallbackResizeAndAppendBuffer(velocityBuffer, oldNumParticles, newParticleData.velocities);
-            particleTypeBuffer = FallbackResizeAndAppendBuffer(particleTypeBuffer, oldNumParticles, newParticleData.particleTypes);
-            particleTypeBufferCopy = FallbackResizeAndAppendBuffer(particleTypeBufferCopy, oldNumParticles, new int2[newSpawnCount]);
+            // Resize all buffers on the GPU using the single generic V2 helper
+            positionBuffer = GPUSideResizeAndAppend(positionBuffer, newParticleData.positions);
+            predictedPositionBuffer = GPUSideResizeAndAppend(predictedPositionBuffer, newParticleData.positions);
+            velocityBuffer = GPUSideResizeAndAppend(velocityBuffer, newParticleData.velocities);
+            particleTypeBuffer = GPUSideResizeAndAppend(particleTypeBuffer, newParticleData.particleTypes);
 
-            float[] newGravityScales = new float[newSpawnCount]; for (int i = 0; i < newSpawnCount; ++i) newGravityScales[i] = 1f;
-            gravityScaleBuffer = FallbackResizeAndAppendBuffer(gravityScaleBuffer, oldNumParticles, newGravityScales);
+            // Create default data for the new particles
+            float[] newGravityScales = new float[newSpawnCount];
+            int4[] newCollisionData = new int4[newSpawnCount];
+            float2[] newDensityData = new float2[newSpawnCount];
+            ParticleData[] newSortData = new ParticleData[newSpawnCount];
 
-            densityBuffer = FallbackResizeAndAppendBuffer(densityBuffer, oldNumParticles, new float2[newSpawnCount]);
+            for (int i = 0; i < newSpawnCount; i++)
+            {
+                newGravityScales[i] = 1f;
+                newCollisionData[i] = new int4(-1, -1, -1, -1);
+            }
 
-            sortTarget_Position = FallbackResizeAndAppendBuffer(sortTarget_Position, oldNumParticles, new float2[newSpawnCount]);
-            sortTarget_PredicitedPosition = FallbackResizeAndAppendBuffer(sortTarget_PredicitedPosition, oldNumParticles, new float2[newSpawnCount]);
-            sortTarget_Velocity = FallbackResizeAndAppendBuffer(sortTarget_Velocity, oldNumParticles, new float2[newSpawnCount]);
-            sortTarget_ParticleType = FallbackResizeAndAppendBuffer(sortTarget_ParticleType, oldNumParticles, new int2[newSpawnCount]);
+            gravityScaleBuffer = GPUSideResizeAndAppend(gravityScaleBuffer, newGravityScales);
+            particleTypeBufferCopy = GPUSideResizeAndAppend(particleTypeBufferCopy, new int4[newSpawnCount]);
+            densityBuffer = GPUSideResizeAndAppend(densityBuffer, newDensityData);
+            sortTarget_DataBuffer = GPUSideResizeAndAppend(sortTarget_DataBuffer, newSortData);
 
             spatialHash?.Release();
             spatialHash = new SpatialHash_Wall(numParticles);
