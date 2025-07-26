@@ -278,7 +278,7 @@ namespace Seb.Fluid.Simulation
 				pauseNextFrame = false;
 			}
 
-			HandleInput();
+			//HandleInput();
 		}
 
 		void RunSimulationFrame(float frameDeltaTime)

@@ -61,6 +61,7 @@ public class PlayerColor : MonoBehaviour
         _volumetricSphereRenderer.SetPropertyBlock(_volumetricSphereBlock);
     }
 
+    /*
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.R))
@@ -79,4 +80,5 @@ public class PlayerColor : MonoBehaviour
             UpdateColor(Color.cyan);
         }
     }
+    */
 }

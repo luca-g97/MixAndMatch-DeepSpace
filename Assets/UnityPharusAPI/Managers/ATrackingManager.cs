@@ -169,10 +169,12 @@ namespace Assets.UnityPharusAPI.Managers
 
         protected virtual void HandleKeyboardInputs()
         {
+            /*
             if (Input.GetKeyDown(KeyCode.R))
             {
                 Reconnect();
             }
+            */
         }
     }
 }

@@ -465,7 +465,7 @@ namespace Seb.Fluid2D.Simulation
             }
 
             if (pauseNextFrame) { isPaused = true; pauseNextFrame = false; }
-            HandleInput();
+            //HandleInput();
         }
 
         void ProcessParticleRemovals()

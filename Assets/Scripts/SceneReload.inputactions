@@ -1,0 +1,35 @@
+{
+    "version": 1,
+    "name": "SceneReload",
+    "maps": [
+        {
+            "name": "SceneReload_Action",
+            "id": "7cf6db28-e8ff-469e-962d-34949fd2f0ea",
+            "actions": [
+                {
+                    "name": "R-Hold",
+                    "type": "Button",
+                    "id": "e26d85c9-11a9-4fa4-97d2-be9c7e1cd027",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "84d5cfb4-370a-40fe-b881-0baaea68ab97",
+                    "path": "<Keyboard>/r",
+                    "interactions": "Hold(duration=3)",
+                    "processors": "",
+                    "groups": "",
+                    "action": "R-Hold",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

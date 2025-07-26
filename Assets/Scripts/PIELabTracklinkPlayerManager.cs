@@ -57,6 +57,7 @@ namespace Assets.Tracking_Example.Scripts
         }
 
         // TODO: INEFFICENT!! Remove the Update Function before the final Build - only for testing in the Deep Space
+        /*
         void Update()
         {
             if (Input.GetKey(KeyCode.UpArrow))
@@ -86,8 +87,9 @@ namespace Assets.Tracking_Example.Scripts
             textXOffset.text = "X-Offset: " + xOffset.ToString("0.0000") + "m";
             textYOffset.text = "Y-Offset: " + yOffset.ToString("0.0000") + "m";
         }
+        */
 
-        private void UpdateBoundaries()
+        public void UpdateBoundaries()
         {
             string configFileName = "Pharus_Config.xml";
             string path = Path.Combine(Application.streamingAssetsPath, configFileName);
