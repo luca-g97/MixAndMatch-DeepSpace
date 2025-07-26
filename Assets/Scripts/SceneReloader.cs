@@ -9,12 +9,14 @@ public class SceneReloader : MonoBehaviour
 {
     private SceneReload sceneReloadInput;
     private PIELabTracklinkPlayerManager playerManager;
+    private XMLSettings xmlSettings;
 
     void Start()
     {
         QualitySettings.vSyncCount = 1;
         Application.targetFrameRate = 60;
         Time.timeScale = 1.0f;
+        xmlSettings = GameObject.FindFirstObjectByType<XMLSettings>().GetComponent<XMLSettings>();
         playerManager = GameObject.FindFirstObjectByType<PIELabTracklinkPlayerManager>().GetComponent<PIELabTracklinkPlayerManager>();
     }
 
@@ -43,6 +45,8 @@ public class SceneReloader : MonoBehaviour
             child.gameObject.SetActive(true);
         }
         playerManager.UpdateBoundaries();
+        xmlSettings.XMLReload(0);
+        xmlSettings.XMLReload(1);
     }
 
     private void OnHoldFinished()
