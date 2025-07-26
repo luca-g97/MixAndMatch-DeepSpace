@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<settings>
+	<useXML>true</useXML>
+
+	<boundsX>16</boundsX>
+	<boundsX_Wall>16</boundsX_Wall>
+
+	<boundsY>9</boundsY>
+	<boundsY_Wall>9</boundsY_Wall>
+
+	<timeScale>1</timeScale>
+	<timeScale_Wall>1</timeScale_Wall>
+
+	<fps>144</fps>
+	<fps_Wall>144</fps_Wall>
+
+	<iterationsFrame>3</iterationsFrame>
+	<iterationsFrame_Wall>3</iterationsFrame_Wall>
+
+	<gravity>0</gravity>
+	<gravity_Wall>-75</gravity_Wall>
+
+	<totalParticles>100000</totalParticles>
+	<totalParticles_Wall>100000</totalParticles_Wall>
+</settings>

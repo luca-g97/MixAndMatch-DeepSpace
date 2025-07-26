@@ -184,6 +184,7 @@ namespace Seb.Fluid2D.Simulation
         void Start()
         {
             //Debug.Log("Controls: Space = Play/Pause, R = Reset, LMB = Attract, RMB = Repel, G + Mouse = Gravity Well");
+            GameObject.FindFirstObjectByType<XMLSettings>().GetComponent<XMLSettings>().XMLReload(0);
             InitSimulation();
         }
 
