@@ -22,6 +22,7 @@ public class VentilManager : MonoBehaviour
 
     private Coroutine _currentSpawnWaveCoroutine;
     private bool _spawnWaveCoroutineRunning;
+    private int _ventilsDied = 0;
 
     private void Update()
     {
@@ -77,6 +78,7 @@ public class VentilManager : MonoBehaviour
         }
 
         _ventilAtSpawnPoint.Remove(_spawnPointForVentil[ventilDestroyed]);
+        _ventilsDied++;
     }
 
     private void SpawnVentilWave()
@@ -168,5 +170,10 @@ public class VentilManager : MonoBehaviour
         yield return new WaitForSeconds(_spawnWaveDelayAfterVentilDestroyed);
         SpawnVentilWave();
         _spawnWaveCoroutineRunning = false;
+    }
+    
+    public int GetVentilsDiedCount()
+    {
+        return _ventilsDied;
     }
 }

@@ -552,6 +552,31 @@ MonoBehaviour:
   areaToColorAroundObstacles: 0.75
   minDistanceToRemoveParticles: 0.2
   coloredAreaAroundObstaclesDivider: 0
+  removedParticlesPerColor:
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
+  - x: 0
+    y: 0
   mixableColors: 
   mixableColorsForShader: []
   maxPlayerColors: 3
@@ -3002,6 +3027,60 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8465265251951431075, guid: 6653e0191bd006844980a2d05cb47690, type: 3}
   m_PrefabInstance: {fileID: 2143466400}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &840806439
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 840806441}
+  - component: {fileID: 840806442}
+  m_Layer: 0
+  m_Name: MissionTracker
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &840806441
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 840806439}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 978.6481, y: 750.02924, z: -2.92647}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &840806442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 840806439}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af7dd38a344edc742b712bff351b532f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  totalMissionRuntime: 60
+  missionOvertime: 15
+  mostOilFilteredColorIndex: -1
+  mostEfficientCollaborationColorIndex: -1
+  oilBarrelsFiltered: 0
+  coralsDied: 0
+  sealsDied: 0
+  fluidSimulation: {fileID: 271053319}
+  coralVentilManager: {fileID: 1781308778}
+  sealVentilManager: {fileID: 542205003}
 --- !u!1001 &879920878
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7039,3 +7118,4 @@ SceneRoots:
   - {fileID: 2004754987}
   - {fileID: 412202885}
   - {fileID: 80118367}
+  - {fileID: 840806441}

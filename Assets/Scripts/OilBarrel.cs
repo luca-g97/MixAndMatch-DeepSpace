@@ -19,6 +19,7 @@ namespace Seb.Fluid2D.Simulation
         [SerializeField] private MeshRenderer _volumetricSphereMeshRenderer;
 
         [Header("Oil Spawn Settings")]
+        public bool allowSpawning = true;
         [SerializeField] private ParticleType _particleType;
 
         [SerializeField] private float _minSpawnRate = 15f;
@@ -113,17 +114,18 @@ namespace Seb.Fluid2D.Simulation
             bool shouldBeSpawning = _fluidSim.lastPlayerCount > 0;
 
             // If we should be spawning but we aren't, start the process
-            if (shouldBeSpawning)
+            if (shouldBeSpawning && allowSpawning)
             {
                 if (_currentSpawnSequence == null || !_currentSpawnSequence.IsActive() ||
                     !_currentSpawnSequence.IsPlaying())
                 {
                     _currentSpawnSequence?.Kill();
                     _currentSpawnSequence = SpawnSequence();
+                    _isSpawning = true;
                 }
             }
             // If we shouldn't be spawning but we are, stop the process
-            else
+            else if (_isSpawning)
             {
                 StopSpawning();
             }
@@ -193,8 +195,9 @@ namespace Seb.Fluid2D.Simulation
                 }));
         }
 
-        private void StopSpawning()
+        public void StopSpawning()
         {
+            _isSpawning = false;
             _currentSpawnSequence?.Kill();
             _currentSpawnSequence = null;
             _currentSpawnRegion.particlesPerSecond = 0f;

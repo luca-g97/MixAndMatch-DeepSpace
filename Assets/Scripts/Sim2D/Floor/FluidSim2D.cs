@@ -149,7 +149,7 @@ namespace Seb.Fluid2D.Simulation
         private Dictionary<GameObject, CachedObstacleInfo> _obstacleCache = new Dictionary<GameObject, CachedObstacleInfo>();
 
         private static List<Color> colorPalette = ColorPalette.colorPalette;
-        private int2[] removedParticlesPerColor = new int2[colorPalette.Count];
+        public int2[] removedParticlesPerColor = new int2[colorPalette.Count];
 
         List<Vector2> _gpuVerticesData = new List<Vector2>();
         List<ObstacleData> _gpuObstacleDataList = new List<ObstacleData>();
