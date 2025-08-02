@@ -3071,8 +3071,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af7dd38a344edc742b712bff351b532f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalMissionRuntime: 60
+  totalMissionRuntime: 120
   missionOvertime: 15
+  missionRestartDelayAfterGrade: 30
   mostOilFilteredColorIndex: -1
   mostEfficientCollaborationColorIndex: -1
   oilBarrelsFiltered: 0
@@ -3081,6 +3082,10 @@ MonoBehaviour:
   fluidSimulation: {fileID: 271053319}
   coralVentilManager: {fileID: 1781308778}
   sealVentilManager: {fileID: 542205003}
+  missionRuntimeLeft: 0
+  missionRestartTimeLeft: 0
+  missionIsOver: 0
+  missionIsGraded: 0
 --- !u!1001 &879920878
 PrefabInstance:
   m_ObjectHideFlags: 0

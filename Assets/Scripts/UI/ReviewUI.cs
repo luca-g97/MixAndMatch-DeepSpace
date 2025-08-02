@@ -23,6 +23,11 @@ public class ReviewUI : ValidatedMonoBehaviour
     {
         _missionTracker.OnMissionGraded += OnMissionGraded;
     }
+    
+    private void OnDisable()
+    {
+        _missionTracker.OnMissionGraded -= OnMissionGraded;
+    }
 
     private void OnMissionGraded(int starGrade)
     {

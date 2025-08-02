@@ -21,11 +21,6 @@ public class BoatWobble : MonoBehaviour
     private float _rotPhaseOffsetY;
     private float bobPhaseOffset;
 
-    public BoatWobble(float bobPhaseOffset)
-    {
-        this.bobPhaseOffset = bobPhaseOffset;
-    }
-
     private void Start()
     {
         _startLocalPos = transform.localPosition;
