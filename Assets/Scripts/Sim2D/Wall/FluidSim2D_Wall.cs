@@ -106,14 +106,14 @@ namespace Seb.Fluid2D.Simulation
             public float linearFactor;
         }
 
-        [StructLayout(LayoutKind.Explicit, Size = 24)]
         public struct ObstacleData
         {
-            [FieldOffset(0)] public Vector2 centre;
-            [FieldOffset(8)] public int vertexStart;
-            [FieldOffset(12)] public int vertexCount;
-            [FieldOffset(16)] public float lineWidth;
-            [FieldOffset(20)] public int obstacleType;
+            public Vector2 centre;
+            public int vertexStart;
+            public int vertexCount;
+            public float lineWidth;
+            public int obstacleType;
+            public Vector4 aabb;
         }
 
         List<Vector2> _gpuVerticesData = new List<Vector2>();
@@ -648,23 +648,43 @@ namespace Seb.Fluid2D.Simulation
                 var localPoints = polyCol.points;
                 int vertexCountForThisObstacle = localPoints.Length;
 
-                // Add this obstacle's vertices (transformed to world space) to the master list
+                // Prepare initial AABB values
+                Vector2 min = Vector2.positiveInfinity;
+                Vector2 max = Vector2.negativeInfinity;
+
+                // This loop calculates world positions for the vertex buffer AND calculates the AABB at the same time.
                 for (int i = 0; i < vertexCountForThisObstacle; ++i)
                 {
-                    // Get local point from collider and perform a SINGLE transform to world space.
-                    _gpuVerticesData.Add(obstacleGO.transform.TransformPoint(localPoints[i] + polyCol.offset));
+                    // 1. Transform the point only ONCE
+                    Vector2 worldPoint = obstacleGO.transform.TransformPoint(localPoints[i] + polyCol.offset);
+
+                    // 2. Populate data for the GPU vertex buffer
+                    _gpuVerticesData.Add(worldPoint);
+
+                    // 3. Update the min/max for the AABB
+                    min.x = Mathf.Min(min.x, worldPoint.x);
+                    min.y = Mathf.Min(min.y, worldPoint.y);
+                    max.x = Mathf.Max(max.x, worldPoint.x);
+                    max.y = Mathf.Max(max.y, worldPoint.y);
                 }
 
+                // Determine the obstacle type
                 int obsType = obstacleGO.CompareTag("Ventil_Wall") ? 2 : 1;
 
+                // Pack the final AABB into a Vector4
+                Vector4 worldAABB = new Vector4(min.x, min.y, max.x, max.y);
+
+                // Add the complete data for this obstacle to the GPU list
                 _gpuObstacleDataList.Add(new ObstacleData
                 {
                     centre = obstacleGO.transform.TransformPoint(polyCol.offset),
                     vertexStart = currentVertexStartIndex,
                     vertexCount = vertexCountForThisObstacle,
-                    lineWidth = 0.1f, // You can expose this as a public field if you wish
-                    obstacleType = obsType
+                    lineWidth = 0.1f,
+                    obstacleType = obsType,
+                    aabb = worldAABB
                 });
+
                 currentVertexStartIndex += vertexCountForThisObstacle;
             }
 

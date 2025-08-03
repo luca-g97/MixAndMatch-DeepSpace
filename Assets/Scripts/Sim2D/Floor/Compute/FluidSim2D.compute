@@ -36,6 +36,7 @@ struct Obstacle
     int vertexCount;
     float lineWidth;
     int obstacleType;
+    float4 aabb;
 };
 
 struct Current
@@ -298,6 +299,12 @@ void HandleCollisions(uint particleIndex)
         Obstacle obstacle = ObstaclesBuffer[obstacleIdx];
         if (obstacle.vertexCount < 2)
             continue;
+        
+        // Check if the particle can even be inside the box, if not skip every expensive check
+        if (pos.x < obstacle.aabb.x || pos.x > obstacle.aabb.z || pos.y < obstacle.aabb.y || pos.y > obstacle.aabb.w)
+        {
+            continue;
+        }
 
         // Find closest point on obstacle polygon
         int intersections = 0;

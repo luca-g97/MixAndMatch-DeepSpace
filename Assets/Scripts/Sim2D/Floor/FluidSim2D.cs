@@ -124,14 +124,15 @@ namespace Seb.Fluid2D.Simulation
             public float linearFactor;
         }
 
-        [StructLayout(LayoutKind.Explicit, Size = 24)]
+        [StructLayout(LayoutKind.Sequential)]
         public struct ObstacleData
         {
-            [FieldOffset(0)] public Vector2 centre;
-            [FieldOffset(8)] public int vertexStart;
-            [FieldOffset(12)] public int vertexCount;
-            [FieldOffset(16)] public float lineWidth;
-            [FieldOffset(20)] public int obstacleType;
+            public Vector2 centre;
+            public int vertexStart;
+            public int vertexCount;
+            public float lineWidth;
+            public int obstacleType;
+            public Vector4 aabb;
         }
 
         private struct CachedObstacleInfo
@@ -976,25 +977,45 @@ namespace Seb.Fluid2D.Simulation
                     continue;
                 }
 
-                PolygonCollider2D polyCol = cachedInfo.polyCol; LineRenderer lr = cachedInfo.lineRend;
+                PolygonCollider2D polyCol = cachedInfo.polyCol;
+                LineRenderer lr = cachedInfo.lineRend;
                 if (polyCol == null || lr == null || polyCol.points.Length < 2) continue;
 
                 Material currentMat = lineRendererMaterial != null ? lineRendererMaterial : _sharedUnlitMaterial;
                 if (lr.sharedMaterial != currentMat) lr.sharedMaterial = currentMat;
 
                 var localPoints = polyCol.points;
-                lr.positionCount = localPoints.Length; lr.loop = localPoints.Length > 2;
                 int vertexCountForThisObstacle = localPoints.Length;
-                Vector3[] worldLinePoints = new Vector3[vertexCountForThisObstacle];
 
+                // Prepare arrays and initial AABB values
+                Vector3[] worldLinePoints = new Vector3[vertexCountForThisObstacle];
+                Vector2 min = Vector2.positiveInfinity;
+                Vector2 max = Vector2.negativeInfinity;
+
+                // This loop now calculates world positions, populates the vertex buffers, and calculates the AABB all at once.
                 for (int i = 0; i < vertexCountForThisObstacle; ++i)
                 {
-                    Vector2 worldVert = cachedInfo.transform.TransformPoint(localPoints[i] + polyCol.offset);
-                    _gpuVerticesData.Add(worldVert); worldLinePoints[i] = worldVert;
+                    // 1. Transform the point only ONCE
+                    Vector2 worldPoint = cachedInfo.transform.TransformPoint(localPoints[i] + polyCol.offset);
+
+                    // 2. Populate data for the GPU vertex buffer and the LineRenderer
+                    _gpuVerticesData.Add(worldPoint);
+                    worldLinePoints[i] = worldPoint;
+
+                    // 3. Update the min/max for the AABB
+                    min.x = Mathf.Min(min.x, worldPoint.x);
+                    min.y = Mathf.Min(min.y, worldPoint.y);
+                    max.x = Mathf.Max(max.x, worldPoint.x);
+                    max.y = Mathf.Max(max.y, worldPoint.y);
                 }
+
+                // Update the LineRenderer's visuals
+                lr.positionCount = vertexCountForThisObstacle;
+                lr.loop = vertexCountForThisObstacle > 2;
                 lr.SetPositions(worldLinePoints);
 
-                int obsType = 1;
+                // Determine the obstacle type
+                int obsType = 1; // Default to static obstacle
                 if (obstacleGO.CompareTag("Player"))
                 {
                     obsType = 0;
@@ -1004,14 +1025,20 @@ namespace Seb.Fluid2D.Simulation
                     obsType = 2;
                 }
 
+                // Pack the final AABB into a Vector4
+                Vector4 worldAABB = new Vector4(min.x, min.y, max.x, max.y);
+
+                // Add the complete data for this obstacle to the GPU list
                 _gpuObstacleDataList.Add(new ObstacleData
                 {
                     centre = cachedInfo.transform.TransformPoint(polyCol.offset),
                     vertexStart = currentVertexStartIndex,
                     vertexCount = vertexCountForThisObstacle,
                     lineWidth = obstacleLineWidth,
-                    obstacleType = obsType
+                    obstacleType = obsType,
+                    aabb = worldAABB
                 });
+
                 currentVertexStartIndex += vertexCountForThisObstacle;
 
                 Color displayColor = Color.white;
