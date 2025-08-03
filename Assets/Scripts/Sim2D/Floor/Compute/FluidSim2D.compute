@@ -10,6 +10,8 @@
 #pragma kernel CompactAndMoveParticles
 #pragma kernel CopyCollisionBuffer
 #pragma kernel ClearRemovedParticlesBuffer
+#pragma kernel ClearObstacleGrid
+#pragma kernel BuildObstacleGrid 
 
 #include "./FluidMaths2D.hlsl"
 #include "./SpatialHash.hlsl"
@@ -89,6 +91,13 @@ StructuredBuffer<int4> Source_Collision;
 
 // Aliases for the REORDERCOPYBACK kernel's source data
 StructuredBuffer<ParticleData> CopySource_Data;
+
+RWStructuredBuffer<uint> ObstacleGridCounts;
+RWStructuredBuffer<uint> ObstacleGrid;
+
+float obstacleGridCellSize;
+int2 obstacleGridDims;
+int maxObstaclesPerCell;
 
 int numObstacles;
 float areaToColorAroundObstacles;
@@ -225,62 +234,19 @@ float2 ExternalForces(float2 pos, float2 velocity, float gravityScale)
     return gravityAccel;
 }
 
-// Optimized HandleCollisions - Focused on reducing expensive operations (sqrt, normalization)
-// and minimizing work inside the inner vertex loop after performance degradation was observed.
-// Optimized HandleCollisions - Focused on reducing expensive operations (sqrt, normalization)
-// and minimizing work inside the inner vertex loop after performance degradation was observed.
 void HandleCollisions(uint particleIndex)
 {
-    // Initialize Process Flag for this particle for this collision step IF it's not already marked for removal globally.
-    // This ensures that if a particle wasn't marked in a previous step, it starts fresh for this obstacle interaction.
-    // However, if already marked by a previous obstacle in *this same HandleCollisions pass*, we don't want to reset.
-    // The CPU will handle resetting flags globally after processing removals.
-    // So, we only write to ParticleProcessFlags[particleIndex] upon detection.
-
     float2 pos = Positions[particleIndex];
     float2 vel = Velocities[particleIndex];
     int particleType = ParticleTypeBuffer[particleIndex][0];
     int particleProcessFlag = ParticleTypeBuffer[particleIndex][1];
 
-    // If particle is already marked as non-participating (e.g. type -1), skip complex collision.
-    // This check is vital if ParticleTypeBuffer can be set to -1 mid-step by this function.
     if (particleType < 0)
-    {
-        // Still perform boundary collisions for "dead" particles if desired, or just return.
-        // For now, let's assume "dead" particles don't interact further.
-        // However, boundary checks might still be useful to prevent them flying off to infinity
-        // before CPU collects them. For simplicity in this change, we'll let them be.
-        // The main boundary collision happens *after* this loop for all particles.
-        // Re-applying boundary for already "removed" particles:
-        const float2 halfSizeMinimal = boundsSize * 0.5;
-        const float boundaryEpsilonMinimal = 0.001f;
-        if (abs(pos.x) >= halfSizeMinimal.x)
-        {
-            pos.x = (halfSizeMinimal.x - boundaryEpsilonMinimal) * sign(pos.x);
-            vel.x *= -collisionDamping;
-        }
-        if (abs(pos.y) >= halfSizeMinimal.y)
-        {
-            pos.y = (halfSizeMinimal.y - boundaryEpsilonMinimal) * sign(pos.y);
-            vel.y *= -collisionDamping;
-        }
-        Positions[particleIndex] = pos; // Write back potentially adjusted position/velocity
-        Velocities[particleIndex] = vel;
-        return;
-    }
+        return; // Skip already processed/dead particles
 
-    // --- Pre-calculations (Avoid redundant calculations later) ---
+    // --- 1. BOUNDARY COLLISIONS ---
     const float2 halfSize = boundsSize * 0.5;
-    const float boundaryEpsilon = 0.001f; // Small offset for boundary push-off
-    float areaToColorAroundObstaclesSq = areaToColorAroundObstacles * areaToColorAroundObstacles;
-    float minDistanceToRemoveParticlesSq = minDistanceToRemoveParticles * minDistanceToRemoveParticles;
-    float secondaryColorDist = areaToColorAroundObstacles + coloredAreaAroundObstaclesDivider;
-    float secondaryColorDistSq = secondaryColorDist * secondaryColorDist;
-
-    int collisionIndices[4] = { -1, -1, -1, -1 };
-    int consideredObstacles = 0;
-
-    // --- 1. Boundary Collisions ---
+    const float boundaryEpsilon = 0.001f;
     if (abs(pos.x) >= halfSize.x)
     {
         pos.x = (halfSize.x - boundaryEpsilon) * sign(pos.x);
@@ -292,143 +258,140 @@ void HandleCollisions(uint particleIndex)
         vel.y *= -collisionDamping;
     }
     
-    // --- 2. Obstacle Collisions ---
-    [loop]
-    for (int obstacleIdx = 0; obstacleIdx < numObstacles && obstacleIdx < MAX_OBSTACLES; obstacleIdx++)
-    {
-        Obstacle obstacle = ObstaclesBuffer[obstacleIdx];
-        if (obstacle.vertexCount < 2)
-            continue;
-        
-        // Check if the particle can even be inside the box, if not skip every expensive check
-        if (pos.x < obstacle.aabb.x || pos.x > obstacle.aabb.z || pos.y < obstacle.aabb.y || pos.y > obstacle.aabb.w)
-        {
-            continue;
-        }
-
-        // Find closest point on obstacle polygon
-        int intersections = 0;
-        float minDistSq = FLT_MAX;
-        float2 normalAtClosestPoint = float2(0, 0);
-
-        [loop]
-        for (int j = 0; j < obstacle.vertexCount; j++)
-        {
-            int nextJ = (uint) (j + 1) % (uint) obstacle.vertexCount;
-            float2 a = VerticesBuffer[obstacle.vertexStart + j];
-            float2 b = VerticesBuffer[obstacle.vertexStart + nextJ];
-            float2 edge = b - a;
-            float2 vecToA = pos - a;
-
-            float edgeLengthSq = dot(edge, edge);
-            float2 pointOnEdge = a + clamp(dot(vecToA, edge) / max(edgeLengthSq, 1e-6f), 0.0, 1.0) * edge;
-            
-            float2 offsetToPoint = pos - pointOnEdge;
-            float distSq = dot(offsetToPoint, offsetToPoint);
-
-            if (distSq < minDistSq)
-            {
-                minDistSq = distSq;
-                if (distSq > 1e-6f)
-                {
-                    normalAtClosestPoint = normalize(pos - pointOnEdge);
-                }
-                else
-                {
-                    float2 edgeDir = normalize(edge);
-                    normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x));
-                }
-            }
-
-            // Check for point-in-polygon using raycast
-            if (obstacle.vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
-            {
-                if (abs(b.y - a.y) > 1e-6f)
-                {
-                    if (pos.x < a.x + (b.x - a.x) * (pos.y - a.y) / (b.y - a.y))
-                    {
-                        intersections++;
-                    }
-                }
-            }
-        } // --- End Inner Vertex Loop ---
-
-        bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
-        
-        // --- THIS IS THE CORRECTED LOGIC BLOCK ---
-        // It handles highlighting and removal flagging independently to prevent conflicts.
-        
-        // Check only for colored particles
-        if (particleType > 0)
-        {
-            // --- Player Obstacle Interaction (type 0) ---
-            if (obstacle.obstacleType == 0)
-            {
-                // HIGHLIGHTING LOGIC: Always check if the particle is close enough to a player to be highlighted.
-                // This populates the 'collisionIndices' that the renderer uses.
-                if (consideredObstacles < 4)
-                {
-                    if (minDistSq < areaToColorAroundObstaclesSq)
-                    {
-                        collisionIndices[consideredObstacles] = obstacleIdx;
-                        consideredObstacles++;
-                    }
-                    else if (minDistSq < secondaryColorDistSq)
-                    {
-                        collisionIndices[consideredObstacles] = -2; // Special marker for secondary color
-                        consideredObstacles++;
-                    }
-                }
-
-                // REMOVAL LOGIC: Independently, check if the particle is close enough to be flagged for removal.
-                // This writes to ParticleTypeBuffer.y and does not affect highlighting.
-                if (particleProcessFlag == -1 && minDistSq <= minDistanceToRemoveParticlesSq)
-                {
-                    ParticleTypeBuffer[particleIndex][1] = obstacleIdx;
-                    // Add a break here to stop checking against other players for removal flagging.
-                    // The highlighting logic above will have already accumulated all nearby players for the color blend.
-                    break;
-                }
-            }
-            // --- Ventil Obstacle Interaction (type 2) ---
-            else if (obstacle.obstacleType == 2 && particleProcessFlag == -1 && isInside)
-            {
-                ParticleTypeBuffer[particleIndex][1] = -obstacleIdx - 10; // Mark for removal by Ventil
-            }
-        }
-
-        // --- Collision Response (only for physical obstacles: type 0 Player, type 1 Static Obstacle) ---
-        // And only if particle is still considered active (ParticleTypeBuffer[particleIndex] >= 0)
-        float collisionPadding = 0;
-        bool collisionDetected = isInside || (minDistSq < collisionPadding * collisionPadding);
-
-        if (particleType >= 0 && collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1))
-        {
-            float actualDistance = sqrt(minDistSq);
-            float penetrationDepth;
-            if (isInside)
-            {
-                penetrationDepth = actualDistance + collisionPadding;
-            }
-            else
-            {
-                penetrationDepth = collisionPadding - actualDistance;
-            }
-            pos += normalAtClosestPoint * (penetrationDepth + 0.001f);
-
-            float normalSpeed = dot(vel, normalAtClosestPoint);
-            if (normalSpeed < 0)
-            {
-                float2 tangentVel = vel - normalAtClosestPoint * normalSpeed;
-                float2 normalVel = -normalAtClosestPoint * normalSpeed * collisionDamping;
-                float friction = 0.1f;
-                vel = tangentVel * (1.0f - friction) + normalVel;
-            }
-        } // --- End Collision Response ---
-    } // --- End Outer Obstacle Loop ---
+    // --- 2. OBSTACLE COLLISIONS (Using the Grid) ---
+    // These variables must be declared before the loops to accumulate results
+    int collisionIndices[4] = { -1, -1, -1, -1 };
+    int consideredObstacles = 0;
     
-    // --- Final Writes ---
-    // This now contains the correct highlighting data, which will be sorted and compacted.
+    // Pre-calculate values for highlighting logic
+    float areaToColorAroundObstaclesSq = areaToColorAroundObstacles * areaToColorAroundObstacles;
+    float minDistanceToRemoveParticlesSq = minDistanceToRemoveParticles * minDistanceToRemoveParticles;
+    float secondaryColorDist = areaToColorAroundObstacles + coloredAreaAroundObstaclesDivider;
+    float secondaryColorDistSq = secondaryColorDist * secondaryColorDist;
+
+    int2 particleCellCoords = (int2) floor(pos / obstacleGridCellSize);
+    
+    [loop]
+    for (int y = -1; y <= 1; y++)
+    {
+        [loop]
+        for (int x = -1; x <= 1; x++)
+        {
+            int2 sampleCellCoords = particleCellCoords + int2(x, y);
+
+            if (sampleCellCoords.x >= 0 && sampleCellCoords.x < obstacleGridDims.x && sampleCellCoords.y >= 0 && sampleCellCoords.y < obstacleGridDims.y)
+            {
+                uint cellIndex = (uint) (sampleCellCoords.y * obstacleGridDims.x + sampleCellCoords.x);
+                uint numLocalObstacles = min((uint) maxObstaclesPerCell, ObstacleGridCounts[cellIndex]);
+                uint gridStartIndex = cellIndex * maxObstaclesPerCell;
+
+                [loop]
+                for (uint i = 0; i < numLocalObstacles; i++)
+                {
+                    uint obstacleIdx = ObstacleGrid[gridStartIndex + i];
+                    Obstacle obstacle = ObstaclesBuffer[obstacleIdx];
+                    
+                    // --- 2a. BROAD PHASE (AABB Check) ---
+                    if (pos.x < obstacle.aabb.x || pos.x > obstacle.aabb.z || pos.y < obstacle.aabb.y || pos.y > obstacle.aabb.w)
+                    {
+                        continue;
+                    }
+                    
+                    // --- 2b. NARROW PHASE (Your original, precise logic) ---
+                    int intersections = 0;
+                    float minDistSq = FLT_MAX;
+                    float2 normalAtClosestPoint = float2(0, 0);
+
+                    [loop]
+                    for (int j = 0; j < obstacle.vertexCount; j++)
+                    {
+                        int nextJ = (uint) (j + 1) % (uint) obstacle.vertexCount;
+                        float2 a = VerticesBuffer[obstacle.vertexStart + j];
+                        float2 b = VerticesBuffer[obstacle.vertexStart + nextJ];
+                        float2 edge = b - a;
+                        float2 vecToA = pos - a;
+
+                        float edgeLengthSq = dot(edge, edge);
+                        float2 pointOnEdge = a + clamp(dot(vecToA, edge) / max(edgeLengthSq, 1e-6f), 0.0, 1.0) * edge;
+                        
+                        float2 offsetToPoint = pos - pointOnEdge;
+                        float distSq = dot(offsetToPoint, offsetToPoint);
+
+                        if (distSq < minDistSq)
+                        {
+                            minDistSq = distSq;
+                            if (distSq > 1e-6f)
+                            {
+                                normalAtClosestPoint = normalize(pos - pointOnEdge);
+                            }
+                            else
+                            {
+                                float2 edgeDir = normalize(edge);
+                                normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x));
+                            }
+                        }
+
+                        if (obstacle.vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
+                        {
+                            if (abs(b.y - a.y) > 1e-6f)
+                            {
+                                if (pos.x < a.x + (b.x - a.x) * (pos.y - a.y) / (b.y - a.y))
+                                {
+                                    intersections++;
+                                }
+                            }
+                        }
+                    }
+
+                    bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
+                    
+                    if (particleType > 0)
+                    {
+                        if (obstacle.obstacleType == 0) // Player Obstacle
+                        {
+                            if (consideredObstacles < 4)
+                            {
+                                if (minDistSq < areaToColorAroundObstaclesSq)
+                                {
+                                    collisionIndices[consideredObstacles] = obstacleIdx;
+                                    consideredObstacles++;
+                                }
+                                else if (minDistSq < secondaryColorDistSq)
+                                {
+                                    collisionIndices[consideredObstacles] = -2;
+                                    consideredObstacles++;
+                                }
+                            }
+                            if (ParticleTypeBuffer[particleIndex][1] == -1 && minDistSq <= minDistanceToRemoveParticlesSq)
+                            {
+                                ParticleTypeBuffer[particleIndex][1] = obstacleIdx;
+                            }
+                        }
+                        else if (obstacle.obstacleType == 2 && ParticleTypeBuffer[particleIndex][1] == -1 && isInside) // Ventil
+                        {
+                            ParticleTypeBuffer[particleIndex][1] = -(int)obstacleIdx - 10;
+                        }
+                    }
+
+                    bool collisionDetected = isInside || (minDistSq < 0.0001f);
+                    if (particleType >= 0 && collisionDetected && (obstacle.obstacleType == 0 || obstacle.obstacleType == 1))
+                    {
+                        float penetrationDepth = isInside ? sqrt(minDistSq) : 0;
+                        pos += normalAtClosestPoint * (penetrationDepth + 0.001f);
+                        float normalSpeed = dot(vel, normalAtClosestPoint);
+                        if (normalSpeed < 0)
+                        {
+                            float2 tangentVel = vel - normalAtClosestPoint * normalSpeed;
+                            float2 normalVel = -normalAtClosestPoint * normalSpeed * collisionDamping;
+                            vel = tangentVel * (1.0f - 0.1f) + normalVel;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // --- 3. WRITE BACK FINAL DATA ---
     CollisionBuffer[particleIndex] = int4(collisionIndices[0], collisionIndices[1], collisionIndices[2], collisionIndices[3]);
     Positions[particleIndex] = pos;
     Velocities[particleIndex] = vel;
@@ -846,4 +809,47 @@ void CopyCollisionBuffer(uint3 id : SV_DispatchThreadID)
 void ClearRemovedParticlesBuffer(uint3 id : SV_DispatchThreadID)
 {
     RemovedParticlesBuffer[id.x] = int2(-1, -1);
+}
+
+[numthreads(256, 1, 1)]
+void ClearObstacleGrid(uint3 id : SV_DispatchThreadID)
+{
+    uint totalCells = (uint) (obstacleGridDims.x * obstacleGridDims.y);
+    if (id.x >= totalCells)
+        return;
+    ObstacleGridCounts[id.x] = 0;
+}
+
+[numthreads(64, 1, 1)]
+void BuildObstacleGrid(uint3 id : SV_DispatchThreadID)
+{
+    uint obstacleIndex = id.x;
+    if (obstacleIndex >= (uint) numObstacles)
+        return;
+
+    Obstacle obstacle = ObstaclesBuffer[obstacleIndex];
+    float4 aabb = obstacle.aabb;
+
+    int2 minCell = (int2) floor(aabb.xy / obstacleGridCellSize);
+    int2 maxCell = (int2) floor(aabb.zw / obstacleGridCellSize);
+
+    for (int y = minCell.y; y <= maxCell.y; y++)
+    {
+        for (int x = minCell.x; x <= maxCell.x; x++)
+        {
+            int2 cellCoords = int2(x, y);
+            if (cellCoords.x >= 0 && cellCoords.x < obstacleGridDims.x && cellCoords.y >= 0 && cellCoords.y < obstacleGridDims.y)
+            {
+                uint cellIndex = (uint) (cellCoords.y * obstacleGridDims.x + cellCoords.x);
+                
+                uint writeIndex;
+                InterlockedAdd(ObstacleGridCounts[cellIndex], 1, writeIndex);
+
+                if (writeIndex < (uint) maxObstaclesPerCell)
+                {
+                    ObstacleGrid[cellIndex * maxObstaclesPerCell + writeIndex] = obstacleIndex;
+                }
+            }
+        }
+    }
 }

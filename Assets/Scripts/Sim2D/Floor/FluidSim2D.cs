@@ -1,3 +1,4 @@
+using Seb.GPUSorting;
 using Seb.Helpers; // Assuming this namespace contains ComputeHelper and SpatialHash
 using System.Collections.Generic;
 using System.Linq;
@@ -44,6 +45,16 @@ namespace Seb.Fluid2D.Simulation
         public float mouseGravityStrength = 10f;
         public float mouseGravityRadius = 5f;
         public bool invertMouseGravity = false;
+
+        [Header("Obstacle Grid Settings")]
+        public float obstacleGridCellSize = 4.0f;
+        public int maxObstaclesPerCell = 16;
+        private Vector2Int obstacleGridDims;
+
+        private ComputeBuffer obstacleGridBuffer;
+        private ComputeBuffer obstacleGridCountsBuffer;
+
+        private Scan gridScan;
 
         [Header("References")]
         public ComputeShader compute;
@@ -94,6 +105,8 @@ namespace Seb.Fluid2D.Simulation
         const int compactAndMoveKernel = 9;
         const int copyCollisionKernel = 10;
         const int clearRemovedParticlesBuffer = 11;
+        const int clearObstacleGridKernel = 12;
+        const int buildObstacleGridKernel = 13;
 
         bool isPaused;
         Spawner2D.ParticleSpawnData initialSpawnData;
@@ -210,6 +223,20 @@ namespace Seb.Fluid2D.Simulation
             }
 
             spatialHash = new SpatialHash(initialCapacity);
+
+            // --- NEW: Initialize the Obstacle Grid ---
+            gridScan = new Scan();
+            // Calculate grid dimensions based on simulation bounds and cell size
+            obstacleGridDims.x = Mathf.CeilToInt(boundsSize.x / obstacleGridCellSize);
+            obstacleGridDims.y = Mathf.CeilToInt(boundsSize.y / obstacleGridCellSize);
+            int totalGridCells = obstacleGridDims.x * obstacleGridDims.y;
+
+            // This buffer stores the count of obstacles in each cell.
+            obstacleGridCountsBuffer = ComputeHelper.CreateStructuredBuffer<uint>(totalGridCells);
+            // This buffer stores the actual lists of obstacle indices.
+            int maxObstacleGridEntries = totalGridCells * maxObstaclesPerCell;
+            obstacleGridBuffer = ComputeHelper.CreateStructuredBuffer<uint>(Mathf.Max(1, maxObstacleGridEntries));
+
             _propBlock = new MaterialPropertyBlock();
 
             if (lineRendererMaterial == null)
@@ -296,6 +323,10 @@ namespace Seb.Fluid2D.Simulation
             compute.SetFloat("areaToColorAroundObstacles", areaToColorAroundObstacles);
             compute.SetFloat("minDistanceToRemoveParticles", minDistanceToRemoveParticles);
             compute.SetFloat("coloredAreaAroundObstaclesDivider", coloredAreaAroundObstaclesDivider);
+
+            compute.SetFloat("obstacleGridCellSize", obstacleGridCellSize);
+            compute.SetInts("obstacleGridDims", new int[] { obstacleGridDims.x, obstacleGridDims.y });
+            compute.SetInt("maxObstaclesPerCell", maxObstaclesPerCell);
         }
 
         void BindComputeShaderBuffers()
@@ -303,7 +334,6 @@ namespace Seb.Fluid2D.Simulation
             if (compute == null) return;
 
             // --- KERNEL GROUP 1: MAIN SIMULATION ---
-            // These kernels read and write to the main particle buffers.
             int[] mainSimKernels = { externalForcesKernel, spatialHashKernel, densityKernel, pressureKernel, viscosityKernel, updatePositionKernel };
             foreach (var kernel in mainSimKernels)
             {
@@ -324,7 +354,6 @@ namespace Seb.Fluid2D.Simulation
             }
 
             // --- KERNEL GROUP 2: SPATIAL HASH REORDERING ---
-            // Reorder: Reads main buffers (via Source aliases), writes to SortTarget buffers
             ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions", reorderKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", reorderKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", reorderKernel);
@@ -335,7 +364,6 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, spatialHash.SpatialIndices, "SortedIndices", reorderKernel);
             ComputeHelper.SetBuffer(compute, sortTarget_DataBuffer, "SortTarget_Data", reorderKernel);
 
-            // Copyback: Reads SortTarget buffers (via CopySource aliases), writes to main buffers
             ComputeHelper.SetBuffer(compute, sortTarget_DataBuffer, "CopySource_Data", copybackKernel);
             ComputeHelper.SetBuffer(compute, positionBuffer, "Positions", copybackKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "PredictedPositions", copybackKernel);
@@ -348,7 +376,7 @@ namespace Seb.Fluid2D.Simulation
             // --- KERNEL GROUP 3: PARTICLE REMOVAL / COMPACTION ---
             ComputeHelper.SetBuffer(compute, compactionInfoBuffer, "CompactionInfoBuffer", resetCompactionCounterKernel, compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, removedParticlesBuffer, "RemovedParticlesBuffer", resetCompactionCounterKernel, compactAndMoveKernel, clearRemovedParticlesBuffer);
-            // Set read-only sources
+
             ComputeHelper.SetBuffer(compute, positionBuffer, "Source_Positions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, predictedPositionBuffer, "Source_PredictedPositions", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, velocityBuffer, "Source_Velocities", compactAndMoveKernel);
@@ -357,13 +385,27 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "Source_ParticleType", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, collisionBufferCopy, "Source_Collision", compactAndMoveKernel);
             if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", compactAndMoveKernel);
-            // Set RW write targets
+
             ComputeHelper.SetBuffer(compute, sortTarget_DataBuffer, "SortTarget_Data", compactAndMoveKernel);
 
-            // --- KERNEL GROUP 4: OBSTACLES & MISC ---
+            // --- NEW: KERNEL GROUP for OBSTACLE GRID BUILD ---
+            ComputeHelper.SetBuffer(compute, obstacleGridCountsBuffer, "ObstacleGridCounts", clearObstacleGridKernel);
+
+            ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", buildObstacleGridKernel);
+            ComputeHelper.SetBuffer(compute, obstacleGridCountsBuffer, "ObstacleGridCounts", buildObstacleGridKernel);
+            ComputeHelper.SetBuffer(compute, obstacleGridBuffer, "ObstacleGrid", buildObstacleGridKernel);
+
+            // --- KERNEL GROUP 4: OBSTACLES & COLLISIONS (Updated) ---
+            // The main collision kernel (UpdatePositions) now needs access to the grid data.
             if (vertexBuffer != null) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer", updatePositionKernel);
             if (obstacleBuffer != null) ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer", updatePositionKernel);
             if (obstacleColorsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleColorsBuffer, "ObstacleColorsBuffer", updatePositionKernel);
+
+            // --- NEW Bindings for the collision kernel ---
+            if (obstacleGridBuffer != null) ComputeHelper.SetBuffer(compute, obstacleGridBuffer, "ObstacleGrid", updatePositionKernel);
+            if (obstacleGridCountsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleGridCountsBuffer, "ObstacleGridCounts", updatePositionKernel);
+
+            // Current bindings (unchanged)
             if (currentsBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentsBuffer", currentsBuffer);
             if (currentVerticesBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer", currentVerticesBuffer);
         }
@@ -449,6 +491,7 @@ namespace Seb.Fluid2D.Simulation
 
             if (!isPaused && numParticles > 0)
             {
+                UpdateObstacleGrid();
                 RunSimulationFrame(cappedSimDeltaTime);
 
                 if (collisionBuffer != null && collisionBufferCopy != null && collisionBuffer.count == collisionBufferCopy.count && numParticles > 0)
@@ -953,6 +996,23 @@ namespace Seb.Fluid2D.Simulation
             _forceObstacleBufferUpdate = true;
         }
 
+        void UpdateObstacleGrid()
+        {
+            int numObstacles = _gpuObstacleDataList.Count;
+            if (numObstacles == 0) return;
+
+            // Pass 1: Clear the cell counters to zero.
+            compute.SetBuffer(clearObstacleGridKernel, "ObstacleGridCounts", obstacleGridCountsBuffer);
+            ComputeHelper.Dispatch(compute, obstacleGridCountsBuffer.count, kernelIndex: clearObstacleGridKernel);
+
+            // Pass 2: Build the grid.
+            compute.SetInt("numObstacles", numObstacles);
+            compute.SetBuffer(buildObstacleGridKernel, "ObstaclesBuffer", obstacleBuffer);
+            compute.SetBuffer(buildObstacleGridKernel, "ObstacleGridCounts", obstacleGridCountsBuffer);
+            compute.SetBuffer(buildObstacleGridKernel, "ObstacleGrid", obstacleGridBuffer);
+            ComputeHelper.Dispatch(compute, numObstacles, kernelIndex: buildObstacleGridKernel);
+        }
+
         void UpdateObstacleBuffer(bool forceBufferRecreation = false)
         {
             if (!Application.isPlaying && compute == null) return;
@@ -1130,6 +1190,8 @@ namespace Seb.Fluid2D.Simulation
         void OnDisable()
         {
             // Release all compute buffers and managed resources here
+            gridScan?.Release();
+            ComputeHelper.Release(obstacleGridBuffer, obstacleGridCountsBuffer);
             ComputeHelper.Release(currentsBuffer, currentVerticesBuffer);
             ReleaseParticleBuffers();
             ReleaseObstacleBuffers();
