@@ -170,7 +170,7 @@ namespace Seb.Fluid2D.Simulation
                 numParticles = 0;
             }
 
-            int initialCapacity = Mathf.Max(1, numParticles);
+            int initialCapacity = Mathf.Max(1, maxTotalParticles);
             CreateParticleBuffers(initialCapacity);
             compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<int2>(1);
 
@@ -533,35 +533,42 @@ namespace Seb.Fluid2D.Simulation
             if (newSpawnCount == 0) return;
 
             int oldNumParticles = numParticles;
+            int totalNewParticles = oldNumParticles + newSpawnCount;
+
+            // Ensure we don't exceed the buffer's maximum capacity
+            if (totalNewParticles > maxTotalParticles)
+            {
+                newSpawnCount = maxTotalParticles - oldNumParticles;
+                if (newSpawnCount <= 0) return;
+
+                System.Array.Resize(ref newParticleData.positions, newSpawnCount);
+                System.Array.Resize(ref newParticleData.velocities, newSpawnCount);
+                System.Array.Resize(ref newParticleData.particleTypes, newSpawnCount);
+            }
+
             numParticles += newSpawnCount;
 
-            // Resize all buffers on the GPU using the single generic V2 helper
-            positionBuffer = GPUSideResizeAndAppend(positionBuffer, newParticleData.positions);
-            predictedPositionBuffer = GPUSideResizeAndAppend(predictedPositionBuffer, newParticleData.positions);
-            velocityBuffer = GPUSideResizeAndAppend(velocityBuffer, newParticleData.velocities);
-            particleTypeBuffer = GPUSideResizeAndAppend(particleTypeBuffer, newParticleData.particleTypes);
+            // --- EFFICIENT DATA UPLOAD ---
+            positionBuffer.SetData(newParticleData.positions, 0, oldNumParticles, newSpawnCount);
+            predictedPositionBuffer.SetData(newParticleData.positions, 0, oldNumParticles, newSpawnCount);
+            velocityBuffer.SetData(newParticleData.velocities, 0, oldNumParticles, newSpawnCount);
+            particleTypeBuffer.SetData(newParticleData.particleTypes, 0, oldNumParticles, newSpawnCount);
 
-            // Create default data for the new particles
+            // Create and set default data for the other buffers
             float[] newGravityScales = new float[newSpawnCount];
-            int4[] newCollisionData = new int4[newSpawnCount];
-            float2[] newDensityData = new float2[newSpawnCount];
-            ParticleData[] newSortData = new ParticleData[newSpawnCount];
+            float2[] newDensityData = new float2[newSpawnCount]; // Defaults to {0,0}
 
             for (int i = 0; i < newSpawnCount; i++)
             {
                 newGravityScales[i] = 1f;
-                newCollisionData[i] = new int4(-1, -1, -1, -1);
             }
 
-            gravityScaleBuffer = GPUSideResizeAndAppend(gravityScaleBuffer, newGravityScales);
-            particleTypeBufferCopy = GPUSideResizeAndAppend(particleTypeBufferCopy, new int4[newSpawnCount]);
-            densityBuffer = GPUSideResizeAndAppend(densityBuffer, newDensityData);
-            sortTarget_DataBuffer = GPUSideResizeAndAppend(sortTarget_DataBuffer, newSortData);
+            gravityScaleBuffer.SetData(newGravityScales, 0, oldNumParticles, newSpawnCount);
+            densityBuffer.SetData(newDensityData, 0, oldNumParticles, newSpawnCount);
 
-            spatialHash?.Release();
-            spatialHash = new SpatialHash_Wall(numParticles);
+            // The particleTypeBufferCopy and sortTarget_DataBuffer are intermediate buffers used for
+            // sorting and compaction. They are already full-sized, so no action is needed here.
 
-            BindComputeShaderBuffers();
             UpdateComputeShaderDynamicParams();
         }
 
@@ -595,7 +602,7 @@ namespace Seb.Fluid2D.Simulation
         {
             if (numParticles == 0 || spatialHash == null || compute == null) return;
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: spatialHashKernel);
-            spatialHash.Run();
+            spatialHash.Run(numParticles);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: reorderKernel);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
         }

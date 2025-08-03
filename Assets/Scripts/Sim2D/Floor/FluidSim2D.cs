@@ -204,7 +204,7 @@ namespace Seb.Fluid2D.Simulation
                 numParticles = 0;
             }
 
-            int initialCapacity = Mathf.Max(1, numParticles);
+            int initialCapacity = Mathf.Max(1, maxTotalParticles);
             CreateParticleBuffers(initialCapacity);
             compactionInfoBuffer = ComputeHelper.CreateStructuredBuffer<int2>(1);
 
@@ -532,9 +532,9 @@ namespace Seb.Fluid2D.Simulation
                         if (obstacle.CompareTag("Player"))
                         {
                             if (audioSource) audioSource.pitch = Random.Range(1f, 1.25f);
-                            
+
                             PlayerEffects playerEffects = obstacle.GetComponentInChildren<PlayerEffects>();
-                            
+
                             if (playerEffects != null)
                             {
                                 for (int i = 0; i < 12; i++)
@@ -700,19 +700,29 @@ namespace Seb.Fluid2D.Simulation
             if (newSpawnCount == 0) return;
 
             int oldNumParticles = numParticles;
+            int totalNewParticles = oldNumParticles + newSpawnCount;
+            if (totalNewParticles > maxTotalParticles)
+            {
+                newSpawnCount = maxTotalParticles - oldNumParticles;
+                if (newSpawnCount <= 0) return;
+                // Clamp incoming data if necessary
+                System.Array.Resize(ref newParticleData.positions, newSpawnCount);
+                System.Array.Resize(ref newParticleData.velocities, newSpawnCount);
+                System.Array.Resize(ref newParticleData.particleTypes, newSpawnCount);
+            }
+
             numParticles += newSpawnCount;
 
-            // Resize all buffers on the GPU using the single generic V2 helper
-            positionBuffer = GPUSideResizeAndAppend(positionBuffer, newParticleData.positions);
-            predictedPositionBuffer = GPUSideResizeAndAppend(predictedPositionBuffer, newParticleData.positions);
-            velocityBuffer = GPUSideResizeAndAppend(velocityBuffer, newParticleData.velocities);
-            particleTypeBuffer = GPUSideResizeAndAppend(particleTypeBuffer, newParticleData.particleTypes);
+            // Upload new data to the END of the existing buffers
+            positionBuffer.SetData(newParticleData.positions, 0, oldNumParticles, newSpawnCount);
+            predictedPositionBuffer.SetData(newParticleData.positions, 0, oldNumParticles, newSpawnCount);
+            velocityBuffer.SetData(newParticleData.velocities, 0, oldNumParticles, newSpawnCount);
+            particleTypeBuffer.SetData(newParticleData.particleTypes, 0, oldNumParticles, newSpawnCount);
 
-            // Create default data for the new particles
+            // Set default data for other buffers
             float[] newGravityScales = new float[newSpawnCount];
+            float2[] newDensityData = new float2[newSpawnCount]; // All zero
             int4[] newCollisionData = new int4[newSpawnCount];
-            float2[] newDensityData = new float2[newSpawnCount];
-            ParticleData[] newSortData = new ParticleData[newSpawnCount];
 
             for (int i = 0; i < newSpawnCount; i++)
             {
@@ -720,17 +730,12 @@ namespace Seb.Fluid2D.Simulation
                 newCollisionData[i] = new int4(-1, -1, -1, -1);
             }
 
-            gravityScaleBuffer = GPUSideResizeAndAppend(gravityScaleBuffer, newGravityScales);
-            collisionBuffer = GPUSideResizeAndAppend(collisionBuffer, newCollisionData);
-            collisionBufferCopy = GPUSideResizeAndAppend(collisionBufferCopy, new int4[newSpawnCount]);
-            densityBuffer = GPUSideResizeAndAppend(densityBuffer, newDensityData);
-            sortTarget_DataBuffer = GPUSideResizeAndAppend(sortTarget_DataBuffer, newSortData);
+            gravityScaleBuffer.SetData(newGravityScales, 0, oldNumParticles, newSpawnCount);
+            densityBuffer.SetData(newDensityData, 0, oldNumParticles, newSpawnCount);
+            collisionBuffer.SetData(newCollisionData, 0, oldNumParticles, newSpawnCount);
 
-            // The rest of the function
-            spatialHash?.Release();
-            spatialHash = new SpatialHash(numParticles);
-
-            BindComputeShaderBuffers();
+            // DO NOT release/recreate the spatial hash.
+            // Just update the particle count on the shader.
             UpdateComputeShaderDynamicParams();
         }
 
@@ -764,7 +769,7 @@ namespace Seb.Fluid2D.Simulation
         {
             if (numParticles == 0 || spatialHash == null || compute == null) return;
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: spatialHashKernel);
-            spatialHash.Run();
+            spatialHash.Run(numParticles);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: reorderKernel);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
         }
