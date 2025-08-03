@@ -94,11 +94,6 @@ namespace Seb.Fluid2D.Simulation
         const int compactAndMoveKernel = 9;
         const int copyCollisionKernel = 10;
         const int clearRemovedParticlesBuffer = 11;
-        const int copyFloatKernel = 12;
-        const int copyFloat2Kernel = 13;
-        const int copyInt2Kernel = 14;
-        const int copyInt4Kernel = 15;
-        const int copyParticleDataKernel = 16;
 
         bool isPaused;
         Spawner2D.ParticleSpawnData initialSpawnData;
@@ -634,66 +629,6 @@ namespace Seb.Fluid2D.Simulation
             }
         }
 
-        ComputeBuffer GPUSideResizeAndAppend<T>(ComputeBuffer oldBuffer, T[] newData) where T : struct
-        {
-            int oldCount = oldBuffer != null ? oldBuffer.count : 0;
-            int newCount = newData?.Length ?? 0;
-            int totalCount = oldCount + newCount;
-            if (totalCount == 0) { oldBuffer?.Release(); return null; }
-
-            // --- Logic to select the correct kernel and buffer names ---
-            string typeName = typeof(T).Name;
-            int kernel;
-
-            switch (typeName)
-            {
-                case "Single":
-                    typeName = "float";
-                    kernel = copyFloatKernel;
-                    break;
-                case "float2":
-                    kernel = copyFloat2Kernel;
-                    break;
-                case "int2":
-                    kernel = copyInt2Kernel;
-                    break;
-                case "int4":
-                    kernel = copyInt4Kernel;
-                    break;
-                case "ParticleData":
-                    kernel = copyParticleDataKernel;
-                    break;
-                default:
-                    Debug.LogError($"GPUSideResizeAndAppend_V2 does not support type: {typeName}");
-                    return oldBuffer; // Return the original buffer to avoid errors
-            }
-
-            string sourceName = $"Source_{typeName}";
-            string destName = $"Destination_{typeName}";
-            // --- End of selection logic ---
-
-            // 1. Create the final destination buffer.
-            ComputeBuffer destinationBuffer = new ComputeBuffer(totalCount, Marshal.SizeOf(typeof(T)));
-
-            // 2. If there's old data, perform a GPU-side copy.
-            if (oldCount > 0)
-            {
-                compute.SetBuffer(kernel, sourceName, oldBuffer);
-                compute.SetBuffer(kernel, destName, destinationBuffer);
-                ComputeHelper.Dispatch(compute, oldCount, kernelIndex: kernel);
-            }
-
-            // 3. Append the new data directly using the fast SetData command.
-            if (newCount > 0)
-            {
-                destinationBuffer.SetData(newData, 0, oldCount, newCount);
-            }
-
-            // 4. Clean up.
-            oldBuffer?.Release();
-            return destinationBuffer;
-        }
-
         void HandleAddingNewParticles(Spawner2D.ParticleSpawnData newParticleData)
         {
             int newSpawnCount = newParticleData.positions.Length;
@@ -772,45 +707,6 @@ namespace Seb.Fluid2D.Simulation
             spatialHash.Run(numParticles);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: reorderKernel);
             ComputeHelper.Dispatch(compute, numParticles, kernelIndex: copybackKernel);
-        }
-
-        void HandleInput()
-        {
-            if (Input.GetKeyDown(KeyCode.Space)) isPaused = !isPaused;
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { isPaused = false; pauseNextFrame = true; }
-            if (Input.GetKeyDown(KeyCode.R))
-            {
-                isPaused = true;
-                Debug.Log("Resetting simulation...");
-                if (spawner2D != null)
-                {
-                    initialSpawnData = spawner2D.GetSpawnData();
-                    int newNumParticles = initialSpawnData.positions?.Length ?? 0;
-                    ReleaseParticleBuffers();
-                    ReleaseObstacleBuffers();
-                    _obstacleCache.Clear();
-                    _gpuObstacleDataList.Clear();
-                    _gpuVerticesData.Clear();
-                    _gpuObstacleColorsData.Clear();
-
-                    int capacity = Mathf.Max(1, newNumParticles);
-                    CreateParticleBuffers(capacity);
-                    spatialHash = new SpatialHash(capacity);
-                    numParticles = newNumParticles;
-                    if (numParticles > 0) SetInitialBufferData(initialSpawnData);
-                    UpdateObstacleBuffer(true);
-                }
-                else
-                {
-                    ReleaseParticleBuffers(); ReleaseObstacleBuffers(); _obstacleCache.Clear();
-                    _gpuObstacleDataList.Clear(); _gpuVerticesData.Clear(); _gpuObstacleColorsData.Clear();
-                    CreateParticleBuffers(1); spatialHash = new SpatialHash(1); numParticles = 0;
-                    UpdateObstacleBuffer(true);
-                }
-                BindComputeShaderBuffers();
-                UpdateComputeShaderDynamicParams();
-                Debug.Log("Simulation Reset. Particle count: " + numParticles);
-            }
         }
 
         void UpdateCurrentsBuffer()

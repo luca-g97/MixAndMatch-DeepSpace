@@ -10,11 +10,6 @@
 #pragma kernel CompactAndMoveParticles
 #pragma kernel CopyCollisionBuffer
 #pragma kernel ClearRemovedParticlesBuffer
-#pragma kernel CopyData_float
-#pragma kernel CopyData_float2
-#pragma kernel CopyData_int2
-#pragma kernel CopyData_int4
-#pragma kernel CopyData_ParticleData
 
 #include "./FluidMaths2D.hlsl"
 #include "./SpatialHash.hlsl"
@@ -94,20 +89,6 @@ StructuredBuffer<int4> Source_Collision;
 // Aliases for the REORDERCOPYBACK kernel's source data
 StructuredBuffer<ParticleData> CopySource_Data;
 
-// Input buffers (read-only)
-StructuredBuffer<float> Source_float;
-StructuredBuffer<float2> Source_float2;
-StructuredBuffer<int2> Source_int2;
-StructuredBuffer<int4> Source_int4;
-StructuredBuffer<ParticleData> Source_ParticleData;
-
-// Output buffers (writable)
-RWStructuredBuffer<float> Destination_float;
-RWStructuredBuffer<float2> Destination_float2;
-RWStructuredBuffer<int2> Destination_int2;
-RWStructuredBuffer<int4> Destination_int4;
-RWStructuredBuffer<ParticleData> Destination_ParticleData;
-
 int numObstacles;
 float areaToColorAroundObstacles;
 float coloredAreaAroundObstaclesDivider;
@@ -164,6 +145,12 @@ float NearDensityDerivative(float dst, float radius)
 float ViscosityKernel(float dst, float radius)
 {
     return SmoothingKernelPoly6(dst, smoothingRadius);
+}
+
+float ViscosityKernelSqr(float sqrDst, float sqrRadius)
+{
+    float val = max(0, sqrRadius - sqrDst);
+    return Poly6ScalingFactor * val * val * val;
 }
 
 float2 CalculateDensity(float2 pos)
@@ -667,14 +654,8 @@ void CalculateViscosity(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= numParticles || ParticleTypeBuffer[id.x][0] == -1)
         return;
-        
-    // --- SAFETY CHECK ---
-    // If a particle's density is effectively zero, it has no neighbours to create viscosity with.
     if (Densities[id.x][0] < 0.0001)
-    {
         return;
-    }
-    // --------------------
 
     float2 pos = PredictedPositions[id.x];
     int2 originCell = GetCell2D(pos, smoothingRadius);
@@ -695,7 +676,7 @@ void CalculateViscosity(uint3 id : SV_DispatchThreadID)
 
             if (neighbourIndex == id.x)
                 continue;
-                
+
             uint neighbourKey = SpatialKeys[neighbourIndex];
             if (neighbourKey != key)
                 break;
@@ -704,15 +685,15 @@ void CalculateViscosity(uint3 id : SV_DispatchThreadID)
             float2 offsetToNeighbour = neighbourPos - pos;
             float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
 
-            if (sqrDstToNeighbour > sqrRadius)
-                continue;
-
-            float dst = sqrt(sqrDstToNeighbour);
-            float2 neighbourVelocity = Velocities[neighbourIndex];
-            viscosityForce += (neighbourVelocity - velocity) * ViscosityKernel(dst, smoothingRadius);
+            if (sqrDstToNeighbour < sqrRadius)
+            {
+                // Use the new, faster function with squared distance
+                float2 neighbourVelocity = Velocities[neighbourIndex];
+                viscosityForce += (neighbourVelocity - velocity) * ViscosityKernelSqr(sqrDstToNeighbour, sqrRadius);
+            }
         }
     }
-    
+
     float viscosityStrength = ParticleTypeBuffer[id.x][0] == 0 ? waterViscosityStrength : oilViscosityStrength;
     Velocities[id.x] += viscosityForce * viscosityStrength * deltaTime;
 }
@@ -858,34 +839,4 @@ void CopyCollisionBuffer(uint3 id : SV_DispatchThreadID)
 void ClearRemovedParticlesBuffer(uint3 id : SV_DispatchThreadID)
 {
     RemovedParticlesBuffer[id.x] = int2(-1, -1);
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_float(uint3 id : SV_DispatchThreadID)
-{
-    Destination_float[id.x] = Source_float[id.x];
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_float2(uint3 id : SV_DispatchThreadID)
-{
-    Destination_float2[id.x] = Source_float2[id.x];
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_int2(uint3 id : SV_DispatchThreadID)
-{
-    Destination_int2[id.x] = Source_int2[id.x];
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_int4(uint3 id : SV_DispatchThreadID)
-{
-    Destination_int4[id.x] = Source_int4[id.x];
-}
-
-[numthreads(256, 1, 1)]
-void CopyData_ParticleData(uint3 id : SV_DispatchThreadID)
-{
-    Destination_ParticleData[id.x] = Source_ParticleData[id.x];
 }

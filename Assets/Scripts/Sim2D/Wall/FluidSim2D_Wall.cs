@@ -67,11 +67,6 @@ namespace Seb.Fluid2D.Simulation
         ComputeBuffer removedParticlesBuffer;
         ComputeBuffer particleTypeBufferCopy;
 
-        ComputeBuffer sortTarget_Position;
-        ComputeBuffer sortTarget_PredicitedPosition;
-        ComputeBuffer sortTarget_Velocity;
-        ComputeBuffer sortTarget_ParticleType;
-
         public ComputeBuffer obstacleBuffer;
         SpatialHash_Wall spatialHash;
 
@@ -87,11 +82,6 @@ namespace Seb.Fluid2D.Simulation
         const int compactAndMoveKernel = 9;
         const int copyParticleTypeKernel = 10;
         const int clearRemovedParticlesBuffer = 11;
-        const int copyFloatKernel = 12;
-        const int copyFloat2Kernel = 13;
-        const int copyInt2Kernel = 14;
-        const int copyInt4Kernel = 15;
-        const int copyParticleDataKernel = 16;
 
         bool isPaused;
         Spawner2D_Wall.ParticleSpawnData initialSpawnData;
@@ -465,66 +455,6 @@ namespace Seb.Fluid2D.Simulation
                 UpdateComputeShaderDynamicParams();
                 isProcessingRemovals = false;
             });
-        }
-
-        ComputeBuffer GPUSideResizeAndAppend<T>(ComputeBuffer oldBuffer, T[] newData) where T : struct
-        {
-            int oldCount = oldBuffer != null ? oldBuffer.count : 0;
-            int newCount = newData?.Length ?? 0;
-            int totalCount = oldCount + newCount;
-            if (totalCount == 0) { oldBuffer?.Release(); return null; }
-
-            // --- Logic to select the correct kernel and buffer names ---
-            string typeName = typeof(T).Name;
-            int kernel;
-
-            switch (typeName)
-            {
-                case "Single":
-                    typeName = "float";
-                    kernel = copyFloatKernel;
-                    break;
-                case "float2":
-                    kernel = copyFloat2Kernel;
-                    break;
-                case "int2":
-                    kernel = copyInt2Kernel;
-                    break;
-                case "int4":
-                    kernel = copyInt4Kernel;
-                    break;
-                case "ParticleData":
-                    kernel = copyParticleDataKernel;
-                    break;
-                default:
-                    Debug.LogError($"GPUSideResizeAndAppend does not support type: {typeName}");
-                    return oldBuffer; // Return the original buffer to avoid errors
-            }
-
-            string sourceName = $"Source_{typeName}_Wall";
-            string destName = $"Destination_{typeName}_Wall";
-            // --- End of selection logic ---
-
-            // 1. Create the final destination buffer.
-            ComputeBuffer destinationBuffer = new ComputeBuffer(totalCount, Marshal.SizeOf(typeof(T)));
-
-            // 2. If there's old data, perform a GPU-side copy.
-            if (oldCount > 0)
-            {
-                compute.SetBuffer(kernel, sourceName, oldBuffer);
-                compute.SetBuffer(kernel, destName, destinationBuffer);
-                ComputeHelper.Dispatch(compute, oldCount, kernelIndex: kernel);
-            }
-
-            // 3. Append the new data directly using the fast SetData command.
-            if (newCount > 0)
-            {
-                destinationBuffer.SetData(newData, 0, oldCount, newCount);
-            }
-
-            // 4. Clean up.
-            oldBuffer?.Release();
-            return destinationBuffer;
         }
 
         void HandleAddingNewParticles(Spawner2D_Wall.ParticleSpawnData newParticleData)
