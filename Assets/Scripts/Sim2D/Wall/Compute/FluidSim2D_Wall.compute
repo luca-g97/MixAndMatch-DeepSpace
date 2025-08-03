@@ -10,8 +10,6 @@
 #pragma kernel CompactAndMoveParticles_Wall
 #pragma kernel CopyParticleTypeBuffer_Wall
 #pragma kernel ClearRemovedParticlesBuffer_Wall
-#pragma kernel ClearObstacleGrid_Wall
-#pragma kernel BuildObstacleGrid_Wall
 
 #include "./FluidMaths2D_Wall.hlsl"
 #include "./SpatialHash_Wall.hlsl"
@@ -38,7 +36,6 @@ struct Obstacle
     int vertexCount;
     float lineWidth;
     int obstacleType;
-    float4 aabb;
 };
 
 struct Current
@@ -87,13 +84,6 @@ StructuredBuffer<int2> Source_ParticleType_Wall;
 
 // Aliases for the REORDERCOPYBACK kernel's source data
 StructuredBuffer<ParticleData> CopySource_Data_Wall;
-
-RWStructuredBuffer<uint> ObstacleGridCounts_Wall;
-RWStructuredBuffer<uint> ObstacleGrid_Wall;
-
-float obstacleGridCellSize_Wall;
-int2 obstacleGridDims_Wall;
-int maxObstaclesPerCell_Wall;
 
 int numObstacles_Wall;
 static const int NumThreads_Wall = 64;
@@ -196,19 +186,60 @@ float2 ExternalForces_Wall(float2 pos, float2 velocity, float gravityScale)
     return float2(0, gravity_Wall * gravityScale);
 }
 
+// Optimized HandleCollisions - Focused on reducing expensive operations (sqrt, normalization)
+// and minimizing work inside the inner vertex loop after performance degradation was observed.
 void HandleCollisions_Wall(uint particleIndex)
 {
-    // Get initial particle data
+    // Initialize Process Flag for this particle for this collision step IF it's not already marked for removal globally.
+    // This ensures that if a particle wasn't marked in a previous step, it starts fresh for this obstacle interaction.
+    // However, if already marked by a previous obstacle in *this same HandleCollisions pass*, we don't want to reset.
+    // The CPU will handle resetting flags globally after processing removals.
+    // So, we only write to ParticleProcessFlags[particleIndex] upon detection.
+
     float2 pos = Positions_Wall[particleIndex];
     float2 vel = Velocities_Wall[particleIndex];
     int particleType = ParticleTypeBuffer_Wall[particleIndex][0];
-    // Read the removal flag once at the start
     int particleProcessFlag = ParticleTypeBuffer_Wall[particleIndex][1];
 
-    // --- 1. BOUNDARY COLLISIONS (Your original logic) ---
-    const float2 halfSize = boundsSize_Wall * 0.5;
-    const float boundaryEpsilon = 0.001f;
+    // If particle is already marked as non-participating (e.g. type -1), skip complex collision.
+    // This check is vital if ParticleTypeBuffer can be set to -1 mid-step by this function.
+    if (particleType < 0)
+    {
+        // Still perform boundary collisions for "dead" particles if desired, or just return.
+        // For now, let's assume "dead" particles don't interact further.
+        // However, boundary checks might still be useful to prevent them flying off to infinity
+        // before CPU collects them. For simplicity in this change, we'll let them be.
+        // The main boundary collision happens *after* this loop for all particles.
+        // Re-applying boundary for already "removed" particles:
+        const float2 halfSizeMinimal = boundsSize_Wall * 0.5;
+        const float boundaryEpsilonMinimal = 0.001f;
+        if (abs(pos.x) >= halfSizeMinimal.x)
+        {
+            pos.x = (halfSizeMinimal.x - boundaryEpsilonMinimal) * sign(pos.x);
+            vel.x *= -collisionDamping_Wall;
+        }
+        if (pos.y >= halfSizeMinimal.y + yOffset_Wall)
+        {
+            pos.y = (halfSizeMinimal.y - boundaryEpsilonMinimal) * sign(pos.y) + yOffset_Wall;
+            vel.y *= -collisionDamping_Wall;
+        }
+        if (pos.y <= -halfSizeMinimal.y + yOffset_Wall)
+        {
+            pos.y = (-halfSizeMinimal.y - boundaryEpsilonMinimal) * sign(pos.y) + yOffset_Wall; // Push slightly off boundary
+            vel.y *= -collisionDamping_Wall; // Reflect and dampen normal velocity
+        }
 
+        Positions_Wall[particleIndex] = pos; // Write back potentially adjusted position/velocity
+        Velocities_Wall[particleIndex] = vel;
+        return;
+    }
+
+
+    // --- Pre-calculations (Avoid redundant calculations later) ---
+    const float2 halfSize = boundsSize_Wall * 0.5;
+    const float boundaryEpsilon = 0.001f; // Small offset for boundary push-off
+
+    // --- 1. Boundary Collisions ---
     if (abs(pos.x) >= halfSize.x)
     {
         pos.x = (halfSize.x - boundaryEpsilon) * sign(pos.x);
@@ -224,124 +255,103 @@ void HandleCollisions_Wall(uint particleIndex)
         pos.y = (-halfSize.y - boundaryEpsilon) * sign(pos.y) + yOffset_Wall;
         vel.y *= -collisionDamping_Wall;
     }
-    
-    // --- 2. OBSTACLE COLLISIONS (Using the Grid) ---
-    // Find which grid cell the particle is in
-    int2 particleCellCoords = (int2) floor(pos / obstacleGridCellSize_Wall);
-    
-    // Loop through the 3x3 neighborhood of cells around the particle
-    for (int y = -1; y <= 1; y++)
+
+    // --- 2. Obstacle Collisions ---
+    [loop]
+    for (int obstacleIdx = 0; obstacleIdx < numObstacles_Wall && obstacleIdx < MAX_OBSTACLES; obstacleIdx++)
     {
-        for (int x = -1; x <= 1; x++)
+        Obstacle obstacle = ObstaclesBuffer_Wall[obstacleIdx];
+        if (obstacle.vertexCount < 2)
+            continue;
+        
+		// Find closest point on obstacle polygon
+        int intersections = 0;
+        float minDistSq = FLT_MAX;
+        float2 normalAtClosestPoint = float2(0, 0);
+
+        [loop]
+        for (int j = 0; j < obstacle.vertexCount; j++)
         {
-            int2 sampleCellCoords = particleCellCoords + int2(x, y);
+            int nextJ = (uint) (j + 1) % (uint) obstacle.vertexCount;
+            float2 a = VerticesBuffer_Wall[obstacle.vertexStart + j];
+            float2 b = VerticesBuffer_Wall[obstacle.vertexStart + nextJ];
+            float2 edge = b - a;
+            float2 vecToA = pos - a;
 
-            // Check if the neighboring cell is within the grid bounds
-            if (sampleCellCoords.x >= 0 && sampleCellCoords.x < obstacleGridDims_Wall.x && sampleCellCoords.y >= 0 && sampleCellCoords.y < obstacleGridDims_Wall.y)
+            float edgeLengthSq = dot(edge, edge);
+            float2 pointOnEdge = a + clamp(dot(vecToA, edge) / max(edgeLengthSq, 1e-6f), 0.0, 1.0) * edge;
+            
+            float2 offsetToPoint = pos - pointOnEdge;
+            float distSq = dot(offsetToPoint, offsetToPoint);
+
+            if (distSq < minDistSq)
             {
-                uint cellIndex = (uint) (sampleCellCoords.y * obstacleGridDims_Wall.x + sampleCellCoords.x);
-                
-                // Get the number of obstacles in this cell from the counts buffer
-                uint numLocalObstacles = min((uint) maxObstaclesPerCell_Wall, ObstacleGridCounts_Wall[cellIndex]);
-                uint gridStartIndex = cellIndex * maxObstaclesPerCell_Wall;
-
-                // Loop through ONLY the local obstacles found in this cell
-                for (uint i = 0; i < numLocalObstacles; i++)
+                minDistSq = distSq;
+                if (distSq > 1e-6f)
                 {
-                    // Get the actual index of the obstacle from the grid contents
-                    uint obstacleIndex = ObstacleGrid_Wall[gridStartIndex + i];
-                    Obstacle obstacle = ObstaclesBuffer_Wall[obstacleIndex];
-                    
-                    // --- 2a. BROAD PHASE (AABB Check) ---
-                    if (pos.x < obstacle.aabb.x || pos.x > obstacle.aabb.z || pos.y < obstacle.aabb.y || pos.y > obstacle.aabb.w)
+                    normalAtClosestPoint = normalize(pos - pointOnEdge);
+                }
+                else
+                {
+                    float2 edgeDir = normalize(edge);
+                    normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x));
+                }
+            }
+
+            // Check for point-in-polygon using raycast
+            if (obstacle.vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
+            {
+                if (abs(b.y - a.y) > 1e-6f)
+                {
+                    if (pos.x < a.x + (b.x - a.x) * (pos.y - a.y) / (b.y - a.y))
                     {
-                        continue; // Fast reject, skip to next local obstacle
+                        intersections++;
                     }
-                    
-                    // --- 2b. NARROW PHASE (Your original, precise logic) ---
-                    // This code only runs for the few particles that pass the AABB check.
-                    int intersections = 0;
-                    float minDistSq = FLT_MAX;
-                    float2 normalAtClosestPoint = float2(0, 0);
+                }
+            }
+        } // --- End Inner Vertex Loop ---
 
-                    [loop]
-                    for (int j = 0; j < obstacle.vertexCount; j++)
-                    {
-                        int nextJ = (uint) (j + 1) % (uint) obstacle.vertexCount;
-                        float2 a = VerticesBuffer_Wall[obstacle.vertexStart + j];
-                        float2 b = VerticesBuffer_Wall[obstacle.vertexStart + nextJ];
-                        float2 edge = b - a;
-                        float2 vecToA = pos - a;
+        bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
+        
+        // Check only for colored particles
+        if (particleType > 0)
+        {
+            if (obstacle.obstacleType == 2 && particleProcessFlag == -1 && isInside)
+            {
+                ParticleTypeBuffer_Wall[particleIndex][1] = obstacleIdx;
+                break; // Exit loop once flagged, since it's going to be removed.
+            }
+        }
 
-                        float edgeLengthSq = dot(edge, edge);
-                        float2 pointOnEdge = a + clamp(dot(vecToA, edge) / max(edgeLengthSq, 1e-6f), 0.0, 1.0) * edge;
-                        
-                        float2 offsetToPoint = pos - pointOnEdge;
-                        float distSq = dot(offsetToPoint, offsetToPoint);
+        // --- Collision Response (only for physical obstacles: type 0 Player, type 1 Static Obstacle) ---
+        // And only if particle is still considered active (ParticleTypeBuffer[particleIndex] >= 0)
+        float collisionPadding = 0;
+        bool collisionDetected = isInside || (minDistSq < collisionPadding * collisionPadding);
+        if (particleType >= 0 && collisionDetected && obstacle.obstacleType == 1)
+        {
+            float actualDistance = sqrt(minDistSq);
+            float penetrationDepth;
+            if (isInside)
+            {
+                penetrationDepth = actualDistance + collisionPadding;
+            }
+            else
+            {
+                penetrationDepth = collisionPadding - actualDistance;
+            }
+            pos += normalAtClosestPoint * (penetrationDepth + 0.001f);
 
-                        if (distSq < minDistSq)
-                        {
-                            minDistSq = distSq;
-                            if (distSq > 1e-6f)
-                            {
-                                normalAtClosestPoint = normalize(pos - pointOnEdge);
-                            }
-                            else
-                            {
-                                float2 edgeDir = normalize(edge);
-                                normalAtClosestPoint = normalize(float2(-edgeDir.y, edgeDir.x));
-                            }
-                        }
-
-                        if (obstacle.vertexCount >= 3 && ((a.y <= pos.y && pos.y < b.y) || (b.y <= pos.y && pos.y < a.y)))
-                        {
-                            if (abs(b.y - a.y) > 1e-6f)
-                            {
-                                if (pos.x < a.x + (b.x - a.x) * (pos.y - a.y) / (b.y - a.y))
-                                {
-                                    intersections++;
-                                }
-                            }
-                        }
-                    } // --- End Vertex Loop ---
-
-                    bool isInside = (obstacle.vertexCount >= 3) && ((uint(intersections) % 2) != 0);
-                    
-                    // --- Particle Removal Logic (Ventil) ---
-                    if (particleType > 0)
-                    {
-                        // Use the flag we read at the start of the function
-                        if (obstacle.obstacleType == 2 && particleProcessFlag == -1 && isInside)
-                        {
-                            // Flag the particle for removal. The 'obstacleIndex' cast is safe.
-                            ParticleTypeBuffer_Wall[particleIndex][1] = (int) obstacleIndex;
-                            // We can break here to stop checking other local obstacles, since it's going to be removed anyway
-                            break;
-                        }
-                    }
-
-                    // --- Collision Response Logic (Static Obstacles) ---
-                    if (particleType >= 0 && (isInside || (minDistSq < 0.0001f)) && obstacle.obstacleType == 1)
-                    {
-                        float penetrationDepth = 0;
-                        if (isInside)
-                        {
-                            penetrationDepth = sqrt(minDistSq);
-                        }
-                        
-                        pos += normalAtClosestPoint * (penetrationDepth + 0.001f);
-                        float normalSpeed = dot(vel, normalAtClosestPoint);
-                        if (normalSpeed < 0)
-                        {
-                            vel -= normalAtClosestPoint * normalSpeed * (1 + collisionDamping_Wall);
-                        }
-                    } // --- End Collision Response ---
-                } // --- End Local Obstacle Loop ---
-            } // --- End Valid Cell Check ---
-        } // --- End Neighborhood X-Loop ---
-    } // --- End Neighborhood Y-Loop ---
-
-    // --- 3. WRITE BACK FINAL DATA ---
+            float normalSpeed = dot(vel, normalAtClosestPoint);
+            if (normalSpeed < 0)
+            {
+                float2 tangentVel = vel - normalAtClosestPoint * normalSpeed;
+                float2 normalVel = -normalAtClosestPoint * normalSpeed * collisionDamping_Wall;
+                float friction = 0.1f;
+                vel = tangentVel * (1.0f - friction) + normalVel;
+            }
+        } // --- End Collision Response ---
+    } // --- End Outer Obstacle Loop ---
+    
     Positions_Wall[particleIndex] = pos;
     Velocities_Wall[particleIndex] = vel;
 }
@@ -678,52 +688,4 @@ void CopyParticleTypeBuffer_Wall(uint3 id : SV_DispatchThreadID)
 void ClearRemovedParticlesBuffer_Wall(uint3 id : SV_DispatchThreadID)
 {
     RemovedParticlesBuffer_Wall[id.x] = float4(-1, -1, -1, -1);
-}
-
-[numthreads(256, 1, 1)]
-void ClearObstacleGrid_Wall(uint3 id : SV_DispatchThreadID)
-{
-    uint totalCells = (uint) (obstacleGridDims_Wall.x * obstacleGridDims_Wall.y);
-    if (id.x >= totalCells)
-        return;
-    ObstacleGridCounts_Wall[id.x] = 0;
-}
-
-[numthreads(64, 1, 1)]
-void BuildObstacleGrid_Wall(uint3 id : SV_DispatchThreadID)
-{
-    uint obstacleIndex = id.x;
-    if (obstacleIndex >= (uint) numObstacles_Wall)
-        return;
-
-    Obstacle obstacle = ObstaclesBuffer_Wall[obstacleIndex];
-    float4 aabb = obstacle.aabb;
-
-    // Find the min/max cells this obstacle overlaps
-    int2 minCell = (int2) floor(aabb.xy / obstacleGridCellSize_Wall);
-    int2 maxCell = (int2) floor(aabb.zw / obstacleGridCellSize_Wall);
-
-    // Loop through all cells the obstacle touches
-    for (int y = minCell.y; y <= maxCell.y; y++)
-    {
-        for (int x = minCell.x; x <= maxCell.x; x++)
-        {
-            int2 cellCoords = int2(x, y);
-            // Ensure cell is within grid bounds
-            if (cellCoords.x >= 0 && cellCoords.x < obstacleGridDims_Wall.x && cellCoords.y >= 0 && cellCoords.y < obstacleGridDims_Wall.y)
-            {
-                uint cellIndex = (uint) (cellCoords.y * obstacleGridDims_Wall.x + cellCoords.x);
-                
-                // Atomically increment this cell's counter to get our personal write slot (e.g., 0, 1, 2...)
-                uint writeIndex;
-                InterlockedAdd(ObstacleGridCounts_Wall[cellIndex], 1, writeIndex);
-
-                // If we are not past the max-per-cell limit, write our obstacle ID
-                if (writeIndex < (uint) maxObstaclesPerCell_Wall)
-                {
-                    ObstacleGrid_Wall[cellIndex * maxObstaclesPerCell_Wall + writeIndex] = obstacleIndex;
-                }
-            }
-        }
-    }
 }

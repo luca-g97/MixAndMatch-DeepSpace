@@ -37,14 +37,6 @@ namespace Seb.Fluid2D.Simulation
         public float oilNearPressureMultiplier = 150;
         public float oilViscosityStrength = 0.4f;
 
-        [Header("Obstacle Grid Settings")]
-        public float obstacleGridCellSize = 4.0f;
-        public int maxObstaclesPerCell = 16;
-        private Vector2Int obstacleGridDims;
-
-        private ComputeBuffer obstacleGridBuffer;
-        private ComputeBuffer obstacleGridCountsBuffer;
-
         [Header("References")]
         public ComputeShader compute;
         public Spawner2D_Wall spawner2D;
@@ -90,8 +82,6 @@ namespace Seb.Fluid2D.Simulation
         const int compactAndMoveKernel = 9;
         const int copyParticleTypeKernel = 10;
         const int clearRemovedParticlesBuffer = 11;
-        const int clearObstacleGridKernel = 12;
-        const int buildObstacleGridKernel = 13;
 
         bool isPaused;
         Spawner2D_Wall.ParticleSpawnData initialSpawnData;
@@ -116,14 +106,14 @@ namespace Seb.Fluid2D.Simulation
             public float linearFactor;
         }
 
+        [StructLayout(LayoutKind.Explicit, Size = 24)]
         public struct ObstacleData
         {
-            public Vector2 centre;
-            public int vertexStart;
-            public int vertexCount;
-            public float lineWidth;
-            public int obstacleType;
-            public Vector4 aabb;
+            [FieldOffset(0)] public Vector2 centre;
+            [FieldOffset(8)] public int vertexStart;
+            [FieldOffset(12)] public int vertexCount;
+            [FieldOffset(16)] public float lineWidth;
+            [FieldOffset(20)] public int obstacleType;
         }
 
         List<Vector2> _gpuVerticesData = new List<Vector2>();
@@ -140,6 +130,7 @@ namespace Seb.Fluid2D.Simulation
         }
 
         private Queue<PendingRemovalRequest> _pendingRemovalRequests = new Queue<PendingRemovalRequest>();
+
 
         void Start()
         {
@@ -179,16 +170,6 @@ namespace Seb.Fluid2D.Simulation
             }
 
             spatialHash = new SpatialHash_Wall(initialCapacity);
-
-            // Calculate grid dimensions based on simulation bounds and cell size
-            obstacleGridDims.x = Mathf.CeilToInt(boundsSize.x / obstacleGridCellSize);
-            obstacleGridDims.y = Mathf.CeilToInt(boundsSize.y / obstacleGridCellSize);
-            int totalGridCells = obstacleGridDims.x * obstacleGridDims.y;
-
-            // This buffer stores the count of obstacles in each cell.
-            obstacleGridCountsBuffer = ComputeHelper.CreateStructuredBuffer<uint>(totalGridCells);
-            // This buffer stores the actual lists of obstacle indices (a flat 2D array).
-            obstacleGridBuffer = ComputeHelper.CreateStructuredBuffer<uint>(totalGridCells * maxObstaclesPerCell);
 
             // Initialize current buffers with a minimal size to ensure they always exist.
             currentsBuffer = ComputeHelper.CreateStructuredBuffer<CurrentData>(1);
@@ -263,10 +244,6 @@ namespace Seb.Fluid2D.Simulation
                 compute.SetFloat("SpikyPow2DerivativeScalingFactor_Wall", 12f / (Mathf.Pow(r, 4) * Mathf.PI));
             }
             else { Debug.LogWarning("Smoothing radius is zero or negative."); }
-
-            compute.SetFloat("obstacleGridCellSize_Wall", obstacleGridCellSize);
-            compute.SetInts("obstacleGridDims_Wall", new int[] { obstacleGridDims.x, obstacleGridDims.y });
-            compute.SetInt("maxObstaclesPerCell_Wall", maxObstaclesPerCell);
         }
 
         void BindComputeShaderBuffers()
@@ -313,7 +290,6 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "GravityScales_Wall", copybackKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBuffer, "ParticleTypeBuffer_Wall", copybackKernel);
 
-            // --- KERNEL GROUP 3: PARTICLE REMOVAL / COMPACTION ---
             ComputeHelper.SetBuffer(compute, compactionInfoBuffer, "CompactionInfoBuffer_Wall", resetCompactionCounterKernel, compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, removedParticlesBuffer, "RemovedParticlesBuffer_Wall", resetCompactionCounterKernel, compactAndMoveKernel, clearRemovedParticlesBuffer, updatePositionKernel);
 
@@ -324,28 +300,12 @@ namespace Seb.Fluid2D.Simulation
             ComputeHelper.SetBuffer(compute, gravityScaleBuffer, "Source_GravityScales_Wall", compactAndMoveKernel);
             ComputeHelper.SetBuffer(compute, particleTypeBufferCopy, "Source_ParticleType_Wall", compactAndMoveKernel);
 
-            // Set RW write targets for compaction
+            // Set RW write targets
             ComputeHelper.SetBuffer(compute, sortTarget_DataBuffer, "SortTarget_Data_Wall", compactAndMoveKernel);
 
-            // --- NEW: KERNEL GROUP for OBSTACLE GRID BUILD ---
-            // Set buffers for the kernel that clears the grid counts
-            ComputeHelper.SetBuffer(compute, obstacleGridCountsBuffer, "ObstacleGridCounts_Wall", clearObstacleGridKernel);
-
-            // Set buffers for the kernel that builds the grid
-            ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer_Wall", buildObstacleGridKernel);
-            ComputeHelper.SetBuffer(compute, obstacleGridCountsBuffer, "ObstacleGridCounts_Wall", buildObstacleGridKernel);
-            ComputeHelper.SetBuffer(compute, obstacleGridBuffer, "ObstacleGrid_Wall", buildObstacleGridKernel);
-
-            // --- KERNEL GROUP 5: FINAL COLLISIONS & UPDATES ---
-            // The main collision kernel (UpdatePositions_Wall) needs access to the original obstacle data AND the new grid data.
+            // --- KERNEL GROUP 4: OBSTACLES & MISC ---
             if (vertexBuffer != null) ComputeHelper.SetBuffer(compute, vertexBuffer, "VerticesBuffer_Wall", updatePositionKernel);
             if (obstacleBuffer != null) ComputeHelper.SetBuffer(compute, obstacleBuffer, "ObstaclesBuffer_Wall", updatePositionKernel);
-
-            // Bindings for the grid so the collision kernel can use it
-            if (obstacleGridBuffer != null) ComputeHelper.SetBuffer(compute, obstacleGridBuffer, "ObstacleGrid_Wall", updatePositionKernel);
-            if (obstacleGridCountsBuffer != null) ComputeHelper.SetBuffer(compute, obstacleGridCountsBuffer, "ObstacleGridCounts_Wall", updatePositionKernel);
-
-            // Bindings for currents (unchanged)
             if (currentsBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentsBuffer_Wall", currentsBuffer);
             if (currentVerticesBuffer != null) compute.SetBuffer(updatePositionKernel, "CurrentVerticesBuffer_Wall", currentVerticesBuffer);
         }
@@ -409,7 +369,6 @@ namespace Seb.Fluid2D.Simulation
 
             if (!isPaused && numParticles > 0)
             {
-                UpdateObstacleGrid();
                 RunSimulationFrame(cappedSimDeltaTime);
 
                 if (particleTypeBuffer != null && particleTypeBufferCopy != null && particleTypeBuffer.count == particleTypeBufferCopy.count && numParticles > 0)
@@ -653,23 +612,6 @@ namespace Seb.Fluid2D.Simulation
             compute.SetInt("numCurrents_Wall", currentDataList.Count);
         }
 
-        void UpdateObstacleGrid()
-        {
-            int numObstacles = _gpuObstacleDataList.Count;
-            if (numObstacles == 0) return;
-
-            // Pass 1: Clear the cell counters to zero.
-            compute.SetBuffer(clearObstacleGridKernel, "ObstacleGridCounts_Wall", obstacleGridCountsBuffer);
-            ComputeHelper.Dispatch(compute, obstacleGridCountsBuffer.count, kernelIndex: clearObstacleGridKernel);
-
-            // Pass 2: Build the grid. Each obstacle finds its cells and adds itself to them.
-            compute.SetInt("numObstacles_Wall", numObstacles);
-            compute.SetBuffer(buildObstacleGridKernel, "ObstaclesBuffer_Wall", obstacleBuffer);
-            compute.SetBuffer(buildObstacleGridKernel, "ObstacleGridCounts_Wall", obstacleGridCountsBuffer);
-            compute.SetBuffer(buildObstacleGridKernel, "ObstacleGrid_Wall", obstacleGridBuffer);
-            ComputeHelper.Dispatch(compute, numObstacles, kernelIndex: buildObstacleGridKernel);
-        }
-
         void SetupObstacleBuffers()
         {
             if (!Application.isPlaying || compute == null) return;
@@ -706,43 +648,23 @@ namespace Seb.Fluid2D.Simulation
                 var localPoints = polyCol.points;
                 int vertexCountForThisObstacle = localPoints.Length;
 
-                // Prepare initial AABB values
-                Vector2 min = Vector2.positiveInfinity;
-                Vector2 max = Vector2.negativeInfinity;
-
-                // This loop calculates world positions for the vertex buffer AND calculates the AABB at the same time.
+                // Add this obstacle's vertices (transformed to world space) to the master list
                 for (int i = 0; i < vertexCountForThisObstacle; ++i)
                 {
-                    // 1. Transform the point only ONCE
-                    Vector2 worldPoint = obstacleGO.transform.TransformPoint(localPoints[i] + polyCol.offset);
-
-                    // 2. Populate data for the GPU vertex buffer
-                    _gpuVerticesData.Add(worldPoint);
-
-                    // 3. Update the min/max for the AABB
-                    min.x = Mathf.Min(min.x, worldPoint.x);
-                    min.y = Mathf.Min(min.y, worldPoint.y);
-                    max.x = Mathf.Max(max.x, worldPoint.x);
-                    max.y = Mathf.Max(max.y, worldPoint.y);
+                    // Get local point from collider and perform a SINGLE transform to world space.
+                    _gpuVerticesData.Add(obstacleGO.transform.TransformPoint(localPoints[i] + polyCol.offset));
                 }
 
-                // Determine the obstacle type
                 int obsType = obstacleGO.CompareTag("Ventil_Wall") ? 2 : 1;
 
-                // Pack the final AABB into a Vector4
-                Vector4 worldAABB = new Vector4(min.x, min.y, max.x, max.y);
-
-                // Add the complete data for this obstacle to the GPU list
                 _gpuObstacleDataList.Add(new ObstacleData
                 {
                     centre = obstacleGO.transform.TransformPoint(polyCol.offset),
                     vertexStart = currentVertexStartIndex,
                     vertexCount = vertexCountForThisObstacle,
-                    lineWidth = 0.1f,
-                    obstacleType = obsType,
-                    aabb = worldAABB
+                    lineWidth = 0.1f, // You can expose this as a public field if you wish
+                    obstacleType = obsType
                 });
-
                 currentVertexStartIndex += vertexCountForThisObstacle;
             }
 
@@ -768,7 +690,6 @@ namespace Seb.Fluid2D.Simulation
         {
             // Release all compute buffers and managed resources here
             ComputeHelper.Release(currentsBuffer, currentVerticesBuffer);
-            ComputeHelper.Release(obstacleGridBuffer, obstacleGridCountsBuffer);
             ReleaseParticleBuffers();
             ReleaseObstacleBuffers();
         }
