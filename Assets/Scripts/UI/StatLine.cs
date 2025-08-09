@@ -13,6 +13,8 @@ public class StatLine : MonoBehaviour
     [SerializeField] private float _valueRevealStartScale = 3f;
     [SerializeField] private float _valueRevealDuration = 0.5f;
     [SerializeField] private float _durationPadding = 0.25f;
+    [SerializeField] private AudioClip _revealSound;
+    [SerializeField] private AudioSource _uiAudioSource;
     
     private CanvasGroup _valueCanvasGroup;
     private TMP_Text _descriptionText;
@@ -51,6 +53,11 @@ public class StatLine : MonoBehaviour
         _currentRevealSequence?.Kill();
 
         return _currentRevealSequence = DOTween.Sequence()
+            .AppendCallback(delegate
+            {
+                _uiAudioSource.pitch = 1f;
+                _uiAudioSource.PlayOneShot(_revealSound);
+            })
             .Append(_valueCanvasGroup.DOFade(1f, _valueRevealDuration).SetEase(Ease.InQuint))
             .Join(_valueTransform.DOScale(Vector3.one, _valueRevealDuration).SetEase(Ease.InCubic))
             .AppendCallback(_descriptionWriteText.Write)

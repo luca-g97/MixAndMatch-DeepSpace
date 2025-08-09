@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.VFX;
 using UnityUtils;
+using Random = UnityEngine.Random;
 
 public class Ventil : ValidatedMonoBehaviour
 {
@@ -16,6 +17,8 @@ public class Ventil : ValidatedMonoBehaviour
     [Header("References")]
     [SerializeField, Child] private VisualEffect _oilSplashEffect;
     [SerializeField, Child] private Canvas _canvas;
+    [SerializeField] private AudioSource _audioSource;
+    [SerializeField, Self] private AudioSource _damageAudioSource;
     [SerializeField] private CanvasGroup _deathIconCanvasGroup;
     [SerializeField] private CanvasGroup _shieldIconCanvasGroup;
     [SerializeField] private Image _shieldFillImage;
@@ -24,6 +27,11 @@ public class Ventil : ValidatedMonoBehaviour
     [Header("Settings")]
     [SerializeField] private float _timeInvulnerableAfterSpawn = 5f;
     [SerializeField] private int _maxHealthPoints = 100;
+
+    [SerializeField] private AudioClip _spawnSound;
+    [SerializeField] private AudioClip _destroyedSound;
+    [SerializeField] private AudioClip _dropShieldSound;
+    
     private int _currentHealthPoints;
 
     [HideInInspector] public bool IsNotAlive => _currentHealthPoints <= 0;
@@ -66,12 +74,15 @@ public class Ventil : ValidatedMonoBehaviour
         if (_currentHealthPoints <= 0)
         {
             _currentDamageSequence?.Kill();
+            _audioSource.PlayOneShot(_destroyedSound);
             DestroyedSequence();
             VentilDestroyed?.Invoke(this);
             _isInvulnerable = false;
         }
         else
         {
+            _damageAudioSource.pitch = Random.Range(0.75f, 1f);
+            _damageAudioSource.PlayOneShot(_damageAudioSource.clip);
             DamageSequence();
             UpdateLuminanceByHealth();
             UpdateSaturationByHealth();
@@ -137,6 +148,7 @@ public class Ventil : ValidatedMonoBehaviour
     public void SpawnSequence()
     {
         _currentHealthPoints = _maxHealthPoints;
+        _audioSource.PlayOneShot(_spawnSound);
         
         UpdateLuminanceByHealth();
         UpdateSaturationByHealth();
@@ -187,5 +199,6 @@ public class Ventil : ValidatedMonoBehaviour
         _isInvulnerable = true;
         yield return new WaitForSeconds(_timeInvulnerableAfterSpawn);
         _isInvulnerable = false;
+        _audioSource.PlayOneShot(_dropShieldSound);
     }
 }

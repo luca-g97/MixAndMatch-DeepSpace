@@ -12,6 +12,8 @@ public class GradeDisplay : ValidatedMonoBehaviour
     [SerializeField, Child] private GradeStar[] _gradeStars;
     [SerializeField] private RectTransform _shineTransform;
     [SerializeField] private Image _shineImage;
+    [SerializeField] private AudioClip[] _starRevealSounds;
+    [SerializeField] private float _starRevealPitchStep = 0.1f;
 
     private WriteText _descriptionWriteText;
     private Sequence _currentGradeSetupSequence;
@@ -61,7 +63,7 @@ public class GradeDisplay : ValidatedMonoBehaviour
         _currentGradeRevealSequence.AppendCallback(_descriptionWriteText.Write);
         for (int i = 0; i < numberOfStars; i++)
         {
-            _currentGradeRevealSequence.Insert(0.3f * i, _gradeStars[i].StarRevealSequence());
+            _currentGradeRevealSequence.Insert(0.5f * i, _gradeStars[i].StarRevealSequence(_starRevealSounds[i], 1 + i * _starRevealPitchStep));
         }
         
         _currentGradeRevealSequence.Join(_shineTransform

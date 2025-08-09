@@ -2,6 +2,7 @@ using System;
 using DG.Tweening;
 using KBCore.Refs;
 using UnityEngine;
+using UnityEngine.Audio;
 
 public class ReviewUI : ValidatedMonoBehaviour
 {
@@ -9,6 +10,8 @@ public class ReviewUI : ValidatedMonoBehaviour
     [SerializeField, Child] private GradeDisplay _gradeDisplay;
     [SerializeField, Child] private StatLine[] _statLines;
     [SerializeField] private WriteText _factText;
+    [SerializeField] private AudioSource _uiAudioSource;
+    [SerializeField] private AudioClip _factRevealClip;
 
     private MissionTracker _missionTracker;
 
@@ -90,6 +93,12 @@ public class ReviewUI : ValidatedMonoBehaviour
             .Append(_statLines[3].StatRevealSequence())
             .Append(_statLines[4].StatRevealSequence())
             .Append(_panels[2].AnimateInSequence())
-            .AppendCallback(() => _factText.Write());
+            .AppendCallback(delegate
+            {
+                _uiAudioSource.pitch = 1f;
+                
+                _uiAudioSource.PlayOneShot(_factRevealClip);
+                _factText.Write();
+            });
     }
 }

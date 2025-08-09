@@ -1,7 +1,8 @@
 using Seb.Helpers; // Assuming this namespace contains ComputeHelper and SpatialHash
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices; // For Marshal.SizeOf
+using System.Runtime.InteropServices;
+using Assets.Tracking_Example.Scripts; // For Marshal.SizeOf
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -523,28 +524,28 @@ namespace Seb.Fluid2D.Simulation
                     foreach (var entry in interactingObstacles)
                     {
                         GameObject obstacle = entry.Key;
-                        AudioSource audioSource = obstacle.GetComponent<AudioSource>();
                         if (obstacle.CompareTag("Player"))
                         {
-                            if (audioSource) audioSource.pitch = Random.Range(1f, 1.25f);
+                            TestPlayer player = obstacle.GetComponent<TestPlayer>();
 
-                            PlayerEffects playerEffects = obstacle.GetComponentInChildren<PlayerEffects>();
-
-                            if (playerEffects != null)
+                            if (player.playerEffects)
                             {
                                 for (int i = 0; i < 12; i++)
                                 {
                                     if (entry.Value[i] > 0)
                                     {
-                                        playerEffects.CollectOil(colorPalette[i]);
+                                        player.playerEffects.CollectOil(colorPalette[i]);
                                     }
                                 }
+                            }
+
+                            if (player.playerSound)
+                            {
+                                player.playerSound.PlayOilCollectedSound();
                             }
                         }
                         else if (obstacle.CompareTag("Ventil"))
                         {
-                            if (audioSource) audioSource.pitch = Random.Range(0.5f, 0.75f);
-
                             Ventil ventil = obstacle.GetComponent<Ventil>();
                             if (ventil != null)
                             {
@@ -556,11 +557,6 @@ namespace Seb.Fluid2D.Simulation
                                     }
                                 }
                             }
-                        }
-
-                        if (audioSource && audioSource.gameObject.activeInHierarchy && audioSource.enabled)
-                        {
-                            audioSource.Play();
                         }
                     }
                 }

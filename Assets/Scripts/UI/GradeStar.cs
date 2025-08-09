@@ -9,9 +9,10 @@ public class GradeStar : MonoBehaviour
     [SerializeField] private Image _starOutlineImage;
     [SerializeField] private float _starRevealStartScale = 3f;
     [SerializeField] private float _starRevealDuration = 0.5f;
+    [SerializeField] private AudioSource _uiAudioSource;
 
     private RectTransform _starTransform;
-    
+
     private Sequence _currentRevealSequence;
     private Sequence _currentSetupSequence;
 
@@ -22,7 +23,8 @@ public class GradeStar : MonoBehaviour
 
     private void Start()
     {
-        _starOutlineImage.color = new Color(_starOutlineImage.color.r, _starOutlineImage.color.g, _starOutlineImage.color.b, 0f);
+        _starOutlineImage.color = new Color(_starOutlineImage.color.r, _starOutlineImage.color.g,
+            _starOutlineImage.color.b, 0f);
         _starFillImage.color = new Color(_starFillImage.color.r, _starFillImage.color.g, _starFillImage.color.b, 0f);
     }
 
@@ -39,12 +41,18 @@ public class GradeStar : MonoBehaviour
             .Append(_starOutlineImage.DOFade(1f, _starRevealDuration).SetEase(Ease.OutQuint));
     }
 
-    public Sequence StarRevealSequence()
+    public Sequence StarRevealSequence(AudioClip onCompleteSound = null, float soundPitch = 1f)
     {
+       
         _starTransform.localScale = Vector3.one * _starRevealStartScale;
 
         _currentRevealSequence?.Kill();
         return _currentRevealSequence = DOTween.Sequence()
+            .AppendCallback(delegate
+            {
+                _uiAudioSource.pitch = soundPitch;
+                _uiAudioSource.PlayOneShot(onCompleteSound);
+            })
             .Append(_starTransform.DOScale(Vector3.one, _starRevealDuration).SetEase(Ease.OutCubic))
             .Join(_starFillImage.DOFade(1f, _starRevealDuration).SetEase(Ease.OutQuint));
     }
