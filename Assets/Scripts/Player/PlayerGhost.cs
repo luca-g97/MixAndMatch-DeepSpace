@@ -1,12 +1,11 @@
 using System;
 using DG.Tweening;
-using KBCore.Refs;
 using UnityEngine;
 
-public class PlayerGhost : ValidatedMonoBehaviour
+public class PlayerGhost : MonoBehaviour
 {
     [SerializeField] private GameObject _normalModel;
-    [SerializeField, Child] private Canvas _canvas;
+    [SerializeField] private Canvas _canvas;
     [SerializeField] private GameObject _ghostModel;
     
     [SerializeField] private float _ghostMoveZ = 1f; // Distance to move the ghost model along Z axis
