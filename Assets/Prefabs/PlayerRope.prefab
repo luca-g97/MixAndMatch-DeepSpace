@@ -357,8 +357,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _rope: {fileID: 4087947896918563257}
+  _ropeMesh: {fileID: 6146893745119517523}
   _ropeMeshRenderer: {fileID: 4980023955616889211}
-  IsRopeActive: 0
 --- !u!1 &5951724361153507114
 GameObject:
   m_ObjectHideFlags: 0

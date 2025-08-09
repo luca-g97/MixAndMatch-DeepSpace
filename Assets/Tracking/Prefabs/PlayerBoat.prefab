@@ -1292,6 +1292,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayerRope
       objectReference: {fileID: 0}
+    - target: {fileID: 1942639704625773876, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4087947896918563257, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4846098749682692882, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
       propertyPath: m_Positions.Array.data[0].x
       value: 0
@@ -1416,6 +1424,18 @@ PrefabInstance:
       propertyPath: m_Positions.Array.data[10].y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4971561734578959743, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4980023955616889211, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5171678237271301028, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5607275853660687343, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1454,6 +1474,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5607275853660687343, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6146893745119517523, guid: 33f134b61a2b0424ebfc94f279032917, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
