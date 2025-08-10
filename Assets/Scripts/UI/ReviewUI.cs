@@ -97,7 +97,7 @@ public class ReviewUI : ValidatedMonoBehaviour
             {
                 _uiAudioSource.pitch = 1f;
                 
-                _uiAudioSource.PlayOneShot(_factRevealClip);
+                _uiAudioSource.PlayOneShot(_factRevealClip, 0.5f);
                 _factText.Write();
             });
     }

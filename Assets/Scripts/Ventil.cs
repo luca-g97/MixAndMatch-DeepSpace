@@ -30,6 +30,7 @@ public class Ventil : ValidatedMonoBehaviour
 
     [SerializeField] private AudioClip _spawnSound;
     [SerializeField] private AudioClip _destroyedSound;
+    [SerializeField] private AudioClip _impactSound;
     [SerializeField] private AudioClip _dropShieldSound;
     
     private int _currentHealthPoints;
@@ -74,14 +75,15 @@ public class Ventil : ValidatedMonoBehaviour
         if (_currentHealthPoints <= 0)
         {
             _currentDamageSequence?.Kill();
-            _audioSource.PlayOneShot(_destroyedSound);
+            _audioSource.PlayOneShot(_destroyedSound, 2f);
+            _audioSource.PlayOneShot(_impactSound, 0.5f);
             DestroyedSequence();
             VentilDestroyed?.Invoke(this);
             _isInvulnerable = false;
         }
         else
         {
-            _damageAudioSource.pitch = Random.Range(0.75f, 1f);
+            _damageAudioSource.pitch = Random.Range(0.5f, 0.75f);
             _damageAudioSource.PlayOneShot(_damageAudioSource.clip);
             DamageSequence();
             UpdateLuminanceByHealth();
@@ -148,11 +150,10 @@ public class Ventil : ValidatedMonoBehaviour
     public void SpawnSequence()
     {
         _currentHealthPoints = _maxHealthPoints;
-        _audioSource.PlayOneShot(_spawnSound);
-        
         UpdateLuminanceByHealth();
         UpdateSaturationByHealth();
         gameObject.SetActive(true);
+        _audioSource.PlayOneShot(_spawnSound);
         
         StartCoroutine(InvulnerabilityCoroutine());
         

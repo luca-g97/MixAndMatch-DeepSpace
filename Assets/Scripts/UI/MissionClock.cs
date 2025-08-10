@@ -1,13 +1,18 @@
 using System;
 using DG.Tweening;
+using KBCore.Refs;
 using TMPro;
 using UnityEngine;
 
-public class MissionClock : MonoBehaviour
+public class MissionClock : ValidatedMonoBehaviour
 {
     [SerializeField] private TMP_Text _missionClockText;
     [SerializeField] private TMP_Text _missionOverText;
     [SerializeField] private TMP_Text _missionRestartText;
+    
+    [SerializeField, Child] private AudioSource _audioSource;
+    [SerializeField] private AudioClip _countdownClip;
+    [SerializeField] private AudioClip _missionOverClip;
 
     private MissionTracker _missionTracker;
     private Sequence _currentTimerSequence;
@@ -50,6 +55,22 @@ public class MissionClock : MonoBehaviour
         _currentTimerSequence = DOTween.Sequence()
             .Append(_missionClockText.DOFade(1, 0f))
             .Append(_missionClockText.DOFade(0.5f, 1f));
+
+        if (_missionTracker.missionIsGraded)
+        {
+            if (_missionTracker.missionRestartTimeLeft is <= 10 and > 0)
+            {
+                _audioSource.PlayOneShot(_countdownClip);
+            }
+        }
+        
+        else
+        {
+            if (_missionTracker.missionRuntimeLeft is <= 10 and > 0)
+            {
+                _audioSource.PlayOneShot(_countdownClip);
+            }
+        }
     }
 
     private void OnDisable()
@@ -80,6 +101,8 @@ public class MissionClock : MonoBehaviour
 
             BlinkInLongSequence(_missionOverText);
         });
+        
+        _audioSource.PlayOneShot(_missionOverClip, 2f);
     }
 
     private static Sequence BlinkOutLongSequence(TMP_Text text)

@@ -22,10 +22,12 @@ public class HelicopterFlightpath : MonoBehaviour
 
     private int _currentWaypointIndex;
     private MissionTracker _missionTracker;
+    private Rigidbody _rigidbody;
 
     private void Awake()
     {
         _missionTracker = FindFirstObjectByType<MissionTracker>();
+        _rigidbody = GetComponent<Rigidbody>();
     }
 
     private void Start()
@@ -117,9 +119,9 @@ public class HelicopterFlightpath : MonoBehaviour
         Quaternion targetRotation = Quaternion.LookRotation(directionToNext, Vector3.up);
 
         return DOTween.Sequence()
-            .Append(transform.DORotateQuaternion(targetRotation, _turnDuration).SetEase(ease))
-            .Join(transform.DOMove(target.position, _flightDuration * flightDurationMultiplier).SetEase(ease))
-            .Insert(_flightDuration * 0.5f * flightDurationMultiplier, transform
+            .Append(_rigidbody.DORotate(targetRotation.eulerAngles, _turnDuration).SetEase(ease))
+            .Join(_rigidbody.DOMove(target.position, _flightDuration * flightDurationMultiplier).SetEase(ease))
+            .Insert(_flightDuration * 0.5f * flightDurationMultiplier, _rigidbody
                 .DORotate(target.rotation.eulerAngles, _turnDuration)
                 .SetEase(Ease.InOutCubic));
     }

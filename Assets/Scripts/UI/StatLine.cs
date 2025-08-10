@@ -56,7 +56,7 @@ public class StatLine : MonoBehaviour
             .AppendCallback(delegate
             {
                 _uiAudioSource.pitch = 1f;
-                _uiAudioSource.PlayOneShot(_revealSound);
+                _uiAudioSource.PlayOneShot(_revealSound, 2f);
             })
             .Append(_valueCanvasGroup.DOFade(1f, _valueRevealDuration).SetEase(Ease.InQuint))
             .Join(_valueTransform.DOScale(Vector3.one, _valueRevealDuration).SetEase(Ease.InCubic))
