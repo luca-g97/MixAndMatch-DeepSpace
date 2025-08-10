@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd40fcef18e986f4c82f4345f644a5de, type: 3}
   m_Name: DifficultySettings
   m_EditorClassIdentifier: 
-  basePlayerCount: 1
-  maxDifficultyMultiplier: 2
-  minDifficultyMultiplier: 2
+  basePlayerCount: 3
+  maxDifficultyMultiplier: 1.5
+  minDifficultyMultiplier: 0.5
