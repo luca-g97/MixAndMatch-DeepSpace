@@ -14,7 +14,6 @@ namespace Seb.Fluid2D.Simulation
         [Header("References")]
         [SerializeField] private FluidSim2D _fluidSim;
         [SerializeField] private Spawner2D_Wall _spawner;
-        [SerializeField] private DifficultySettingsObject _difficultySettingsObject;
         [SerializeField] private MeshRenderer _barrelMeshRenderer;
         [SerializeField] private MeshRenderer _volumetricSphereMeshRenderer;
 
@@ -135,11 +134,14 @@ namespace Seb.Fluid2D.Simulation
         {
             difficultyInfluence = Mathf.Clamp(difficultyInfluence, 0f, 1f);
 
+            DifficultySettingsData _difficultySettingsData =
+                DifficultySettingsManager.Instance.Settings;
+
             // This method can be used to adjust spawn rates based on player count
             return Mathf.Lerp(1f,
-                Mathf.Clamp((float) _fluidSim.lastPlayerCount / _difficultySettingsObject.basePlayerCount,
-                    _difficultySettingsObject.minDifficultyMultiplier,
-                    _difficultySettingsObject.maxDifficultyMultiplier), difficultyInfluence);
+                Mathf.Clamp((float) _fluidSim.lastPlayerCount / _difficultySettingsData.basePlayerCount,
+                    _difficultySettingsData.minDifficultyMultiplier,
+                    _difficultySettingsData.maxDifficultyMultiplier), difficultyInfluence);
         }
 
         private void SetColorByParticleType(ParticleType type)

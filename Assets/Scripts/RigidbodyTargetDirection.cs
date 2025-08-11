@@ -8,8 +8,6 @@ public class RigidbodyTargetDirection : ValidatedMonoBehaviour
     [SerializeField] private int _velocity = 100;
     [SerializeField] private Transform _target;
     private float _angle;
-    
-    [SerializeField] private bool _faceBackwards = false;
 
     private void FixedUpdate()
     {

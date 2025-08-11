@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<MissionSettingsData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <totalMissionRuntime>300</totalMissionRuntime>
+  <missionOvertime>10</missionOvertime>
+  <missionRestartDelayAfterGrade>30</missionRestartDelayAfterGrade>
+</MissionSettingsData>

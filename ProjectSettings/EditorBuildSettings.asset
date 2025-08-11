@@ -11,7 +11,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/SimulationSceneWall_V2.unity
     guid: 96d9b4087b992b4439a9b105ad1cac64
-  - enabled: 1
+  - enabled: 0
     path: Assets/SimulationSceneWall.unity
     guid: 5257c76f30b4a7d41b319d146a1733ca
   m_configObjects: {}

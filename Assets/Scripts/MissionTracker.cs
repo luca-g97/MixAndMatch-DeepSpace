@@ -7,10 +7,9 @@ using UnityEngine.SceneManagement;
 
 public class MissionTracker : MonoBehaviour
 {
-    [Header("Settings")]
-    public float totalMissionRuntime = 60f;
-    public float missionOvertime = 10f;
-    public float missionRestartDelayAfterGrade = 30f;
+    [HideInInspector] public float totalMissionRuntime = 60f;
+    [HideInInspector] public float missionOvertime = 10f;
+    [HideInInspector] public float missionRestartDelayAfterGrade = 30f;
 
     [Header("Stats")]
     public int mostOilFilteredColorIndex = -1;
@@ -41,6 +40,12 @@ public class MissionTracker : MonoBehaviour
 
     private void Start()
     {
+        MissionSettingsData settings = MissionSettingsManager.Instance.Settings;
+
+        totalMissionRuntime = settings.totalMissionRuntime;
+        missionOvertime = settings.missionOvertime;
+        missionRestartDelayAfterGrade = settings.missionRestartDelayAfterGrade;
+        
         missionRuntimeLeft = totalMissionRuntime;
         missionRestartTimeLeft = missionRestartDelayAfterGrade;
     }
