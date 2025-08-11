@@ -141,10 +141,20 @@ Shader "Instanced/Particle2D_SaturationBoost_Final_Wall" {
 
                 float3 finalColour = baseColour; // Start with base speed color
 
+                float3 actualGreen =  float3(0.25, 0.75, 0.25);
+                float3 mixedGreen = float3(0.55, 0.7, 0.55);
+                static const float COMPARE_EPSILON = 0.001f;
+                
                 if (particleType > 0)
                 {
                     // Default particle color when not near any obstacles.
                     float3 playerColour = mixableColors_Wall[particleTypeToUse].rgb;
+
+                    if (distance(mixedGreen, playerColour) < COMPARE_EPSILON)
+                    {
+                        playerColour = actualGreen;
+                    }
+                    
                     finalColour = playerColour;
                 }
 

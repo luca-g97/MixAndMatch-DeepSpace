@@ -236,7 +236,7 @@ MonoBehaviour:
   ropeLength: 1.5
   ropeWidth: 0.01
   gravityDirection: {x: 0, y: 0, z: 1}
-  groundLevel: 0.25
+  groundLevel: 0
   midPointWeight: 1
   midPointPosition: 0.5
 --- !u!114 &6146893745119517523
@@ -254,7 +254,7 @@ MonoBehaviour:
   OverallDivision: 15
   ropeWidth: 0.04
   radialDivision: 12
-  material: {fileID: -1134714066672644336, guid: f8dc9ff00a40aa143a7d4d61c8f302a1, type: 3}
+  material: {fileID: 2100000, guid: cf5da5a4f49139541bccf8506dc5b21c, type: 2}
   tilingPerMeter: 1
 --- !u!114 &5171678237271301028
 MonoBehaviour:
@@ -359,6 +359,7 @@ MonoBehaviour:
   _rope: {fileID: 4087947896918563257}
   _ropeMesh: {fileID: 6146893745119517523}
   _ropeMeshRenderer: {fileID: 4980023955616889211}
+  playerColor: {fileID: 0}
 --- !u!1 &5951724361153507114
 GameObject:
   m_ObjectHideFlags: 0

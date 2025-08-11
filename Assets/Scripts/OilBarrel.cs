@@ -145,6 +145,11 @@ namespace Seb.Fluid2D.Simulation
         private void SetColorByParticleType(ParticleType type)
         {
             _currentColor = GetColorByParticleType(type);
+            
+            if (_currentColor == _colorPalette[5])
+            {
+                _currentColor = ColorPalette.actualGreen;
+            }
 
             _barrelColorByParticleTypeBlock.SetColor(_BASE_COLOR, _currentColor);
             //_barrelColorByParticleTypeBlock.SetVector(_EMISSION_COLOR, _currentColor);

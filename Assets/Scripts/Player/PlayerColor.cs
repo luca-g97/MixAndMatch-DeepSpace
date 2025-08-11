@@ -17,6 +17,8 @@ public class PlayerColor : MonoBehaviour
     private static readonly int _COLOR = Shader.PropertyToID("_Color");
     private static readonly int _BASE_COLOR = Shader.PropertyToID("_BaseColor");
     private static readonly int _EMISSION_COLOR = Shader.PropertyToID("_EmissionColor");
+    
+    public Color currentColor { get; private set; }
 
     private void Start()
     {
@@ -27,6 +29,13 @@ public class PlayerColor : MonoBehaviour
 
     public void UpdateColor(Color color)
     {
+        currentColor = color;
+        
+        if (color == ColorPalette.colorPalette[5]) // If the color is actual green
+        {
+            color = ColorPalette.actualGreen;
+        }
+        
         // Update boat color
         if (_boatColorBlock == null || _boatLightBulbBlock == null || _volumetricSphereBlock == null)
         {

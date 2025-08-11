@@ -11,8 +11,8 @@ public class ColorPalette
 
         // Secondary Colors (Recalculated as Averages)
         /* 3: Orange (R+Y) */ new Color(1f, 0.55f, 0.1f),
-        /* 4: Violet (R+B) */ new Color(0.6f, 0.25f, 0.55f),
-        /* 5: Green (Y+B) */  new Color(0.25f, 0.75f, 0.25f), // not accurate
+        /* 4: Violet (R+B) */ new Color(0.55f, 0.25f, 0.55f),
+        /* 5: Green (Y+B) */  new Color(0.55f, 0.7f, 0.55f), // not accurate
 
         // Tertiary Colors (Recalculated as Averages)
         /* 6: Red-Orange (R+O) */    new Color(1f, 0.325f, 0.1f),
@@ -22,6 +22,8 @@ public class ColorPalette
         /* 10: Yellow-Green (Y+G) */ new Color(0.625f, 0.875f, 0.175f),
         /* 11: Blue-Green (B+G) */   new Color(0.175f, 0.575f, 0.625f)
     };
+
+    public static Color actualGreen = new Color(0.25f, 0.75f, 0.25f);
     
     public static List<string> colorNames = new List<string> {
         "Red", "Yellow", "Blue",

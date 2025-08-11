@@ -91,6 +91,12 @@ public class Ventil : ValidatedMonoBehaviour
 
             if (_oilSplashEffect)
             {
+                
+                if (particleColor == ColorPalette.colorPalette[5])
+                {
+                    particleColor = ColorPalette.actualGreen;
+                }
+                
                 _oilSplashEffect.SetVector4("Splash Color", particleColor);
                 _oilSplashEffect.Play();
             }

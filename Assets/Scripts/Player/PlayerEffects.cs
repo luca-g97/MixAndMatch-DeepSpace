@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using DG.Tweening;
+using DG.Tweening.Plugins;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.VFX;
@@ -13,6 +15,8 @@ public class PlayerEffects : MonoBehaviour
     private Sequence _currentCollectSequence;
     private float _defaultModelScale;
     private float _defaultLightCircleAlpha;
+
+    private List<Color> _colorPalette = ColorPalette.colorPalette;
 
     private void Awake()
     {
@@ -39,6 +43,11 @@ public class PlayerEffects : MonoBehaviour
     {
         if (_oilSplashEffect)
         {
+            if (particleColor == _colorPalette[5])
+            {
+                particleColor = ColorPalette.actualGreen;
+            }
+            
             _oilSplashEffect.SetVector4("Splash Color", particleColor);
             _oilSplashEffect.Play();
         }

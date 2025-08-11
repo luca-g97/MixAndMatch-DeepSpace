@@ -222,6 +222,9 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 float3 finalColour = baseColour; // Start with base speed color
                 float additiveStrength = 0.7; // TUNABLE: Adjust how strongly obstacle colors influence (e.g., 0.4 to 1.0)
 
+                float3 actualGreen =  float3(0.25, 0.75, 0.25);
+                float3 mixedGreen = float3(0.55, 0.7, 0.55);
+
                 // 3. Determine final color using ADDITIVE blending and Saturation Boost
                 if (obstacleCount > 0 && particleType > 0) // If at least one obstacle is influencing the particle
                 {
@@ -248,24 +251,17 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
 
                     // --- Apply final color based on the two conditions ---
                     // Highlight the particle if EITHER condition is true.
+
+                    if (distance(mixedGreen, particleColor) < COMPARE_EPSILON)
+                    {
+                        particleColor = actualGreen; // If the particle color is green, use the actual green color
+                    }
+                    
                     if (isExactMatchingColor || particleColorIsPresent)
                     {
                         // Apply the bright highlight effect. Using particleColor directly ensures a consistent highlight color.
                         finalColour = setColourSaturation(particleColor, 1);
-                        
-                        //Highlight all collectable colors in the mixed color as mix
-                        //finalColour = setColourSaturation(mixedColor, 1);
-                        //finalColour = multiplyColourLuminance(finalColour, 2); //Uncomment to highlight the mixedColor
-
-                        //Highlight each color individually (e.g. red, yellow and orange seperately)
-                        if(obstacleCount > 1)
-                        {
-                            finalColour = multiplyColourLuminance(finalColour, 2.5);
-                        }
-                        else
-                        {
-                            finalColour = multiplyColourLuminance(finalColour, 2.5);
-                        }
+                        finalColour = multiplyColourLuminance(finalColour, 2.5);
                     }
                     else
                     {
@@ -278,6 +274,11 @@ Shader "Instanced/Particle2D_SaturationBoost_Final" {
                 {
                     // Default particle color when not near any obstacles.
                     float3 playerColour = mixableColors[particleTypeToUse].rgb;
+
+                    if (distance(mixedGreen, playerColour) < COMPARE_EPSILON)
+                    {
+                        playerColour = actualGreen; // If the particle color is green, use the actual green color
+                    }
                     finalColour = playerColour;
                 }
 
