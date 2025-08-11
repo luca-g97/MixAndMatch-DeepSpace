@@ -68,7 +68,7 @@ MeshRenderer:
   m_RenderingLayerMask: 4
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: -1134714066672644336, guid: f8dc9ff00a40aa143a7d4d61c8f302a1, type: 3}
+  - {fileID: 2100000, guid: cf5da5a4f49139541bccf8506dc5b21c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -137,15 +137,15 @@ LineRenderer:
   m_SortingOrder: 0
   m_Positions:
   - {x: 0, y: 0, z: 0}
-  - {x: 0, y: 0, z: 0.27}
-  - {x: 0, y: 0, z: 0.48000002}
-  - {x: 0, y: 0, z: 0.63}
-  - {x: 0, y: 0, z: 0.72}
-  - {x: 0, y: 0, z: 0.75}
-  - {x: 0, y: 0, z: 0.71999997}
-  - {x: 0, y: 0, z: 0.63}
-  - {x: 0, y: 0, z: 0.48}
-  - {x: 0, y: 0, z: 0.27000007}
+  - {x: 0, y: 0, z: 0.54}
+  - {x: 0, y: 0, z: 0.96000004}
+  - {x: 0, y: 0, z: 1.26}
+  - {x: 0, y: 0, z: 1.44}
+  - {x: 0, y: 0, z: 1.5}
+  - {x: 0, y: 0, z: 1.4399999}
+  - {x: 0, y: 0, z: 1.26}
+  - {x: 0, y: 0, z: 0.96}
+  - {x: 0, y: 0, z: 0.54000014}
   - {x: 0, y: 0, z: 0}
   m_Parameters:
     serializedVersion: 3
@@ -231,9 +231,9 @@ MonoBehaviour:
   midPoint: {fileID: 0}
   endPoint: {fileID: 695451102663068641}
   linePoints: 10
-  stiffness: 200
+  stiffness: 300
   damping: 3
-  ropeLength: 1.5
+  ropeLength: 3
   ropeWidth: 0.01
   gravityDirection: {x: 0, y: 0, z: 1}
   groundLevel: 0
@@ -281,8 +281,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5607275853660687343}
-  - component: {fileID: 4047347013497533151}
-  - component: {fileID: 4971561734578959743}
+  - component: {fileID: 3929588583578763619}
   m_Layer: 0
   m_Name: PlayerRope
   m_TagString: Untagged
@@ -308,43 +307,7 @@ Transform:
   - {fileID: 695451102663068641}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!58 &4047347013497533151
-CircleCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1942639704625773876}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 1
-  m_UsedByEffector: 0
-  m_CompositeOperation: 0
-  m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_Radius: 5
---- !u!114 &4971561734578959743
+--- !u!114 &3929588583578763619
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -353,13 +316,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1942639704625773876}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 22e5cd1dd3472f64692cc4cb7a848c77, type: 3}
+  m_Script: {fileID: 11500000, guid: bf37cb4f72a824b4d90ee751e29b16f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _rope: {fileID: 4087947896918563257}
   _ropeMesh: {fileID: 6146893745119517523}
   _ropeMeshRenderer: {fileID: 4980023955616889211}
-  playerColor: {fileID: 0}
 --- !u!1 &5951724361153507114
 GameObject:
   m_ObjectHideFlags: 0
