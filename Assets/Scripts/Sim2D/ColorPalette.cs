@@ -27,7 +27,7 @@ public class ColorPalette
     
     public static List<string> colorNames = new List<string> {
         "Red", "Yellow", "Blue",
-        "Orange", "Violet", "Green",
+        "Orange", "Purple", "Green",
         "Red-Orange", "Yellow-Orange", "Red-Violet", "Blue-Violet", "Yellow-Green", "Blue-Green"
     };
 }
