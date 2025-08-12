@@ -232,7 +232,7 @@ namespace GogoGaga.OptimizedRopesAndCables
         {
             if (!AreEndPointsValid())
             {
-                Debug.LogError("StartPoint or EndPoint is not assigned.", gameObject);
+                Debug.LogWarning("StartPoint or EndPoint is not assigned.", gameObject);
                 return Vector3.zero;
             }
 

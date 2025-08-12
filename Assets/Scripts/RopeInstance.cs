@@ -70,12 +70,6 @@ public class RopeInstance : MonoBehaviour
     {
         if (_rope != null)
         {
-            // Detach endpoint so we don't hit Unity's "can't set parent" error during disable
-            if (_rope.EndPoint != null)
-            {
-                _rope.EndPoint.SetParent(null, true);
-            }
-
             _currentRopeSequence?.Kill();
 
             // Animate back to origin (world-space) then destroy

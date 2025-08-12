@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -47,6 +48,13 @@ public class PlayerRopeAnchor : MonoBehaviour
     private void OnDisable()
     {
         // make sure manager cleans up
+        RopeManager.Instance?.DisconnectAllFor(this);
+        _connections.Clear();
+    }
+
+    private void OnDestroy()
+    {
+        // ensure all connections are cleared when destroyed
         RopeManager.Instance?.DisconnectAllFor(this);
         _connections.Clear();
     }

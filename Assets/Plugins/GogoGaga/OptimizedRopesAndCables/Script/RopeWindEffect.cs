@@ -62,20 +62,23 @@ namespace GogoGaga.OptimizedRopesAndCables
 
             float noise = (Mathf.PerlinNoise(Time.time + windSeed, 0.0f) - 0.5f) * 2f * 20f; // full range [-20°, +20°]
 
-            float noisyWindDirection;
+            float noisyWindDirection = 0f;
 
             if (perpendicularWind)
             {
-                Vector3 startToEnd = rope.EndPoint.position - rope.StartPoint.position;
-                Vector3 perp = Vector3.Cross(startToEnd, up).normalized;
+                if (rope && rope.StartPoint && rope.EndPoint)
+                {
+                    Vector3 startToEnd = rope.EndPoint.position - rope.StartPoint.position;
+                    Vector3 perp = Vector3.Cross(startToEnd, up).normalized;
 
-                // Project 'perp' onto our wind plane
-                float x = Vector3.Dot(perp, planeRight);
-                float y = Vector3.Dot(perp, planeForward);
-                float baseAngle = Mathf.Atan2(y, x) * Mathf.Rad2Deg;
+                    // Project 'perp' onto our wind plane
+                    float x = Vector3.Dot(perp, planeRight);
+                    float y = Vector3.Dot(perp, planeForward);
+                    float baseAngle = Mathf.Atan2(y, x) * Mathf.Rad2Deg;
 
-                noisyWindDirection = baseAngle + noise;
-                windDirectionDegrees = baseAngle; // for inspector/debug
+                    noisyWindDirection = baseAngle + noise;
+                    windDirectionDegrees = baseAngle; // for inspector/debug
+                }
             }
             else
             {
