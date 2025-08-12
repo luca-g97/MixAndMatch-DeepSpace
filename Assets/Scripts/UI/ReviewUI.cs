@@ -61,8 +61,14 @@ public class ReviewUI : ValidatedMonoBehaviour
         }
         else
         {
+
+            Color color = ColorPalette.colorPalette[_missionTracker.mostEfficientCollaborationColorIndex];
+            if (_missionTracker.mostEfficientCollaborationColorIndex == 5)
+            {
+                color = ColorPalette.actualGreen;
+            }
             _statLines[2].SetValue(ColorPalette.colorNames[_missionTracker.mostEfficientCollaborationColorIndex],
-                ColorPalette.colorPalette[_missionTracker.mostEfficientCollaborationColorIndex]);
+                color);
         }
         
         _statLines[3].SetDescription("Corals died");
