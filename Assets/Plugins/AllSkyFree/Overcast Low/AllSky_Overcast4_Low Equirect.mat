@@ -48,7 +48,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Tex:
-        m_Texture: {fileID: 8900000, guid: eadc1ff6275c62d4c972b388e5e03c8d, type: 3}
+        m_Texture: {fileID: 8900000, guid: 61052ac5e1e09dd4e9e4f2a0f024da76, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _UpTex:
@@ -58,7 +58,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _Exposure: 1
-    - _Rotation: 0
+    - _Rotation: 34.89476
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _Tint: {r: 0.499, g: 0.4332403, b: 0.3597442, a: 1}
