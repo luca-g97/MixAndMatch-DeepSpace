@@ -730,6 +730,7 @@ MonoBehaviour:
   fluidSimulation: {fileID: 271053326}
   initialSpawnParticleCount: 12141
   currentSimParticleCount_Inspector: 0
+  xVelocityFactor: 3
 --- !u!1001 &291441088
 PrefabInstance:
   m_ObjectHideFlags: 0

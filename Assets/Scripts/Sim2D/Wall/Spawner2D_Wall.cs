@@ -35,6 +35,9 @@ public class Spawner2D_Wall : MonoBehaviour
     private Unity.Mathematics.Random _continuousSpawnRng;
     private Vector2 _originalInitialVelocity;
 
+    [SerializeField]
+    private float xVelocityFactor = 3.0f;
+
     void Awake()
     {
         _continuousSpawnRng = new Unity.Mathematics.Random((uint)System.Environment.TickCount + (uint)GetInstanceID().GetHashCode());
@@ -120,7 +123,7 @@ public class Spawner2D_Wall : MonoBehaviour
             }
             else
             {
-                float velocitySineValue = Mathf.Sin((Time.time + regionIndex) * initialVelocitySineWaveFrequency);
+                float velocitySineValue = Mathf.Sin((Time.time + regionIndex) * initialVelocitySineWaveFrequency) * xVelocityFactor;
                 initialVelocity = new Vector2(_originalInitialVelocity.x * velocitySineValue, _originalInitialVelocity.y);
             }
             
