@@ -16,6 +16,8 @@ public class SceneReloader : MonoBehaviour
         QualitySettings.vSyncCount = 1;
         Application.targetFrameRate = 60;
         Time.timeScale = 1.0f;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
         xmlSettings = GameObject.FindFirstObjectByType<XMLSettings>().GetComponent<XMLSettings>();
         playerManager = GameObject.FindFirstObjectByType<PIELabTracklinkPlayerManager>().GetComponent<PIELabTracklinkPlayerManager>();
     }
