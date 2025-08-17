@@ -129,6 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 80118367}
   - component: {fileID: 80118368}
+  - component: {fileID: 80118369}
   m_Layer: 0
   m_Name: SIM-Settings
   m_TagString: Untagged
@@ -165,6 +166,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: abb301a4f90081440982e1d4127bf937, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &80118369
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 80118366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24419482b9826b94892a13e38de02478, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxCurrentStrength: 0.33
+  adaptCurrentTimer: 3
+  currentPrefab: {fileID: 4118164978541504360, guid: e72d2930cef10834898db779f32b071b, type: 3}
 --- !u!1 &106544555
 GameObject:
   m_ObjectHideFlags: 0

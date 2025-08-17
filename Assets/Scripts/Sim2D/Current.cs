@@ -12,8 +12,8 @@ public class Current : MonoBehaviour
     [Range(-1, 1)] public float linearFactor = 0f;
 
     [SerializeField] private float _currentVelocityMultiplier = 1f;
-    [SerializeField] private float _minVelocity = 0.01f;
-    [SerializeField] private float _maxVelocity = 0.1f;
+    [SerializeField] public float _minVelocity = 0.01f;
+    [SerializeField] public float _maxVelocity = 0.1f;
     [SerializeField] private float _minWidth = 0.25f;
     [SerializeField] private float _maxWidth = 0.75f;
     [SerializeField] private float _minChangeDuration = 4f;
@@ -73,6 +73,10 @@ public class Current : MonoBehaviour
 
     void UpdateVisual()
     {
+        if (!_lineRenderer)
+        {
+            InitializeLineRenderer();
+        }
         _lineRenderer.startColor = _currentColor;
         _lineRenderer.endColor = _currentColor;
         _lineRenderer.startWidth = currentWidth * 0.1f;
@@ -90,6 +94,10 @@ public class Current : MonoBehaviour
 
     public Vector2[] GetWorldPoints()
     {
+        if (!_lineRenderer)
+        {
+            InitializeLineRenderer();
+        }
         Vector3[] localPoints = new Vector3[_lineRenderer.positionCount];
         _lineRenderer.GetPositions(localPoints);
 

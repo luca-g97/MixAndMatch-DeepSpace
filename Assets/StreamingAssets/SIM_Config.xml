@@ -24,4 +24,6 @@
 	<totalParticles_Wall>100000</totalParticles_Wall>
 
 	<sidewaysSpawnVelocity>300</sidewaysSpawnVelocity>
+
+	<maxDynCurrentStrength>33</maxDynCurrentStrength>
 </settings>

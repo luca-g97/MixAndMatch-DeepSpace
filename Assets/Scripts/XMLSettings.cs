@@ -7,13 +7,15 @@ public class XMLSettings : MonoBehaviour
 {
     private FluidSim2D floorSIM;
     private FluidSim2D_Wall wallSIM;
+    private DynamicCurrents dynamicCurrents;
 
     public void XMLReload(int sceneIndex)
     {
         try
         {
             floorSIM = GameObject.FindFirstObjectByType<FluidSim2D>().GetComponent<FluidSim2D>();
-            wallSIM = GameObject.FindFirstObjectByType<FluidSim2D_Wall>().GetComponent<FluidSim2D_Wall>();
+            dynamicCurrents = GameObject.FindFirstObjectByType<DynamicCurrents>().GetComponent<DynamicCurrents>();
+            wallSIM = GameObject.FindFirstObjectByType<FluidSim2D_Wall>().GetComponent<FluidSim2D_Wall>();      
         }
         catch { }
 
@@ -81,6 +83,11 @@ public class XMLSettings : MonoBehaviour
                             if (totalParticles != null && int.TryParse(totalParticles.InnerText, out int value_totalParticles))
                             {
                                 floorSIM.maxTotalParticles = value_totalParticles;
+                            }
+                            XmlNode maxDynCurrentStrength = root.SelectSingleNode("maxDynCurrentStrength");
+                            if (maxDynCurrentStrength != null && int.TryParse(maxDynCurrentStrength.InnerText, out int value_maxDynCurrentStrength))
+                            {
+                                dynamicCurrents.maxCurrentStrength = value_maxDynCurrentStrength / 100.0f;
                             }
                         }
                         break;
