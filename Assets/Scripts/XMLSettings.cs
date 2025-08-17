@@ -122,6 +122,11 @@ public class XMLSettings : MonoBehaviour
                             {
                                 wallSIM.maxTotalParticles = value_totalParticles;
                             }
+                            XmlNode sidewaysVelocity = root.SelectSingleNode("sidewaysSpawnVelocity");
+                            if (sidewaysVelocity != null && int.TryParse(sidewaysVelocity.InnerText, out int value_sidewaysVelocity))
+                            {
+                                wallSIM.spawner2D.xVelocityFactor = value_sidewaysVelocity / 100.0f;
+                            }
                         }
                         break;
                     default:

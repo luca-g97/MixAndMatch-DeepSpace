@@ -22,4 +22,6 @@
 
 	<totalParticles>100000</totalParticles>
 	<totalParticles_Wall>100000</totalParticles_Wall>
+
+	<sidewaysSpawnVelocity>300</sidewaysSpawnVelocity>
 </settings>

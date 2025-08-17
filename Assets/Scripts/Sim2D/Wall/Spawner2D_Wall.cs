@@ -36,7 +36,7 @@ public class Spawner2D_Wall : MonoBehaviour
     private Vector2 _originalInitialVelocity;
 
     [SerializeField]
-    private float xVelocityFactor = 3.0f;
+    public float xVelocityFactor = 3.0f;
 
     void Awake()
     {
