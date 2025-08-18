@@ -163,7 +163,7 @@ MonoBehaviour:
   currentWidth: 0.5
   linearFactor: 0
   _currentVelocityMultiplier: 0.1
-  _minVelocity: 0.025
+  _minVelocity: 0.033
   _maxVelocity: 0.075
   _minWidth: 0.25
   _maxWidth: 1

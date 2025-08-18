@@ -180,7 +180,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxCurrentStrength: 0.33
   adaptCurrentTimer: 3
-  currentPrefab: {fileID: 4118164978541504360, guid: e72d2930cef10834898db779f32b071b, type: 3}
+  currentPrefab: {fileID: 4118164978541504360, guid: ee801e3715cb21945b49e6172b552b46, type: 3}
 --- !u!1 &106544555
 GameObject:
   m_ObjectHideFlags: 0
@@ -786,14 +786,14 @@ MonoBehaviour:
   colourMap:
     serializedVersion: 2
     key0: {r: 0.282634, g: 0.3109339, b: 0.443, a: 1}
-    key1: {r: 0.6273585, g: 0.8659867, b: 1, a: 1}
+    key1: {r: 0.5647059, g: 0.78000003, b: 0.9, a: 1}
     key2: {r: 0, g: 0, b: 0, a: 0}
     key3: {r: 0, g: 0, b: 0, a: 0}
     key4: {r: 0, g: 0, b: 0, a: 0}
     key5: {r: 0, g: 0, b: 0, a: 0}
     key6: {r: 0, g: 0, b: 0, a: 0}
     key7: {r: 0, g: 0, b: 0, a: 0}
-    ctime0: 0
+    ctime0: 9830
     ctime1: 65535
     ctime2: 0
     ctime3: 0
@@ -3267,6 +3267,9 @@ MonoBehaviour:
   oilBarrelsFiltered: 0
   coralsDied: 0
   sealsDied: 0
+  coralPenalty: 10
+  sealPenalty: 50
+  recoveryRate: 10
   fluidSimulation: {fileID: 271053319}
   coralVentilManager: {fileID: 1781308778}
   sealVentilManager: {fileID: 542205003}

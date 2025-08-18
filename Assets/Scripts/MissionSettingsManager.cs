@@ -4,7 +4,6 @@ using UnityEngine;
 public class MissionSettingsManager : MonoBehaviour
 {
     public static MissionSettingsManager Instance { get; private set; }
-
     public MissionSettingsData Settings { get; private set; }
 
     private string _filePath;

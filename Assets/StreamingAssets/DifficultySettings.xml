@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <DifficultySettingsData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <basePlayerCount>4</basePlayerCount>
-  <maxDifficultyMultiplier>1.5</maxDifficultyMultiplier>
+  <maxDifficultyMultiplier>2</maxDifficultyMultiplier>
   <minDifficultyMultiplier>0.5</minDifficultyMultiplier>
 </DifficultySettingsData>

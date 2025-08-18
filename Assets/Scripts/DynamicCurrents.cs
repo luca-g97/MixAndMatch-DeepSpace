@@ -1,8 +1,10 @@
+using System;
 using NUnit.Framework;
 using Seb.Fluid2D.Simulation;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class DynamicCurrents : MonoBehaviour
 {
@@ -15,26 +17,65 @@ public class DynamicCurrents : MonoBehaviour
     private GameObject currentPrefab;
 
     private float averageY = 0.0f;
+
     private List<GameObject> currents = new List<GameObject>();
-    void Start()
+    private GameObject[] players;
+    private FluidSim2D fluidSim;
+
+    private void Awake()
     {
+        fluidSim = FindFirstObjectByType<FluidSim2D>();
+    }
+
+    private void Start()
+    {
+        GetPlayers();
         CreateCurrents();
         StartCoroutine(AdaptCurrentsCR());
+    }
+
+    private void OnEnable()
+    {
+        fluidSim.OnObstacleRegistered += OnObstacleRegisteredHandler;
+        fluidSim.OnObstacleUnregistered += OnObstacleUnregisteredHandler;
+    }
+
+    private void OnDisable()
+    {
+        fluidSim.OnObstacleRegistered -= OnObstacleRegisteredHandler;
+        fluidSim.OnObstacleUnregistered -= OnObstacleUnregisteredHandler;
+    }
+
+    private void OnObstacleRegisteredHandler(int _)
+    {
+        GetPlayers();
+    }
+
+    private void OnObstacleUnregisteredHandler(int _)
+    {
+        GetPlayers();
+    }
+
+    private void GetPlayers()
+    {
+        players = GameObject.FindGameObjectsWithTag("Player");
     }
 
     void RecalculateAverageY()
     {
         float tempY = 0.0f;
-        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
         foreach (GameObject player in players)
         {
-            tempY += player.transform.position.y;
+            if (player)
+            {
+                tempY += player.transform.position.y;
+            }
         }
+
         if (players.Length > 0)
         {
             averageY = tempY / players.Length;
         }
-        Debug.Log(averageY);
     }
 
     private void CreateCurrents()
@@ -61,27 +102,36 @@ public class DynamicCurrents : MonoBehaviour
 
     private void AdaptCurrents()
     {
-        float boundsSizeX = GameObject.FindFirstObjectByType<FluidSim2D>().boundsSize.x;
-        float boundsSizeY = GameObject.FindFirstObjectByType<FluidSim2D>().boundsSize.y / 2.0f;
+        float boundsSizeX = fluidSim.boundsSize.x;
+        float boundsSizeY = fluidSim.boundsSize.y / 2.0f;
         float currentRangeX = boundsSizeX / currents.Count;
         int currentCurrent = 0;
         foreach (GameObject current in currents)
         {
-            current.GetComponent<LineRenderer>().positionCount = 2;
+            LineRenderer lineRenderer = current.GetComponent<LineRenderer>();
+            lineRenderer.positionCount = 2;
             Current currentSettings = current.GetComponent<Current>();
 
-            current.GetComponent<LineRenderer>().SetPosition(0, new Vector3(Random.Range(0.0f + (currentCurrent * boundsSizeX / currents.Count) - (boundsSizeX / 2.0f), currentRangeX + (currentCurrent * boundsSizeX / currents.Count) - (boundsSizeX / 2.0f)),
-                                                                            Random.Range(boundsSizeY / 1.5f, boundsSizeY),
-                                                                            0.0f));
-            current.GetComponent<LineRenderer>().SetPosition(1, new Vector3(Random.Range(0.0f + (currentCurrent * boundsSizeX / currents.Count) - (boundsSizeX / 2.0f), currentRangeX + (currentCurrent * boundsSizeX / currents.Count) - (boundsSizeX / 2.0f)),
-                                                                            Random.Range(0.0f, boundsSizeY / 1.5f),
-                                                                            0.0f));
+            lineRenderer.SetPosition(0,
+                new Vector3(
+                    Random.Range(0.0f + (currentCurrent * boundsSizeX / currents.Count) - (boundsSizeX / 2.0f),
+                        currentRangeX + (currentCurrent * boundsSizeX / currents.Count) - (boundsSizeX / 2.0f)),
+                    Random.Range(boundsSizeY / 1.5f, boundsSizeY),
+                    0.0f));
+            lineRenderer.SetPosition(1,
+                new Vector3(
+                    Random.Range(0.0f + (currentCurrent * boundsSizeX / currents.Count) - (boundsSizeX / 2.0f),
+                        currentRangeX + (currentCurrent * boundsSizeX / currents.Count) - (boundsSizeX / 2.0f)),
+                    Random.Range(0.0f, boundsSizeY / 1.5f),
+                    0.0f));
 
-            currentSettings._minVelocity = maxCurrentStrength * Mathf.InverseLerp(0.0f, boundsSizeY, averageY) - Random.Range(0.0f, maxCurrentStrength * Mathf.InverseLerp(0.0f, boundsSizeY, averageY));
-            currentSettings.currentVelocity = maxCurrentStrength * Mathf.InverseLerp(0.0f, boundsSizeY, averageY);
+            currentSettings._minVelocity = maxCurrentStrength * Mathf.InverseLerp(0.0f, boundsSizeY, averageY) -
+                                           Random.Range(0.0f,
+                                               maxCurrentStrength * Mathf.InverseLerp(0.0f, boundsSizeY, averageY) * 0.5f);
             currentSettings._maxVelocity = maxCurrentStrength * Mathf.InverseLerp(0.0f, boundsSizeY, averageY);
-
+            
+            
             currentCurrent++;
         }
     }
-} 
+}

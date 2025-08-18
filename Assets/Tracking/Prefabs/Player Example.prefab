@@ -396,6 +396,10 @@ PrefabInstance:
       propertyPath: m_Positions.Array.data[9].z
       value: 0.54000014
       objectReference: {fileID: 0}
+    - target: {fileID: 2701898124759689481, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
+      propertyPath: m_Color.a
+      value: 0.14901961
+      objectReference: {fileID: 0}
     - target: {fileID: 4967671303439236353, guid: f5e6e51337242904f948a8fdf926d807, type: 3}
       propertyPath: m_Name
       value: PlayerBoat

@@ -9,6 +9,9 @@ public class MissionSettingsData
     public float totalMissionRuntime = 120f;
     public float missionOvertime = 10f;
     public float missionRestartDelayAfterGrade = 30f;
+    public int coralPenalty = 10;       
+    public int sealPenalty = 50;        
+    public int mixedOilCountPerPointRecovered = 10;   
 
     public static MissionSettingsData Load(string filePath)
     {

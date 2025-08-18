@@ -84,7 +84,6 @@ public class VentilManager : MonoBehaviour
     private void SpawnVentilWave()
     {
         int aliveVentils = _ventilList.Count(ventil => !ventil.IsNotAlive);
-        Debug.Log("Alive Ventils: " + aliveVentils);
 
         if (aliveVentils == _ventilList.Count)
         {

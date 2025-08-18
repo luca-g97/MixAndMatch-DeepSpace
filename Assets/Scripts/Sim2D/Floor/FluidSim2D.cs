@@ -1,3 +1,4 @@
+using System;
 using Seb.Helpers; // Assuming this namespace contains ComputeHelper and SpatialHash
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +13,15 @@ namespace Seb.Fluid2D.Simulation
 {
     public class FluidSim2D : MonoBehaviour
     {
-        public event System.Action SimulationStepCompleted;
+        public event Action SimulationStepCompleted;
+        
+        /// <summary>
+        /// Registers a new obstacle in the simulation. int parameter is the new player count.
+        public event Action<int> OnObstacleRegistered;
+        
+        /// <summary>
+        /// Unregisters an obstacle from the simulation. int parameter is the new player count.
+        public event Action<int> OnObstacleUnregistered;
 
         [Header("Simulation Settings")]
         public float timeScale = 1;
@@ -751,6 +760,8 @@ namespace Seb.Fluid2D.Simulation
                 // A change occurred, so we need to re-evaluate the obstacle state
                 // and tell the GPU buffers to update on the next frame.
                 UpdateObstacleAndPlayerState();
+                
+                OnObstacleUnregistered?.Invoke(lastPlayerCount);
             }
         }
 
@@ -762,6 +773,8 @@ namespace Seb.Fluid2D.Simulation
                 playerColors.Remove(obstacleGO);
                 // A change occurred, so again, we update the state.
                 UpdateObstacleAndPlayerState();
+                
+                OnObstacleUnregistered?.Invoke(lastPlayerCount);
             }
         }
 

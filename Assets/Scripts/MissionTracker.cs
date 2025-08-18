@@ -18,6 +18,11 @@ public class MissionTracker : MonoBehaviour
     public int coralsDied;
     public int sealsDied;
 
+    [Header("Grading")]
+    public int coralPenalty = 10; // Points lost per dead coral
+    public int sealPenalty = 50; // Points lost per dead seal
+    public int recoveryRate = 10;
+
     [Header("References")]
     [SerializeField] private FluidSim2D fluidSimulation;
     [SerializeField] private VentilManager coralVentilManager;
@@ -45,9 +50,13 @@ public class MissionTracker : MonoBehaviour
         totalMissionRuntime = settings.totalMissionRuntime;
         missionOvertime = settings.missionOvertime;
         missionRestartDelayAfterGrade = settings.missionRestartDelayAfterGrade;
-        
+
         missionRuntimeLeft = totalMissionRuntime;
         missionRestartTimeLeft = missionRestartDelayAfterGrade;
+
+        coralPenalty = settings.coralPenalty;
+        sealPenalty = settings.sealPenalty;
+        recoveryRate = settings.mixedOilCountPerPointRecovered;
     }
 
     private void OnDestroy()
@@ -121,8 +130,6 @@ public class MissionTracker : MonoBehaviour
 
     private void GradeRound()
     {
-        MissionScoring scoring = new MissionScoring();
-
         int mixedColorParticlesRemoved = 0;
 
         for (int i = 3; i < 6; i++)
@@ -130,10 +137,10 @@ public class MissionTracker : MonoBehaviour
             mixedColorParticlesRemoved += fluidSimulation.removedParticlesPerColor[i][0];
         }
 
-        int score = scoring.CalculateScore(coralsDied,
+        int score = CalculateScore(coralsDied,
             sealsDied, mixedColorParticlesRemoved);
 
-        int stars = scoring.GetStarRating(score);
+        int stars = GetStarRating(score);
 
         OnMissionGraded?.Invoke(stars);
     }
@@ -174,5 +181,28 @@ public class MissionTracker : MonoBehaviour
                 mostOilFilteredColorIndex = i;
             }
         }
+    }
+
+    public int CalculateScore(int deadCorals, int deadSeals, int mixableOilFiltered)
+    {
+        int baseScore = 100;
+
+        int penalty = (deadCorals * coralPenalty) + (deadSeals * sealPenalty);
+        int recovery = mixableOilFiltered / recoveryRate;
+
+        int rawScore = baseScore - penalty + recovery;
+        return Mathf.Clamp(rawScore, 0, 100);
+    }
+
+    /// <summary>
+    /// Converts a score (0–100) into a star rating (1–5).
+    /// </summary>
+    public int GetStarRating(int score)
+    {
+        if (score < 20) return 1;
+        else if (score < 40) return 2;
+        else if (score < 60) return 3;
+        else if (score < 80) return 4;
+        else return 5;
     }
 }

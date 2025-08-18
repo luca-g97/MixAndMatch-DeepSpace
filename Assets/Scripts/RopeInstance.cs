@@ -50,12 +50,12 @@ public class RopeInstance : MonoBehaviour
 
     private void EnableRope()
     {
-        if (_rope != null) _rope.enabled = true;
-        if (_ropeMesh != null) _ropeMesh.enabled = true;
-        if (_ropeMeshRenderer != null) _ropeMeshRenderer.enabled = true;
+        if (_rope) _rope.enabled = true;
+        if (_ropeMesh) _ropeMesh.enabled = true;
+        if (_ropeMeshRenderer) _ropeMeshRenderer.enabled = true;
 
         _currentRopeSequence?.Kill();
-        if (_rope != null)
+        if (_rope)
         {
             _currentRopeSequence = DOTween.Sequence()
                 .Append(_rope.EndPoint.DOLocalMove(Vector3.zero, 0.25f).SetEase(Ease.InCubic));
@@ -68,12 +68,12 @@ public class RopeInstance : MonoBehaviour
     /// </summary>
     public void DestroyRope()
     {
-        if (_rope != null)
+        if (_rope)
         {
             _currentRopeSequence?.Kill();
 
             // Animate back to origin (world-space) then destroy
-            if (_rope.EndPoint != null)
+            if (_rope.EndPoint)
             {
                 _currentRopeSequence = DOTween.Sequence()
                     .Append(_rope.EndPoint.DOMove(transform.position, 0.25f).SetEase(Ease.InCubic))

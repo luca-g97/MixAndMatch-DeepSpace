@@ -2,6 +2,7 @@ using System;
 using Assets.Tracking_Example.Scripts;
 using Assets.UnityPharusAPI.Managers;
 using DG.Tweening;
+using Seb.Fluid2D.Simulation;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -37,7 +38,7 @@ public class TitleScreen : MonoBehaviour
     private Sequence _ctaShineLoopSequence;
 
     private bool _isTitleVisible;
-    private ATracklinkPlayerManager _tracklinkPlayerManager;
+    private FluidSim2D _fluidSim;
 
     private void Awake()
     {
@@ -45,19 +46,29 @@ public class TitleScreen : MonoBehaviour
         _titleDefaultY = _titleTransform.anchoredPosition.y;
         _titleMirrorDefaultY = _titleMirrorTransform.anchoredPosition.y;
 
-        _tracklinkPlayerManager = FindAnyObjectByType<PIELabTracklinkPlayerManager>(FindObjectsInactive.Exclude);
+        _fluidSim = FindAnyObjectByType<FluidSim2D>(FindObjectsInactive.Exclude);
     }
 
     private void OnEnable()
     {
-        UnityPharusEventProcessor.TrackAdded += OnTrackAdded;
-        UnityPharusEventProcessor.TrackRemoved += OnTrackRemoved;
+        if (_fluidSim)
+        {
+            _fluidSim.OnObstacleRegistered += OnObstacleChangedHandler;
+            _fluidSim.OnObstacleUnregistered += OnObstacleChangedHandler;
+        }
     }
-    
+
     private void OnDisable()
     {
-        UnityPharusEventProcessor.TrackAdded -= OnTrackAdded;
-        UnityPharusEventProcessor.TrackRemoved -= OnTrackRemoved;
+        if (_fluidSim)
+        {
+            _fluidSim.OnObstacleRegistered -= OnObstacleChangedHandler;
+            _fluidSim.OnObstacleUnregistered -= OnObstacleChangedHandler;
+        }
+
+        StopCtaLoop();
+        HideTitle();
+        _isTitleVisible = false;
     }
 
     private void OnDestroy()
@@ -66,14 +77,17 @@ public class TitleScreen : MonoBehaviour
         _ctaShineLoopSequence?.Kill();
         _titleShowSequence?.Kill();
         _ctaShowTween?.Kill();
-        
-        UnityPharusEventProcessor.TrackAdded -= OnTrackAdded;
-        UnityPharusEventProcessor.TrackRemoved -= OnTrackRemoved;
+
+        if (_fluidSim)
+        {
+            _fluidSim.OnObstacleRegistered -= OnObstacleChangedHandler;
+            _fluidSim.OnObstacleUnregistered -= OnObstacleChangedHandler;
+        }
     }
 
     private void Start()
     {
-        if (_tracklinkPlayerManager.PlayerList.Count > 0)
+        if (_fluidSim.lastPlayerCount > 0)
         {
             HideTitle();
             _isTitleVisible = false;
@@ -85,27 +99,18 @@ public class TitleScreen : MonoBehaviour
         }
     }
 
-    private void OnTrackRemoved(object sender, UnityPharusEventProcessor.PharusEventTrackArgs e)
+    private void OnObstacleChangedHandler(int playerCount)
     {
-        if (_tracklinkPlayerManager.PlayerList.Count == 0)
+        if (playerCount > 0 && _isTitleVisible)
         {
-            if (!_isTitleVisible)
-            {
-                ShowTitle();
-                _isTitleVisible = true;
-            }
+            HideTitle();
+            _isTitleVisible = false;
+           
         }
-    }
-
-    private void OnTrackAdded(object sender, UnityPharusEventProcessor.PharusEventTrackArgs e)
-    {
-        if (_tracklinkPlayerManager.PlayerList.Count > 0)
+        else if (playerCount < 1 && !_isTitleVisible)
         {
-            if (_isTitleVisible)
-            {
-                HideTitle();
-                _isTitleVisible = false;
-            }
+            ShowTitle();
+            _isTitleVisible = true;
         }
     }
 
@@ -114,42 +119,42 @@ public class TitleScreen : MonoBehaviour
         _ctaLoopSequence?.Kill();
         _ctaTextTransform01.anchoredPosition = new Vector2(_ctaTextTransform01.anchoredPosition.x, _ctaTextDefaultY);
         _ctaTextTransform02.anchoredPosition = new Vector2(_ctaTextTransform02.anchoredPosition.x, _ctaTextDefaultY);
-        
+
         _ctaLoopSequence = CtaSequence();
         _ctaLoopSequence.SetLoops(-1, LoopType.Restart).Play();
-        
+
         _ctaShineLoopSequence?.Kill();
         _ctaShineLoopSequence = CtaShineSequence();
         _ctaShineLoopSequence.SetLoops(-1, LoopType.Restart).Play();
     }
-    
+
     private void StopCtaLoop()
     {
         _ctaLoopSequence?.Kill();
         _ctaLoopSequence = null;
-        
+
         _ctaShineLoopSequence?.Kill();
         _ctaShineLoopSequence = null;
     }
-    
+
     private void ShowTitle()
     {
         _titleShowSequence?.Kill();
         _titleShowSequence = ShowTitleSequence();
-        
+
         _ctaShowTween?.Kill();
         _ctaShowTween = _ctaTextCanvasGroup.DOFade(1f, _titleShowHideDuration).SetEase(Ease.OutCubic);
         StartCtaLoop();
     }
-    
+
     private void HideTitle()
     {
         _titleShowSequence?.Kill();
         _titleShowSequence = HideTitleSequence();
-        
+
         _ctaShowTween?.Kill();
         _ctaShowTween = _ctaTextCanvasGroup.DOFade(0f, _titleShowHideDuration).SetEase(Ease.InCubic);
-        
+
         StopCtaLoop();
     }
 
@@ -157,8 +162,11 @@ public class TitleScreen : MonoBehaviour
     {
         Sequence sequence = DOTween.Sequence()
             .AppendInterval(_ctaPreDelayDuration)
-            .Append(_ctaTextTransform01.DOAnchorPosY(_ctaTextDefaultY + _ctaTextYDelta, _ctaUpDuration).SetEase(Ease.OutQuint))
-            .Insert(_ctaPreDelayDuration + _ctaPauseDuration, _ctaTextTransform02.DOAnchorPosY(_ctaTextDefaultY + _ctaTextYDelta, _ctaUpDuration).SetEase(Ease.OutQuint))
+            .Append(_ctaTextTransform01.DOAnchorPosY(_ctaTextDefaultY + _ctaTextYDelta, _ctaUpDuration)
+                .SetEase(Ease.OutQuint))
+            .Insert(_ctaPreDelayDuration + _ctaPauseDuration,
+                _ctaTextTransform02.DOAnchorPosY(_ctaTextDefaultY + _ctaTextYDelta, _ctaUpDuration)
+                    .SetEase(Ease.OutQuint))
             .AppendInterval(_ctaStayDuration)
             .Append(_ctaTextTransform01.DOAnchorPosY(_ctaTextDefaultY, _ctaDownDuration).SetEase(Ease.InQuint))
             .Join(_ctaTextTransform02.DOAnchorPosY(_ctaTextDefaultY, _ctaDownDuration).SetEase(Ease.InQuint))
@@ -167,7 +175,7 @@ public class TitleScreen : MonoBehaviour
         return sequence;
     }
 
-    private Sequence CtaShineSequence() 
+    private Sequence CtaShineSequence()
     {
         Sequence sequence = DOTween.Sequence()
             .Append(_ctaShineImage.DOFade(1f, _ctaUpDuration))
@@ -186,7 +194,7 @@ public class TitleScreen : MonoBehaviour
 
         return sequence;
     }
-    
+
     private Sequence HideTitleSequence()
     {
         Sequence sequence = DOTween.Sequence()
